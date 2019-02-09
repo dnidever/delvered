@@ -42,7 +42,7 @@ setup = ['##### REQUIRED #####',$
          'instrument  DECAM',$
          'observatory CTIO',$
          'nmulti      10',$
-         'nmulti_wcs       40',$
+         'nmulti_wcs       30',$
          'nmulti_daophot   30',$
          'nmulti_allframe  10',$
          'filtref     g,i,r,z,u',$
@@ -143,9 +143,9 @@ For n=0,nnights-1 do begin
   ind = night_index.index[night_index.lo[n]:night_index.hi[n]]
   nind = night_index.num[n]
   expstr1 = expstr[ind]
-  print,'' & print,'-------------------------------'
-  print,strtrim(n+1,2),' ',strtrim(inight,2),' - ',strtrim(nind,2),' exposures'
-  print,'===============================' & print,''
+  print,'' & print,'---------------------------------'
+  print,'Night ',strtrim(n+1,2),' ',strtrim(inight,2),' - ',strtrim(nind,2),' exposures'
+  print,'=================================' & print,''
 
   ;; Get the WCS.inlist and WCS.success files and see if we already
   ;; have these exposures
@@ -247,6 +247,7 @@ For n=0,nnights-1 do begin
       if e eq 0 then begin
         hd0 = HEADFITS(tmpfile,exten=0)
         object = sxpar(hd0,'OBJECT')
+        if strtrim(object,2) eq '' then object='Exposure'+strtrim(fexptoadd[e].expnum,2)
         MATCH,newfieldstr.shname,ifield,indfield
         newfieldstr[indfield].name = strcompress(object,/remove_all)
       endif
