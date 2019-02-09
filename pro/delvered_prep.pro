@@ -42,13 +42,14 @@ setup = ['##### REQUIRED #####',$
          'instrument  DECAM',$
          'observatory CTIO',$
          'nmulti      10',$
-         'nmulti_wcs       30',$
+         'nmulti_wcs       40',$
          'nmulti_daophot   30',$
          'nmulti_allframe  10',$
          'filtref     g,i,r,z,u',$
          'trans       delve.trans',$
          '##### OPTIONAL #####',$
          'sepfielddir  1',$
+         'sepchipdir   1',$
          'keepmef      0',$
          'catformat    FITS',$
          'workdir      '+workdir,$
@@ -143,9 +144,9 @@ For n=0,nnights-1 do begin
   ind = night_index.index[night_index.lo[n]:night_index.hi[n]]
   nind = night_index.num[n]
   expstr1 = expstr[ind]
-  print,'' & print,'---------------------------------'
+  print,'' & print,'----------------------------------'
   print,'Night ',strtrim(n+1,2),' ',strtrim(inight,2),' - ',strtrim(nind,2),' exposures'
-  print,'=================================' & print,''
+  print,'==================================' & print,''
 
   ;; Get the WCS.inlist and WCS.success files and see if we already
   ;; have these exposures
@@ -222,7 +223,7 @@ For n=0,nnights-1 do begin
     find = field_index.index[field_index.lo[f]:field_index.hi[f]]
     nfind = n_elements(find)
     ifield = field_index.value[f]
-    print,ifield,' ',strtrim(nfind,2),' exposures'
+    print,'' & print,ifield,' - ',strtrim(nfind,2),' exposures'
     fexptoadd = exptoadd[find]
     ;; Create the field directory
     fielddir = nightdir+ifield+'/'
@@ -247,7 +248,6 @@ For n=0,nnights-1 do begin
       if e eq 0 then begin
         hd0 = HEADFITS(tmpfile,exten=0)
         object = sxpar(hd0,'OBJECT')
-        if strtrim(object,2) eq '' then object='Exposure'+strtrim(fexptoadd[e].expnum,2)
         MATCH,newfieldstr.shname,ifield,indfield
         newfieldstr[indfield].name = strcompress(object,/remove_all)
       endif
@@ -258,14 +258,18 @@ For n=0,nnights-1 do begin
       ccdnum = decam[ind1].ccdnum
       ;; Loop over the extensions and create the resource files
       For c=0,fcb.nextend-1 do begin
-        outfile1 = fielddir+ifield+'-'+fexptoadd[e].expnum+'_'+string(ccdnum[c],format='(i02)')+'.fits'
+        schip = string(ccdnum[c],format='(i02)')
+        ;; Create chip directory if needed
+        chipdir = fielddir+'chip'+schip+'/'
+        if FILE_TEST(chipdir,/directory) eq 0 then FILE_MKDIR,chipdir
+        outfile1 = chipdir+ifield+'-'+fexptoadd[e].expnum+'_'+schip+'.fits'
         WRITELINE,outfile1,''
-        routfile1 = fielddir+'.'+ifield+'-'+fexptoadd[e].expnum+'_'+string(ccdnum[c],format='(i02)')+'.fits'
+        routfile1 = chipdir+'.'+ifield+'-'+fexptoadd[e].expnum+'_'+schip+'.fits'
         rlines = ['fluxfile = '+fexptoadd[e].fluxfile+'['+strtrim(extnum[c],2)+']',$
                   'wtfile = '+fexptoadd[e].wtfile+'['+strtrim(extnum[c],2)+']',$
                   'maskfile = '+fexptoadd[e].maskfile+'['+strtrim(extnum[c],2)+']']
         WRITELINE,routfile1,rlines
-        outfiles[ocount] = ifield+'/'+ifield+'-'+fexptoadd[e].expnum+'_'+string(ccdnum[c],format='(i02)')+'.fits'  ; relative path
+        outfiles[ocount] = ifield+'/chip'+schip+'/'+ifield+'-'+fexptoadd[e].expnum+'_'+schip+'.fits'  ; relative path
         ocount++
 
         ;; Save the reference catalog for this chip
@@ -279,7 +283,7 @@ For n=0,nnights-1 do begin
         gdrefcat = where(refcat.ra ge min(vra)-0.02 and refcat.ra le max(vra)+0.02 and $
                          refcat.dec ge min(vdec)-0.02 and refcat.dec le max(vdec)+0.02,ngdrefcat)
         refcat1 = refcat[gdrefcat]
-        refcatfile = fielddir+ifield+'-'+fexptoadd[e].expnum+'_'+string(ccdnum[c],format='(i02)')+'_refcat.fits'
+        refcatfile = chipdir+ifield+'-'+fexptoadd[e].expnum+'_'+string(ccdnum[c],format='(i02)')+'_refcat.fits'
         MWRFITS,refcat1,refcatfile,/create
         SPAWN,['gzip',refcatfile],/noshell
       Endfor  ; chip loop
