@@ -1,6 +1,6 @@
 ;+
 ;
-; GETREFDATA
+; DELVERED_GETREFDATA
 ;
 ; Get reference catalog information needed for a given filter.
 ;
@@ -13,7 +13,7 @@
 ;  cendec    Central DEC for the search.
 ;  radius    Search radius in degrees.
 ;  =dcr      The cross-matching radius in arcsec.  Default is 0.5".
-;  /saveref  Save the output to FILE.
+;  /savefile  Save the output to FILE.
 ;  /silent   Don't print anything to the screen.
 ;  /modelmags  Return the model magnitudes as well.
 ;  =logfile  Filename to write output to.
@@ -24,13 +24,13 @@
 ;  =count    Number of elements in REF.
 ;
 ; USAGE:
-;  IDL>cat = getrefdata('g',cenra,cendec,radius,saveref=saveref)
+;  IDL>cat = delvered_getrefdata('g',cenra,cendec,radius,savefile=savefile)
 ;
 ; By D. Nidever  Sep 2017
 ;-
 
-function getrefdata,filter,cenra,cendec,radius,count=count,saveref=saveref,silent=silent,$
-                    dcr=dcr,modelmags=modelmags,logfile=logfile
+function delvered_getrefdata,filter,cenra,cendec,radius,count=count,savefile=savefile,silent=silent,$
+                             dcr=dcr,modelmags=modelmags,logfile=logfile
 
 undefine,ref
 count = 0
@@ -38,8 +38,8 @@ count = 0
 ; Not enough inputs
 if n_elements(filter) eq 0 or n_elements(cenra) eq 0 or n_elements(cendec) eq 0 or $
    n_elements(radius) eq 0 then begin
-  print,'Syntax - cat = getrefdata(filter,cenra,cendec,radius,saveref=saveref,dcr=dcr,'
-  print,'                          modelmags=modelmags,logfile=logfile)'
+  print,'Syntax - cat = delvered_getrefdata(filter,cenra,cendec,radius,savefile=savefile,dcr=dcr,'
+  print,'                                   modelmags=modelmags,logfile=logfile)'
   return,-1
 endif
 
@@ -84,7 +84,7 @@ For i=0,n_elements(filter)-1 do begin
       push,refcat,['2MASS-PSC','PS']
     endif else begin
       ; Use 2MASS and APASS to calibrate
-      push,refcat,['2MASS-PSC','APASS']
+      push,refcat,['2MASS-PSC','APASS','Skymapper']
     endelse
   end
   ; DECam r-band
@@ -94,7 +94,7 @@ For i=0,n_elements(filter)-1 do begin
       push,refcat,['2MASS-PSC','PS']
     endif else begin
       ; Use 2MASS and APASS to calibrate
-      push,refcat,['2MASS-PSC','APASS']
+      push,refcat,['2MASS-PSC','APASS','Skymapper']
     endelse
   end
   ; DECam i-band
@@ -104,7 +104,7 @@ For i=0,n_elements(filter)-1 do begin
       push,refcat,['2MASS-PSC','PS']
     endif else begin
       ; Use GAIA and 2MASS to calibrate
-      push,refcat,['2MASS-PSC']
+      push,refcat,['2MASS-PSC','Skymapper']
     endelse
   end
   ; DECam z-band
@@ -172,6 +172,7 @@ for i=0,nrefcat-1 do begin
   'PS': push,newtags,['ps_gmag','ps_rmag','ps_imag','ps_zmag','ps_ymag']
   'APASS': push,newtags,['apass_gmag','e_apass_gmag','apass_rmag','e_apass_rmag']
   'II/312/ais': push,newtags,['nuv','e_nuv']  ; Galex
+  'Skymapper': push,newtags,['sm_gmag','e_sm_gmag','sm_rmag','e_sm_rmag','sm_imag','e_sm_imag','sm_zmag','e_sm_zmag']  ; Skymapper DR1
   else: stop,refcat[i]+' NOT SUPPORTED'
   endcase
 endfor
@@ -189,7 +190,7 @@ for i=0,nrefcat-1 do begin
     printlog,logf,'Loading ',refcat[i],' reference catalog'
 
   ; Load the catalog
-  ref1 = GETREFCAT_V3(cenra,cendec,radius,refcat[i],count=nref1,silent=silent,logfile=logf)
+  ref1 = DELVERED_GETREFCAT(cenra,cendec,radius,refcat[i],count=nref1,silent=silent,logfile=logf)
   if nref1 eq 0 then goto,BOMB
   tags1 = tag_names(ref1)
 
@@ -254,7 +255,17 @@ for i=0,nrefcat-1 do begin
          ref[ind1].nuv = ref1[ind2].nuv
          ref[ind1].e_nuv = ref1[ind2].e_nuv
       end
-      else: stop,catname+' NOT SUPPORTED'
+      'Skymapper': begin
+         ref[ind1].sm_gmag = ref1[ind2].sm_gmag
+         ref[ind1].e_sm_gmag = ref1[ind2].e_sm_gmag
+         ref[ind1].sm_rmag = ref1[ind2].sm_rmag
+         ref[ind1].e_sm_rmag = ref1[ind2].e_sm_rmag
+         ref[ind1].sm_imag = ref1[ind2].sm_imag
+         ref[ind1].e_sm_imag = ref1[ind2].e_sm_imag
+         ref[ind1].sm_zmag = ref1[ind2].sm_zmag
+         ref[ind1].e_sm_zmag = ref1[ind2].e_sm_zmag
+      end
+      else: stop,refcat[i]+' NOT SUPPORTED'
       endcase
     endif
 
@@ -284,6 +295,16 @@ for i=0,nrefcat-1 do begin
          new.apass_rmag = left1.r_mag
       end
       'II/312/ais': new.nuv = left1.nuv
+      'Skymapper': begin
+         new.sm_gmag = left1.sm_gmag
+         new.e_sm_gmag = left1.e_sm_gmag
+         new.sm_rmag = left1.sm_rmag
+         new.e_sm_rmag = left1.e_sm_rmag
+         new.sm_imag = left1.sm_imag
+         new.e_sm_imag = left1.e_sm_imag
+         new.sm_zmag = left1.sm_zmag
+         new.e_sm_zmag = left1.e_sm_zmag
+      end
       else: stop,catname+' NOT SUPPORTED'
       endcase
       
@@ -311,6 +332,12 @@ if keyword_set(modelmags) then begin
   gmodel = where(ref.model_mag lt 50,ngmodel)
   if not keyword_set(silent) then $
     printlog,logf,strtrim(ngmodel,2)+' stars with good model magnitudes'
+endif
+
+;; Save the file
+if n_elements(savefile) gt 0 then begin
+  printlog,logf,'Saving the file to ',savefile
+  MWRFITS,ref,savefile,/create
 endif
 
 count = n_elements(ref)
