@@ -248,6 +248,7 @@ For n=0,nnights-1 do begin
       if e eq 0 then begin
         hd0 = HEADFITS(tmpfile,exten=0)
         object = sxpar(hd0,'OBJECT')
+        if strtrim(object,2) eq '' then object='Exposure'+strtrim(fexptoadd[e].expnum,2)
         MATCH,newfieldstr.shname,ifield,indfield
         newfieldstr[indfield].name = strcompress(object,/remove_all)
       endif
