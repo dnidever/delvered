@@ -153,6 +153,7 @@ For n=0,nnights-1 do begin
   nightdir = expdir+strtrim(inight,2)+'/'
   setupfile = nightdir+'photred.setup'
   if file_test(nightdir,/directory) eq 1 then begin
+stop
     if file_test(setupfile) eq 0 then WRITELINE,setupfile,setup
     undefine,files
     READLIST,nightdir+'logs/WCS.inlist',inlist,/unique,/fully,setupdir=nightdir,count=ninlist,/silent
@@ -229,11 +230,11 @@ For n=0,nnights-1 do begin
     fielddir = nightdir+ifield+'/'
     if FILE_TEST(fielddir,/directory) eq 0 then FILE_MKDIR,fielddir
 
-    ;; Get Gaia DR2 data for this field
-    if FILE_TEST(nightdir+'refcat/',/directory) eq 0 then FILE_MKDIR,nightdir+'refcat/'
-    savefile = nightdir+'refcat/'+ifield+'_refcat.fits'
-    refcat = DELVERED_GETREFDATA(['c4d-g','c4d-r','c4d-i'],fexptoadd[0].ra,fexptoadd[0].dec,1.2,savefile=savefile)
-    SPAWN,['gzip',savefile],/noshell
+    ;; Get Gaia DR2 and other reference data for this field
+  ;  if FILE_TEST(nightdir+'refcat/',/directory) eq 0 then FILE_MKDIR,nightdir+'refcat/'
+  ;  savefile = nightdir+'refcat/'+ifield+'_refcat.fits'
+  ;  refcat = DELVERED_GETREFDATA(['c4d-g','c4d-r','c4d-i'],fexptoadd[0].ra,fexptoadd[0].dec,1.2,savefile=savefile)
+  ;  SPAWN,['gzip',savefile],/noshell
 
     ;; Loop over exposures
     For e=0,nfind-1 do begin
