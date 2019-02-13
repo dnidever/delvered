@@ -247,7 +247,7 @@ setup = ['##### REQUIRED #####',$
       filebase = PHOTRED_GETFITSEXT(filename,/basename)
       ;; Get number of extensions
       ;;   use symlink to make fits_open think it's a normal FITS file
-      tmpfile = MKTEMP('tmp',/nodot) & TOUCHZERO,tmpfile+'.fits' & FILE_DELETE,[tmpfile,tmpfile+'.fits'],/allow
+      tmpfile = MKTEMP('tmp',/nodot,outdir=workdir) & TOUCHZERO,tmpfile+'.fits' & FILE_DELETE,[tmpfile,tmpfile+'.fits'],/allow
       tmpfile += '.fits'
       FILE_LINK,filename,tmpfile
       FITS_OPEN,tmpfile,fcb & FITS_CLOSE,fcb
