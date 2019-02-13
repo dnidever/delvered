@@ -117,7 +117,11 @@ setup = ['##### REQUIRED #####',$
     nind = n_elements(ind)
     ifield = field_index.value[f]
     fitsfiles1 = fitsfiles[ind]
-    MATCH,fieldstr.shname,ifield,fieldind
+    MATCH,fieldstr.shname,ifield,fieldind,count=nmatch
+    if nmatch eq 0 then begin
+      print,ifield,' NOT FOUND in >>fields<< file'
+      goto,FIELDBOMB
+    endif
     fieldname = fieldstr[fieldind].name   ;; long field name
     print,strtrim(f+1,2),'/',strtrim(nfields,2),' ',ifield,' ',fieldname,' ',strtrim(nind,2),' files'
 
@@ -129,37 +133,52 @@ setup = ['##### REQUIRED #####',$
       ;; _cat.dat, _refcat.dat
       ;; als, ap, coo, plst, fits/fits.fz, psf
       base1 = first_el(PHOTRED_GETFITSEXT(fitsfiles1[k],/basename))
-      FILE_LINK,nightdir+ifield+'/'+base1+['_cat.dat','_refcat.dat','.opt','.als.opt','.als','.ap','.coo','.plst','.psf','.psf.log','.log','a.als','a.ap'],$
-                delvedir+inight+'/'+ifield
-      FILE_LINK,nightdir+ifield+'/'+file_basename(fitsfiles1[k]),delvedir+inight+'/'+ifield
+      chipnum = PHOTRED_GETCHIPNUM(base1,{namps:62,separator:'_'})
+      chipdir = delvedir+inight+'/'+ifield+'/chip'+strtrim(chipnum,2)+'/'
+      if file_test(chipdir,/directory) eq 0 then FILE_MKDIR,chipdir
+      ;; Check that files exist
+      if file_test(nightdir+ifield+'/'+base1+'.opt') eq 1 then begin
+        FILE_LINK,nightdir+ifield+'/'+base1+['_cat.dat','_refcat.dat','.opt','.als.opt','.als','.ap','.coo','.plst','.psf','.psf.log','.log','a.als','a.ap'],$
+                  chipdir
+        FILE_LINK,nightdir+ifield+'/'+file_basename(fitsfiles1[k]),chipdir
 
-      ;; Update the lists, relative paths
-      wcslines[count] = ifield+'/'+file_basename(fitsfiles1[k])
-      daophotlines[count] = ifield+'/'+file_basename(fitsfiles1[k])
-      count++
+        ;; Update the lists, relative paths
+        wcslines[count] = ifield+'/chip'+strtrim(chipnum,2)+'/'+file_basename(fitsfiles1[k])
+        daophotlines[count] = ifield+'/chip'+strtrim(chipnum,2)+'/'+file_basename(fitsfiles1[k])
+        count++
+      endif else print,base1+' NOT FOUND'
     Endfor  ; file loop
 
     ;; MATCH files, mch, raw
     mchfiles = FILE_SEARCH(nightdir+ifield+'/'+ifield+'-????????_??.mch',count=nmchfiles)
-    rawfiles = FILE_DIRNAME(mchfiles)+'/'+FILE_BASENAME(mchfiles,'.mch')+'.raw'
-    tfrfiles = FILE_DIRNAME(mchfiles)+'/'+FILE_BASENAME(mchfiles,'.mch')+'.tfr'
-    FILE_LINK,mchfiles,delvedir+inight+'/'+ifield+'/'+file_basename(mchfiles)
-    FILE_LINK,rawfiles,delvedir+inight+'/'+ifield+'/'+file_basename(rawfiles)
-    FILE_LINK,tfrfiles,delvedir+inight+'/'+ifield+'/'+file_basename(tfrfiles)
+    if nmchfiles gt 0 then begin
+      rawfiles = FILE_DIRNAME(mchfiles)+'/'+FILE_BASENAME(mchfiles,'.mch')+'.raw'
+      tfrfiles = FILE_DIRNAME(mchfiles)+'/'+FILE_BASENAME(mchfiles,'.mch')+'.tfr'
+      ;; Get chip subdirectories
+      chipdirs = strarr(nmchfiles)
+      for k=0,nmchfiles-1 do chipdirs[k]='chip'+strtrim(PHOTRED_GETCHIPNUM(file_basename(mchfiles[k],'.mch'),{namps:62,separator:'_'}),2)
+      FILE_LINK,mchfiles,delvedir+inight+'/'+ifield+'/'+chipdirs+'/'+file_basename(mchfiles)
+      FILE_LINK,rawfiles,delvedir+inight+'/'+ifield+'/'+chipdirs+'/'+file_basename(rawfiles)
+      FILE_LINK,tfrfiles,delvedir+inight+'/'+ifield+'/'+chipdirs+'/'+file_basename(tfrfiles)
 
-    ;; Update the list, relative paths
-    PUSH,matchlines,ifield+'/'+file_basename(mchfiles)
+      ;; Update the list, relative paths
+      PUSH,matchlines,ifield+'/'+chipdirs+'/'+file_basename(mchfiles)
+    endif
 
     sumfile = nightdir+fieldname+'_summary.fits'
     sumstr = MRDFITS(sumfile,1,/silent)
-    cenra = median(sumstr.ra)
-    cendec = median(sumstr.dec)
+
+    cenra = median([sumstr.ra])
+    cendec = median([sumstr.dec])
 
     ;; Get Gaia DR2 and other reference data for this field
-;    if FILE_TEST(delvedir+inight+'/refcat/',/directory) eq 0 then FILE_MKDIR,delvedir+inight+'/refcat/'
-;    savefile = delvedir+inight+'/refcat/'+ifield+'_refcat.fits'
-;    refcat = DELVERED_GETREFDATA(['c4d-g','c4d-r','c4d-i'],cenra,cendec,1.2,savefile=savefile)
-;    SPAWN,['gzip',savefile],/noshell
+    if FILE_TEST(delvedir+inight+'/refcat/',/directory) eq 0 then FILE_MKDIR,delvedir+inight+'/refcat/'
+    savefile = delvedir+inight+'/refcat/'+ifield+'_refcat.fits'
+    if file_test(savefile) eq 0 and file_test(savefile+'.gz') eq 0 then begin
+      refcat = DELVERED_GETREFDATA(['c4d-g','c4d-r','c4d-i'],cenra,cendec,1.2,savefile=savefile)
+      SPAWN,['gzip',savefile],/noshell
+    endif
+    FIELDBOMB:
   Endfor  ; field loop
 
   ;; Copy apcor.lst and APCOR.success
@@ -168,7 +187,12 @@ setup = ['##### REQUIRED #####',$
   READLINE,nightdir+'logs/APCOR.success',apcorlines,count=napcor
   bd = where(stregex(apcorlines,'.fits.fz',/boolean) eq 0,nbd)
   if nbd gt 0 then apcorlines[bd]+='.fz'
-  for k=0,napcor-1 do apcorlines[k]=strmid(apcorlines[k],strpos(apcorlines[k],inight)+9)
+  for k=0,napcor-1 do apcorlines[k]=strmid(apcorlines[k],strpos(apcorlines[k],inight)+9) ;; make relative
+  ;; Get chip subdirectories
+  chipdirs = strarr(napcor)
+  for k=0,napcor-1 do chipdirs[k]='chip'+strtrim(PHOTRED_GETCHIPNUM(file_basename(apcorlines[k],'.fits.fz'),{namps:62,separator:'_'}),2)
+  apcorlines0 = apcorlines
+  apcorlines = file_dirname(apcorlines)+'/'+chipdirs+'/'+file_basename(apcorlines)  ;; F7/chip34/F7-00421651_34.fits.fz
 
   ;; Copy over the WCS.success, DAOPHOT.success and
   ;; MATCH.success/outlist files
