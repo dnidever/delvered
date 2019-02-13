@@ -6,7 +6,7 @@
 ; single-image level catalogs and PSFs.
 ;
 ; INPUTS:
-;  nights   What nights to run PHOTRED on.  Either an array or
+;  input    What nights to run PHOTRED on.  Either an array or
 ;            a range such as 20160101-20160506.
 ;
 ; OUTPUTS:
@@ -19,7 +19,7 @@
 ; By D. Nidever  Feb 2019
 ;-
 
-pro delvered_exposures,nights,delvedir=delvedir,redo=redo,stp=stp
+pro delvered_exposures,input,delvedir=delvedir,redo=redo,stp=stp
 
 ;; Defaults
 if n_elements(delvedir) gt 0 then delvedir=trailingslash(delvedir) else delvedir = '/dl1/users/dnidever/delve/'
@@ -27,10 +27,11 @@ if n_elements(delvedir) gt 0 then delvedir=trailingslash(delvedir) else delvedir
 expdir = trailingslash(delvedir)+'exposures/'
 ;; Logs directory
 logsdir = expdir+'logs/'
+if file_test(logsdir,/directory) eq 0 then file_mkdir,logsdir
 
 ;; Not enough inputs
-if n_elements(nights) eq 0 then begin
-  print,'Syntax - delvered_exposures,nights,delvedir=delvedir,redo=redo,stp=stp'
+if n_elements(input) eq 0 then begin
+  print,'Syntax - delvered_exposures,input,delvedir=delvedir,redo=redo,stp=stp'
   return
 endif
 
@@ -58,20 +59,26 @@ JOURNAL,logfile
 ;; Get all of the nights
 dirs = FILE_SEARCH(expdir+'20??????',/test_directory,count=ndirs)
 dirs = FILE_BASENAME(dirs)
+numdirs = long(dirs)
 
 ;; Parse the input nights
-for i=0,n_elements(nights)-1 do begin
-  inight = nights[i]
+for i=0,n_elements(input)-1 do begin
+  input1 = input[i]
   ;; See if there is a -
-  if strpos(inight,'-') ne -1 then begin
-    nightrange = strsplit(inight,'-',/extract)
-    MATCH,dirs,nightrange,ind1,ind2,/sort,count=nmatch
-stop
+  if strpos(input1,'-') ne -1 then begin
+    nightrange = strsplit(input1,'-',/extract)
+    ind_dirs = where(numdirs ge long(nightrange[0]) and numdirs le long(nightrange[1]),nind_dirs)
+    if nind_dirs gt 0 then push,nights,dirs[ind_dirs] else print,'No directories found matching ',input1
   endif else begin
-    MATCH,dirs,inight,ind1,ind2,/sort,count=nmatch
-    stop
+    MATCH,dirs,input1,ind1,ind2,/sort,count=nmatch
+    if nmatch gt 0 then push,nights,input1 else print,input1,' directory not found'
   endelse
 endfor
+nnights = n_elements(nights)
+if nnights eq 0 then begin
+  print,'No nights to process'
+  return
+endif
 
 
 ; Print info
@@ -95,6 +102,8 @@ if nbd gt 0 then begin
   print,'Please rename this program (i.e. printlog.pro.orig)'
   return
 endif
+
+print,'Processing ',strtrim(nnights,2),' nights of data'
 
 
 ;#########################################
