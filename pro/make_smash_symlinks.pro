@@ -4,6 +4,8 @@ pro make_smash_symlinks
 
 delvedir = '/dl1/users/dnidever/delve/exposures/'
 smashdir = '/dl1/users/dnidever/smash/cp/red/photred/'
+nmulti=5
+
 nights = FILE_SEARCH(smashdir+'20??????',/test_directory,count=nnights)
 CD,current=origdir
 
@@ -30,7 +32,7 @@ cmddir = strarr(ncmd)+'/data0/dnidever/delve/'
 
 ;; Run PBS_DAEMON
 print,'Starting the JOBS'
-PBS_DAEMON,cmd,cmddir,jobs=jobs,nmulti=5,/hyperthread,/idle,prefix='smash',wait=5
+PBS_DAEMON,cmd,cmddir,jobs=jobs,nmulti=nmulti,/hyperthread,/idle,prefix='smash',wait=5
 
 stop
 

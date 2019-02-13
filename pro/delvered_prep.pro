@@ -137,8 +137,21 @@ night_index = CREATE_INDEX(night)
 nnights = n_elements(night_index.value)
 print,strtrim(nnights,2),' unique nights of data'
 
+
+;; KLUDGE
+print,'REMOVING SMASH NIGHTS'
+smashnights = file_search('/dl1/users/dnidever/smash/cp/red/photred/20??????/',/test_directory,count=nsmashnights)
+smashnights = file_basename(smashnights)
+match,night,smashnights,ind1,ind2,count=nmatch
+if nmatch gt 0 then REMOVE,ind1,night
+;night = night[ind1]
+night_index = CREATE_INDEX(night)
+nnights = n_elements(night_index.value)
+
 ;; Loop over the nights
 ;;---------------------------
+;For n=17,nnights-1 do begin
+;For n=61,nnights-1 do begin
 For n=0,nnights-1 do begin
   inight = night_index.value[n]
   ind = night_index.index[night_index.lo[n]:night_index.hi[n]]
@@ -153,20 +166,41 @@ For n=0,nnights-1 do begin
   nightdir = expdir+strtrim(inight,2)+'/'
   setupfile = nightdir+'photred.setup'
   if file_test(nightdir,/directory) eq 1 then begin
-stop
     if file_test(setupfile) eq 0 then WRITELINE,setupfile,setup
     undefine,files
-    READLIST,nightdir+'logs/WCS.inlist',inlist,/unique,/fully,setupdir=nightdir,count=ninlist,/silent
+    READLIST,nightdir+'logs/WCS.inlist',inlist,/unique,setupdir=nightdir,count=ninlist,/silent
     if ninlist gt 0 then PUSH,files,inlist
-    READLIST,nightdir+'logs/WCS.success',successlist,/unique,/fully,setupdir=nightdir,count=nsuccess,/silent
+    READLIST,nightdir+'logs/WCS.success',successlist,/unique,setupdir=nightdir,count=nsuccess,/silent
     if nsuccess gt 0 then PUSH,files,successlist
+    ;; Some previous files found
+    if n_elements(files) gt 0 then begin
+      ;; Make these relative paths
+      for k=0,n_elements(files)-1 do begin
+        pos = strpos(files[k],inight)
+        if pos ge 0 then begin
+          len = strlen(inight)
+          files[k] = strmid(files[k],pos+len+1)
+        endif
+        ;; I needed this for SMASH, but not for new data
+        ;if strmid(files[k],4,5,/reverse_offset) eq '.fits' and file_test(files[k]) eq 0 then files[k]+='.fz'
+      endfor
+      files = files[uniq(files,sort(files))]  ;; only want unique ones
+      ;; Make sure they exist
+      gdf = where(file_test(nightdir+files) eq 1,ngdf,comp=bdf,ncomp=nbdf)
+      if ngdf gt 0 then files=files[gdf] else undefine,files
+    endif
+    nfiles = n_elements(files)
+    ;; Remove the existing exposures
     if n_elements(files) gt 0 then begin
       fbase = PHOTRED_GETFITSEXT(files,/basename)
       base = reform((strsplitter(fbase,'-',/extract))[0,*])
       MATCH,base,expstr1.expnum,ind1,ind2,/sort,count=nmatch
       if nmatch gt 0 then begin
         exptoadd = expstr1
-        if nmatch lt nind then REMOVE,ind2,exptoadd else undefine,exptoadd
+        if nmatch lt nind then begin
+          print,'Removing ',strtrim(nmatch,2),' exposures that already exist'
+          REMOVE,ind2,exptoadd
+        endif else undefine,exptoadd
       endif
     endif else exptoadd=expstr1
     ;; Load the existing "fields" file 
@@ -215,6 +249,7 @@ stop
   field_index = CREATE_INDEX(fields)
   nfields = n_elements(field_index.num)
   print,strtrim(nfields,2),' fields found'
+  print,''
 
   ;; Loop over the fields
   undefine,outfiles
@@ -224,17 +259,17 @@ stop
     find = field_index.index[field_index.lo[f]:field_index.hi[f]]
     nfind = n_elements(find)
     ifield = field_index.value[f]
-    print,'' & print,ifield,' - ',strtrim(nfind,2),' exposures'
+    print,ifield,' - ',strtrim(nfind,2),' exposures'
     fexptoadd = exptoadd[find]
     ;; Create the field directory
     fielddir = nightdir+ifield+'/'
     if FILE_TEST(fielddir,/directory) eq 0 then FILE_MKDIR,fielddir
 
     ;; Get Gaia DR2 and other reference data for this field
-  ;  if FILE_TEST(nightdir+'refcat/',/directory) eq 0 then FILE_MKDIR,nightdir+'refcat/'
-  ;  savefile = nightdir+'refcat/'+ifield+'_refcat.fits'
-  ;  refcat = DELVERED_GETREFDATA(['c4d-g','c4d-r','c4d-i'],fexptoadd[0].ra,fexptoadd[0].dec,1.2,savefile=savefile)
-  ;  SPAWN,['gzip',savefile],/noshell
+    if FILE_TEST(nightdir+'refcat/',/directory) eq 0 then FILE_MKDIR,nightdir+'refcat/'
+    savefile = nightdir+'refcat/'+ifield+'_refcat.fits'
+    refcat = DELVERED_GETREFDATA(['c4d-g','c4d-r','c4d-i'],fexptoadd[0].ra,fexptoadd[0].dec,1.2,savefile=savefile)
+    SPAWN,['gzip',savefile],/noshell
 
     ;; Loop over exposures
     For e=0,nfind-1 do begin
@@ -242,7 +277,8 @@ stop
       filebase = PHOTRED_GETFITSEXT(filename,/basename)
       ;; Get number of extensions
       ;;   use symlink to make fits_open think it's a normal FITS file
-      tmpfile = MKTEMP('tmp',/nodot) & FILE_DELETE,tmpfile
+      tmpfile = MKTEMP('tmp',/nodot) & TOUCHZERO,tmpfile+'.fits' & FILE_DELETE,[tmpfile,tmpfile+'.fits'],/allow
+      tmpfile += '.fits'
       FILE_LINK,filename,tmpfile
       FITS_OPEN,tmpfile,fcb & FITS_CLOSE,fcb
       ;; Get the field longname
@@ -306,13 +342,6 @@ stop
   ;;  I DON'T THINK I NEED TO DO THIS
   NIGHTBOMB:
 Endfor  ; night loop
-
-
-;setupfile = delvedir+'exposures/photred.setup'
-;if file_test(setupfile) eq 0 or keyword_set(redo) then begin
-;  WRITELINE,setupdfile,setup
-;  print,'Writing setup file to ',setupfile
-;endif
 
 
 ;stop
