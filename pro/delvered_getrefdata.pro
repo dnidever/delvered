@@ -281,7 +281,10 @@ for i=0,nrefcat-1 do begin
       case refcat[i] of
       '2MASS-PSC': begin
          new.jmag = left1.jmag
+         new.e_jmag = left1.e_jmag
          new.kmag = left1.kmag
+         new.e_kmag = left1.e_kmag
+         new.qflg = left1.qflg
       end
       'PS': begin
          new.ps_gmag = left1.gmag
@@ -292,9 +295,14 @@ for i=0,nrefcat-1 do begin
       end
       'APASS': begin
          new.apass_gmag = left1.g_mag
+         new.e_apass_gmag = new.e_g_mag
          new.apass_rmag = left1.r_mag
+         new.e_apass_rmag = new.e_r_mag
       end
-      'II/312/ais': new.nuv = left1.nuv
+      'II/312/ais': begin
+         new.nuv = left1.nuv
+         new.e_nuv = left1.e_nuv
+      end
       'Skymapper': begin
          new.sm_gmag = left1.sm_gmag
          new.e_sm_gmag = left1.e_sm_gmag

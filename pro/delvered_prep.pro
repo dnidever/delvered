@@ -114,7 +114,8 @@ allexpstr.wtfile = strmid(allexpstr.wtfile,4)
 ;; Which ones do we want, make sure they haven't been prepped yet
 ;; only g/r/i and exptime>=90s for now
 filt = strmid(allexpstr.filter,0,1)
-gdexp = where((filt eq 'g' or filt eq 'r' or filt eq 'i') and allexpstr.exposure ge 90,ngdexp)
+;gdexp = where((filt eq 'g' or filt eq 'r' or filt eq 'i') and allexpstr.exposure ge 90,ngdexp)
+gdexp = where((filt eq 'u' or filt eq 'g' or filt eq 'r' or filt eq 'i' or filt eq 'z' or filt eq 'Y') and allexpstr.exposure ge 90,ngdexp)
 print,strtrim(ngdexp,2),' EXPOSURES pass the cuts'
 expstr = allexpstr[gdexp]
 ;; Check if they've been prepped yet
