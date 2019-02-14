@@ -85,7 +85,12 @@ setup = ['##### REQUIRED #####',$
   fieldstr = IMPORTASCII(nightdir+'fields',fieldname=['shname','name'],fieldtypes=[7,7],/silent)
 
   ;; Load from daophot.success
-  READLIST,'logs/DAOPHOT.success',fitsfiles,setupdir='.',count=nfitsfiles,/silent
+  undefine,fitsfiles
+  READLIST,'logs/WCS.success',wcsfiles,setupdir='.',count=nwcsfiles,/silent
+  if nwcsfiles gt 0 then push,fitsfiles,wcsfiles
+  READLIST,'logs/DAOPHOT.success',daofiles,setupdir='.',count=ndaofiles,/silent
+  if ndaofiles gt 0 then push,fitsfiles,daofiles
+  nfitsfiles = n_elements(fitsfiles)
   ;; Convert fits to fits.fz
   allfield = strarr(nfitsfiles)
   for j=0,nfitsfiles-1 do begin
