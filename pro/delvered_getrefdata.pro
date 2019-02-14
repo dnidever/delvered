@@ -295,9 +295,9 @@ for i=0,nrefcat-1 do begin
       end
       'APASS': begin
          new.apass_gmag = left1.g_mag
-         new.e_apass_gmag = new.e_g_mag
+         new.e_apass_gmag = left1.e_g_mag
          new.apass_rmag = left1.r_mag
-         new.e_apass_rmag = new.e_r_mag
+         new.e_apass_rmag = left1.e_r_mag
       end
       'II/312/ais': begin
          new.nuv = left1.nuv
