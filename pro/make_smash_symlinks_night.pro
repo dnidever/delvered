@@ -175,7 +175,7 @@ setup = ['##### REQUIRED #####',$
     if FILE_TEST(delvedir+inight+'/refcat/',/directory) eq 0 then FILE_MKDIR,delvedir+inight+'/refcat/'
     savefile = delvedir+inight+'/refcat/'+ifield+'_refcat.fits'
     if file_test(savefile) eq 0 and file_test(savefile+'.gz') eq 0 then begin
-      refcat = DELVERED_GETREFDATA(['c4d-g','c4d-r','c4d-i'],cenra,cendec,1.2,savefile=savefile)
+      refcat = DELVERED_GETREFDATA(['c4d-u','c4d-g','c4d-r','c4d-i','c4d-z','c4d-Y'],cenra,cendec,1.2,savefile=savefile)
       SPAWN,['gzip',savefile],/noshell
     endif
     FIELDBOMB:
