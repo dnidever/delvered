@@ -326,7 +326,7 @@ FOR i=0,nexp-1 do begin
 ENDFOR
 
 ;; Check for any exposures that failed
-bdexp = where(expstr.num le 0 and expstr.filter ne 'u',nbdexp)
+bdexp = where(expstr.num le 0,nbdexp)
 printlog,logfile,'Found '+strtrim(nbdexp,2)+' exposures with no zero-point'
 for i=0,nbdexp-1 do begin
   printlog,logfile,strtrim(i+1,2)+' '+expstr[bdexp[i]].name
@@ -349,7 +349,7 @@ for i=0,nbdexp-1 do begin
 endfor
 
 ;; Write out the transformation equations
-gdexp = where(expstr.num gt 0,ngdexp)
+gdexp = where(expstr.num gt 0,ngdexp,comp=bdexp,ncomp=nbdexp)
 if ngdexp gt 0 then begin
   printlog,logfile,'Writing transformation equations to >>delve.trans<<'
   undefine,tlines
@@ -358,6 +358,17 @@ if ngdexp gt 0 then begin
 endif else begin
   printlog,logfile,'No good transformation equation to write out'
 endelse
+
+
+;##########################################
+;#  UPDATING LIST FILES
+;##########################################
+undefine,outlist,successlist,failurelist
+if ngdexp gt 0 then successlist = expstr[gdexp].expnum
+if bdexp gt 0 then failurelist = expstr[bdexp].expnum
+lists = {thisprog:'ZEROPOINT',precursor:'DAOPHOT'}
+PHOTRED_UPDATELISTS,lists,outlist=outlist,successlist=successlist,$
+                    failurelist=failurelist
 
 stop
 
