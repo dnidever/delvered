@@ -8,7 +8,7 @@
 ; By D. Nidever  Feb 2019
 ;-
 
-pro delvered_zeropoint,redo=redo
+pro delvered_zeropoint,redo=redo,modeleqnfile=modeleqnfile
 
 COMMON photred,setup
 
@@ -87,6 +87,15 @@ if nsingle gt 0 then imagers[singleind].separator = ''
 if (n_tags(imagers) eq 0) then begin
   printlog,logfile,'NO imagers in '+scriptsdir+'/imagers'
   return
+endif
+
+;; Model magnitude equation file
+if n_elements(modeleqnfile) eq 0 then begin
+  modeleqnfile = READPAR(setup,'MODELEQNFILE')
+  if (modeleqnfile eq '0' or modeleqnfile eq '' or modeleqnfile eq '-1') then begin
+    printlog,logfile,'NO MODELEQNFILE FOUND.  Please add to >>photred.setup<< file'
+    return
+  endif
 endif
 
 ; What IMAGER are we using??
@@ -223,7 +232,7 @@ FOR i=0,nexp-1 do begin
   ;; Load the reference data for this field
   reffile = 'refcat/'+field+'_refcat.fits.gz'
   if file_test(reffile) eq 0 then begin
-    print,reffile,' NOT FOUND'
+    print,reffile,' REFERENCE FILE NOT FOUND'
     goto,EXPBOMB
   endif
   ref = MRDFITS(reffile,1,/silent)  
@@ -242,64 +251,37 @@ FOR i=0,nexp-1 do begin
   ; Matched catalogs
   cat1 = cat[ind2]
   ref1 = ref[ind1]
-
-  ;; Use (J-Ks)o for all except u-band
-  col = ref1.jmag-ref1.kmag-0.17*ref1.ebv  ; (J-Ks)o = J-Ks-0.17*EBV
-  ;colerr = sqrt(ref1.e_jmag^2+ref1.e_kmag^2)
-  badflag = (ref1.qflg ne 'AAA' or ref1.e_jmag gt 0.05)
-  ;; Use (G-J)o for u
-  if filter eq 'u' then begin
-    col = ref1.gmag - ref1.jmag - 1.12*ref1.ebv
-    gmagerr = 2.5*alog10(1.0+ref1.e_fg/ref1.fg)
-    ;colerr = sqrt(gmagerr^2 + ref1.e_jmag^2)
-    badflag = (finite(col) eq 0)
-  endif
-  ;; Get model magnitudes and errors
-  mmags = DELVERED_GETMODELMAG(ref1,filter)
-  model_mag = mmags[*,0]
-  model_err = mmags[*,1]
-  ; Get color ranges
-  CASE filter of
-  'u': colrange = [0.80,1.1]    
-  'g': colrange = [0.30,0.70]
-  'r': colrange = [0.30,0.70]
-  'i': colrange = [0.25,0.65]
-  'z': colrange = [0.40,0.65]
-  'Y': colrange = [0.40,0.70]
-  else: printlog,logfile,'Filter '+filter+' not supported'
-  ENDCASE
-  ;; Use PS1 photometry instead
-  if cendec gt -29 and (filter eq 'g' or filter eq 'r' or filter eq 'i' or filter eq 'z' or filter eq 'Y') then begin
-    magind = where(reftags eq 'PS_'+strupcase(filter)+'MAG',nmagind)
-    model_mag = ref.(magind)
-    bdmag = where(model_mag lt 1 or model_mag gt 21,nbdmag)
-    if nbdmag gt 0 then model_mag[bdmag] = 99.99
-    ;colerr = model_mag*0+0.01
-    badflag = (model_mag gt 50)
-    colrange = [-1000,1000]
+  
+  ;; Get the model magnitudes
+  mmags = DELVERED_GETMODELMAG(ref1,instfilt,cendec,modeleqnfile)
+  if n_elements(mmags) eq 1 and mmags[0] lt -1000 then begin
+    printlog,logfile,'No good model mags'
+    goto,EXPBOMB
   endif
   ;; Get good stars
   gdcat = where(cat1.mag lt 50 and cat1.err lt 0.05 and abs(cat1.sharp) lt 1 and cat.chi lt 3 and $
-                model_mag lt 50 and model_err lt 0.05 and badflag eq 0 and $
-                col ge colrange[0] and col le colrange[1],ngdcat)
+                mmags[*,0] lt 50 and mmags[*,1] lt 5,ngdcat)
   if ngdcat lt 10 then $
     gdcat = where(cat1.mag lt 50 and cat1.err lt 0.08 and abs(cat1.sharp) lt 1 and cat.chi lt 3 and $
-                  model_mag lt 50 and model_err lt 0.08 and badflag eq 0 and $
-                  col ge colrange[0] and col le colrange[1],ngdcat)
+                  mmags[*,0] lt 50 and mmags[*,1] lt 5,ngdcat)
   if ngdcat eq 0 then begin
     printlog,logfile,'No stars that pass all of the quality/error cuts'
     goto,EXPBOMB
   endif
-  cat2 = cat1[gdcat]
   ref2 = ref1[gdcat]
-  model_mag2 = model_mag[gdcat]
-  model_err2 = model_err[gdcat]
-  col2 = col[gdcat]
-  ;colerr2 = colerr[gdcat]
+  mmags2 = mmags[gdcat,*]
+  cat2 = cat1[gdcat]
+
+  ;; Matched structure
+  ;mag2 = cat2.mag_auto + 2.5*alog10(exptime) ; correct for the exposure time
+  ;mstr = {col:float(mmags2[*,2]),mag:float(mag2),model:float(mmags2[*,0]),err:float(mmags2[*,1]),ccdnum:long(cat2.ccdnum)}
+  ;; Measure the zero-point
+  ;NSC_INSTCAL_CALIBRATE_FITZPTERM,mstr,expstr,chstr
+  ;expstr.zptype = 1
 
   ;; Calculate the zeropoint
-  diff = model_mag2 - cat2.cmag
-  err = sqrt(model_err2^2 + cat2.err^2)
+  diff = mmags2[*,0] - cat2.cmag
+  err = sqrt(mmags2[*,1]^2 + cat2.err^2)
   ; Make a sigma cut
   med = median([diff])
   sig = mad([diff])

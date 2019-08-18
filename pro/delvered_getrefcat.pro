@@ -60,8 +60,11 @@ refname = strupcase(refcat)
 if refname eq 'II/312/AIS' then refname='GALEX'
 if refname eq '2MASS-PSC' then refname='TMASS'
 if refname eq '2MASS' then refname='TMASS'
-if refname eq 'Skymapper' then refname='SKYMAPPER'
 if refname eq 'GAIA/GAIA' then refname='GAIA'
+if refname eq 'Skymapper' then refname='SKYMAPPER'
+if refname eq 'GLIMPSE' then refname='II/293/glimpse'
+if refname eq 'SAGE' then refname='II/305/archive'
+if refname eq 'ATLASREFCAT2' then refname='ATLAS'
 
 if n_elements(file) eq 0 then file=tmpdir+'ref_'+stringize(cenra,ndec=5)+'_'+stringize(cendec,ndec=5)+'_'+stringize(radius,ndec=3)+'_'+refname+'.fits'
 
@@ -79,11 +82,12 @@ if file_test(file) eq 1 then begin
 endif else begin
 
   ; Use DataLab database search for Gaia and 2MASS if density is high                                                                                                              
-  if (refname eq 'TMASS' or refname eq 'GAIA' or refname eq 'GAIADR2' or refname eq 'PS' or refname eq 'SKYMAPPER') then begin
+  if (refname eq 'TMASS' or refname eq 'GAIA' or refname eq 'GAIADR2' or refname eq 'PS' or refname eq 'SKYMAPPER' or $
+      refname eq 'ALLWISE' or refname eq 'ATLAS') then begin
     if refname eq 'TMASS' then begin
       tablename = 'twomass.psc'
       cols = 'designation,ra as raj2000,dec as dej2000,j_m as jmag,j_cmsig as e_jmag,h_m as hmag,h_cmsig as e_hmag,k_m as kmag,k_cmsig as e_kmag,ph_qual as qflg'
-      server = 'gp01.datalab.noao.edu'
+      server = 'gp04.datalab.noao.edu'
       ;server = 'dldb1.sdm.noao.edu'
     endif
     racol = 'ra'
@@ -92,14 +96,15 @@ endif else begin
       tablename = 'gaia_dr1.gaia_source'
       cols = 'source_id as source,ra as ra_icrs,ra_error as e_ra_icrs,dec as de_icrs,dec_error as e_de_icrs,'+$
              'phot_g_mean_flux as fg,phot_g_mean_flux_error as e_fg,phot_g_mean_mag as gmag'
-      server = 'gp01.datalab.noao.edu'
+      server = 'gp04.datalab.noao.edu'
       ;server = 'dldb1.sdm.noao.edu'
     endif
     if refname eq 'GAIADR2' then begin
       tablename = 'gaia_dr2.gaia_source'
       cols = 'source_id as source,ra,ra_error,dec,dec_error,pmra,pmra_error,pmdec,pmdec_error,phot_g_mean_flux as fg,phot_g_mean_flux_error as e_fg,'+$
-             'phot_g_mean_mag as gmag,phot_bp_mean_mag as bp,phot_rp_mean_mag as rp'
-      server = 'gp01.datalab.noao.edu'
+             'phot_g_mean_mag as gmag,phot_bp_mean_mag as bp,phot_bp_mean_flux as fbp,phot_bp_mean_flux_error as e_fbp,'+$
+                          'phot_rp_mean_mag as rp,phot_rp_mean_flux as frp,phot_rp_mean_flux_error as e_frp'
+      server = 'gp04.datalab.noao.edu'
     endif
     if refname eq 'PS' then begin
       ;tablename = 'cp_calib.ps1'
@@ -109,13 +114,26 @@ endif else begin
     endif
     if refname eq 'SKYMAPPER' then begin
       tablename = 'skymapper_dr1.master'
-      cols = 'raj2000, dej2000, g_psf as sm_gmag, e_g_psf as e_sm_gmag, r_psf as sm_rmag, e_r_psf as e_sm_rmag, i_psf as sm_imag, '+$
+      cols = 'raj2000, dej2000, u_psf as sm_umag, e_u_psf as e_sm_umag, g_psf as sm_gmag, e_g_psf as e_sm_gmag, r_psf as sm_rmag, e_r_psf as e_sm_rmag, i_psf as sm_imag, '+$
              'e_i_psf as e_sm_imag, z_psf as sm_zmag, e_z_psf as e_sm_zmag'
-      server = 'gp01.datalab.noao.edu'
+      server = 'gp04.datalab.noao.edu'
       racol = 'raj2000'
       deccol = 'dej2000'
     endif
-
+    if refname eq 'ALLWISE' then begin
+       tablename = 'allwise.source'
+       cols = 'ra, dec, w1mpro as w1mag, w1sigmpro as e_w1mag, w2mpro as w2mag, w2sigmpro as e_w2mag'
+       server = 'gp04.datalab.noao.edu'
+    endif
+    if refname eq 'ATLAS' then begin
+       tablename = 'atlasrefcat2'
+       cols = 'objid,ra,dec,plx as parallax,dplx as parallax_error,pmra,dpmra as pmra_error,pmdec,dpmdec as pmdec_error,gaia,dgaia as gaiaerr,'+$
+              'bp,dbp as bperr,rp,drp as rperr,teff,agaia,dupvar,ag,rp1,r1,r10,g as gmag,dg as gerr,gchi,gcontrib,'+$
+              'r as rmag, dr as rerr,rchi,rcontrib,i as imag,di as ierr,ichi,icontrib,z as zmag,dz as zerr,zchi,zcontrib,nstat,'+$
+              'j as jmag,dj as jerr,h as hmag,dh as herr,k as kmag,dk as kerr'
+       server = 'gp10.datalab.noao.edu'
+    endif
+    
     ; Use Postgres command with q3c cone search                                                                                                                                    
     refcattemp = repstr(file,'.fits','.txt')
     cmd = "psql -h "+server+" -U datalab -d tapdb -w --pset footer -c 'SELECT "+cols+" FROM "+tablename+$
@@ -141,20 +159,75 @@ endif else begin
     endif
     file_delete,refcattemp,/allow
 
+    ;; Fix 0.0 mags/errs in ATLAS
+    if refname eq 'ATLAS' then begin
+       magcols = ['gaia','bp','rp','gmag','rmag','imag','zmag','jmag','hmag','kmag']
+       errcols = ['gaiaerr','bperr','rperr','gerr','rerr','ierr','zerr','jerr','herr','kerr']
+       tags = tag_names(ref)
+       ;; Set mags with 0.0 to 99.99
+       for j=0,n_elements(magcols)-1 do begin
+          colind = where(strupcase(tags) eq strupcase(magcols[j]),ncolind)
+          if colind gt 0 then begin
+             bdmag = where(ref.(colind[0]) le 0.0,nbdmag)
+             if nbdmag gt 0 then ref[bdmag].(colind[0])=99.99
+          endif
+       endfor
+       ;; Set errors with 0.0 to 9.99
+       for j=0,n_elements(errcols)-1 do begin
+          colind = where(strupcase(tags) eq strupcase(errcols[j]),ncolind)
+          if colind gt 0 then begin
+             bderr = where(ref.(colind[0]) le 0.0,nbderr)
+             if nbderr gt 0 then ref[bderr].(colind[0])=9.99
+          endif
+       endfor
+    endif
+
+    
   ; Use QUERYVIZIER
   ;   for low density with 2MASS/GAIA and always for GALEX and APASS
   endif else begin
-    ;if refcat eq 'APASS' then cfa=0 else cfa=1  ; cfa doesn't have APASS
-    cfa = 1  ; problems with CDS VizieR and cfa has APASS now
-    ref = QUERYVIZIER(refcat,[cenra,cendec],radius*60,cfa=cfa)
-   
-    ; Check for failure
-    if size(ref,/type) ne 8 then begin
-      if not keyword_set(silent) then printlog,logf,'Failure or No Results'
-      ref = -1
-      nref = 0
-      return,ref
-    endif
+
+    ;; Use QUERYVIZIER for GALEX (python code has problems)
+    if refname eq 'II/312/ais' or refname eq 'GALEX' then begin
+      ;if refcat eq 'APASS' then cfa=0 else cfa=1  ; cfa doesn't have APASS
+      cfa = 1  ; problems with CDS VizieR and cfa has APASS now
+      if refcat eq 'SAGE' then cfa=0
+      ref = QUERYVIZIER(refname,[cenra,cendec],radius*60,cfa=cfa,timeout=600,/silent)
+      ; Check for failure
+      if size(ref,/type) ne 8 then begin
+        if not keyword_set(silent) then printlog,logf,'Failure or No Results'
+        ref = -1
+        nref = 0
+        return,ref
+      endif
+
+    ;; Use Python code
+    Endif else begin
+      ; Use python code, it's much faster, ~18x
+      tempfile = MKTEMP('vzr')
+      file_delete,tempfile+'.fits',/allow
+      pylines = 'python -c "from astroquery.vizier import Vizier;'+$
+                'import astropy.units as u;'+$
+                'import astropy.coordinates as coord;'+$
+                'Vizier.TIMEOUT = 600;'+$
+                'Vizier.ROW_LIMIT = -1;'+$
+                'Vizier.cache_location = None;'+$
+                'result = Vizier.query_region(coord.SkyCoord(ra='+strtrim(cenra,2)+', dec='+strtrim(cendec,2)+$
+                ",unit=(u.deg,u.deg),frame='icrs'),width='"+strtrim(radius*60,2)+"m',catalog='"+refname+"');"+$
+                "df=result[0];"+$
+                "df.meta['description']=df.meta['description'][0:50];"+$
+                "df.write('"+tempfile+".fits')"+'"'
+      spawn,pylines,out,errout
+      if file_test(tempfile+'.fits') eq 0 then begin
+        if not keyword_set(silent) then printlog,logf,'No Results'
+        ref = -1
+        nref = 0
+        file_delete,[tempfile,tempfile+'.fits'],/allow
+        return,ref
+      endif
+      ref = MRDFITS(tempfile+'.fits',1,/silent)
+      file_delete,[tempfile,tempfile+'.fits'],/allow
+    endelse
 
     ; Fix/homogenize the GAIA tags
     if refname eq 'GAIA' then begin
@@ -176,7 +249,20 @@ endif else begin
       ref.designation = orig._2mass
       undefine,orig
     endif
-
+    ;; Fix NANs in ALLWISE
+    if refname eq 'ALLWISE' then begin
+       bd = where(finite(ref._3_6_) eq 0,nbd)
+       if nbd gt 0 then begin
+          ref[bd]._3_6_ = 99.99
+          ref[bd].e__3_6_ = 9.99
+       endif
+       bd = where(finite(ref._4_5_) eq 0,nbd)
+       if nbd gt 0 then begin
+          ref[bd]._4_5_ = 99.99
+          ref[bd].e__4_5_ = 9.99
+       endif
+    endif
+    
     ; Save the file
     if keyword_set(saveref) then begin
       if not keyword_set(silent) then $
