@@ -131,30 +131,10 @@ FOR i=0,nnights-1 do begin
   PHOTRED_SAVE,redo=redo
 
   print,'PHOTRED FINISHED'
-
   PHOTRED_SUMMARY
 
   ;; Create the nightly summary file
-  sumfiles = FILE_SEARCH('*_summary.fits',count=nsumfiles)
-  undefine,expstr,chipstr
-  fields = IMPORTASCII('fields',fieldnames=['shname','name'],fieldtypes=[7,7],/silent)
-  For j=0,nsumfiles-1 do begin
-    base = FILE_BASENAME(sumfiles[j],'_summary.fits')
-    MATCH,fields.name,base,ind1,ind2,/sort,count=nmatch
-    shname = fields[ind1[0]].shname
-    expstr1 = MRDFITS(sumfiles[j],1,/silent)
-    add_tag,expstr1,'fieldname',base,expstr1
-    add_tag,expstr1,'field',shname,expstr1
-    PUSH,expstr,expstr1
-    chipstr1 = MRDFITS(sumfiles[j],2,/silent)
-    add_tag,chipstr1,'fieldname',base,chipstr1
-    PUSH,chipstr,chipstr1
-  Endfor
-  nightsumfile = expdir+inight+'/'+inight+'_summary.fits'
-  print,'Writing nightly summary file to ',nightsumfile
-  MWRFITS,expstr,nightsumfile,/create
-  MWRFITS,chipstr,nightsumfile,/silent
-
+  DELVERD_NIGHTSUMMARY,inight,delvedir=delvedir,redo=redo
 ENDFOR
 
 ; End logfile
