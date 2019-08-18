@@ -165,10 +165,10 @@ FOR i=0,nexp-1 do begin
   expstr[i].filter = filter
   expstr[i].exptime = exptime
 
-  if filter eq 'u' then begin
-    print,'Skipping all u-band exposures'
-    goto,EXPBOMB
-  endif
+  ;if filter eq 'u' then begin
+  ;  print,'Skipping all u-band exposures'
+  ;  goto,EXPBOMB
+  ;endif
 
   ;; Load all of the ALS files and add coordinates
   undefine,cat
@@ -184,7 +184,7 @@ FOR i=0,nexp-1 do begin
     als = REPLICATE(schema,nals)
     STRUCT_ASSIGN,als0,als,/nozero
     ;; Get the coordinates
-    if strpos(fitsfiles[ind[j]],'.fits.fz') ne 1 then exten=1 else exten=0
+    if strpos(fitsfiles[ind[j]],'.fits.fz') ne -1 then exten=1 else exten=0
     head1 = PHOTRED_READFILE(fitsfiles[ind[j]],exten=exten,/header)
     ;; Converting to IDL X/Y convention, starting at (0,0)
     ;; DAOPHOT has X/Y start at (1,1)
@@ -253,6 +253,7 @@ FOR i=0,nexp-1 do begin
   ref1 = ref[ind1]
   
   ;; Get the model magnitudes
+  instfilt = 'c4d-'+filter
   mmags = DELVERED_GETMODELMAG(ref1,instfilt,cendec,modeleqnfile)
   if n_elements(mmags) eq 1 and mmags[0] lt -1000 then begin
     printlog,logfile,'No good model mags'
@@ -346,12 +347,13 @@ endelse
 ;#  UPDATING LIST FILES
 ;##########################################
 undefine,outlist,successlist,failurelist
-if ngdexp gt 0 then successlist = expstr[gdexp].expnum
-if bdexp gt 0 then failurelist = expstr[bdexp].expnum
-lists = {thisprog:'ZEROPOINT',precursor:'DAOPHOT'}
+if ngdexp gt 0 then successlist = expstr[gdexp].name
+if bdexp gt 0 then failurelist = expstr[bdexp].name
+lists = {thisprog:'ZEROPOINT',precursor:'DAOPHOT',ninputlines:nexp,inputlines:expstr.name,$
+         noutputlines:0,nsuccesslines:0,nfailurelines:0}
 PHOTRED_UPDATELISTS,lists,outlist=outlist,successlist=successlist,$
-                    failurelist=failurelist
+                    failurelist=failurelist,setupdir=curdir
 
-stop
+;stop
 
 end

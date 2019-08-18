@@ -1,6 +1,6 @@
 ;+
 ;
-; GETMODELMAG
+; DELVERED_GETMODELMAG
 ;
 ; This calculates the model magnitudes for the NSC catalog
 ; given a catalog with the appropriate information
@@ -16,12 +16,12 @@
 ;  model_mag  An [Nsource,3] array with model magnitudes, errors and color.
 ;
 ; USAGE:
-;  IDL>model_mag = getmodelmag(cat,'c4d-g',-50.0,'modelmag_equations.txt')
+;  IDL>model_mag = delvered_getmodelmag(cat,'c4d-g',-50.0,'modelmag_equations.txt')
 ;
 ; By D. Nidever  Feb 2019
 ;-
 
-function getmodelmag,cat,instfilt,dec,eqnfile
+function delvered_getmodelmag,cat,instfilt,dec,eqnfile
 
 ; This calculates the model magnitude for stars given the
 ; the magnitudes in reference catalogs
@@ -36,7 +36,7 @@ function getmodelmag,cat,instfilt,dec,eqnfile
 ; Not enough inputs
 ncat = n_elements(cat)
 if ncat eq 0 or n_elements(instfilt) eq 0 or n_elements(dec) eq 0 or n_elements(eqnfile) eq 0 then begin
-  print,'Syntax - model_mag = getmodelmag(cat,instfilt,dec,eqnfile)'
+  print,'Syntax - model_mag = delvered_getmodelmag(cat,instfilt,dec,eqnfile)'
   return,-1
 endif
 

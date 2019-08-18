@@ -18,6 +18,8 @@ if n_elements(workdir) eq 0 then begin
 endif
 ;; Exposures directory
 expdir = trailingslash(delvedir)+'exposures/'
+;; Model magnitudes equation file
+modeleqnfile = delvereddir+'params/modelmag_equations.txt'
 
 ;; Print information
 print,'--------------------------------------------------------------------'
@@ -45,6 +47,7 @@ setup = ['##### REQUIRED #####',$
          'nmulti_daophot   30',$
          'nmulti_allframe  10',$
          'filtref     g,i,r,z,u',$
+         'modeleqnfile '+modeleqnfile,$
          'trans       delve.trans',$
          '##### OPTIONAL #####',$
          'sepfielddir  1',$
@@ -104,6 +107,8 @@ setup = ['##### REQUIRED #####',$
 
   expstr1 = MRDFITS(expfile,1,/silent)
   expstr1.fluxfile = strtrim(expstr1.fluxfile,2)
+  expstr1.maskfile = strtrim(expstr1.maskfile,2)
+  expstr1.wtfile = strtrim(expstr1.wtfile,2)
   nexp = n_elements(expstr1)
   inight = file_basename(file_dirname(expfile))
 
@@ -201,12 +206,13 @@ setup = ['##### REQUIRED #####',$
       if matches[j+1] ne matches[j] then begin
         find = matches[matches[j]:matches[j+1]-1]
         ;; New field
-        ;;  if min(ind)<j then it was found from a previous exposure
-        if min(find) eq j then begin
+        ;;   not already in a field
+        if fields[j] eq '' then begin
           fieldname = 'F'+strtrim(fieldcount,2)
           fieldstr1 = {shname:fieldname,name:'',fieldnum:fieldcount}
           push,newfieldstr,fieldstr1
-          fields[find] = fieldname
+          gf = where(fields[find] eq '',ngf)  ; only get exposures not already in a group
+          fields[find[gf]] = fieldname
           fieldcount++
         endif
       endif
@@ -238,8 +244,17 @@ setup = ['##### REQUIRED #####',$
     ;; Get Gaia DR2 and other reference data for this field
     if FILE_TEST(nightdir+'refcat/',/directory) eq 0 then FILE_MKDIR,nightdir+'refcat/'
     savefile = nightdir+'refcat/'+ifield+'_refcat.fits'
-    refcat = DELVERED_GETREFDATA('c4d-'+['u','g','r','i','z','Y'],fexptoadd[0].ra,fexptoadd[0].dec,1.5,savefile=savefile)
-    SPAWN,['gzip',savefile],/noshell
+    undefine,refcat
+    if file_test(savefile+'.gz') eq 1 then begin
+      refcat = MRDFITS(savefile+'.gz',1,/silent)
+      tra = mean(minmax(refcat.ra))
+      tdec = mean(minmax(refcat.dec))
+      if sphdist(fexptoadd[0].ra,fexptoadd[0].dec,tra,tdec,/deg) gt 0.05 then undefine,refcat
+    endif
+    if (file_test(savefile+'.gz') eq 0 and n_elements(refcat) eq 0) or keyword_set(redo) then begin
+      refcat = DELVERED_GETREFDATA('c4d-'+['u','g','r','i','z','Y'],fexptoadd[0].ra,fexptoadd[0].dec,1.5,savefile=savefile)
+      SPAWN,['gzip','-f',savefile],/noshell
+    endif
 
     ;; Loop over exposures
     For e=0,nfind-1 do begin
@@ -291,10 +306,9 @@ setup = ['##### REQUIRED #####',$
         gdrefcat = where(refcat.ra ge min(vra)-0.02 and refcat.ra le max(vra)+0.02 and $
                          refcat.dec ge min(vdec)-0.02 and refcat.dec le max(vdec)+0.02,ngdrefcat)
         refcat1 = refcat[gdrefcat]
-stop
         refcatfile = chipdir+ifield+'-'+fexptoadd[e].expnum+'_'+string(ccdnum[c],format='(i02)')+'_refcat.fits'
         MWRFITS,refcat1,refcatfile,/create
-        SPAWN,['gzip',refcatfile],/noshell
+        SPAWN,['gzip','-f',refcatfile],/noshell
       Endfor  ; chip loop
       FILE_DELETE,tmpfile,/allow  ; delete the temporary symlink
     Endfor  ; exposure loop
