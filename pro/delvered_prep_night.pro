@@ -238,7 +238,7 @@ setup = ['##### REQUIRED #####',$
     ;; Get Gaia DR2 and other reference data for this field
     if FILE_TEST(nightdir+'refcat/',/directory) eq 0 then FILE_MKDIR,nightdir+'refcat/'
     savefile = nightdir+'refcat/'+ifield+'_refcat.fits'
-    refcat = DELVERED_GETREFDATA('c4d-'+['u','g','r','i','z','Y'],fexptoadd[0].ra,fexptoadd[0].dec,1.2,savefile=savefile)
+    refcat = DELVERED_GETREFDATA('c4d-'+['u','g','r','i','z','Y'],fexptoadd[0].ra,fexptoadd[0].dec,1.5,savefile=savefile)
     SPAWN,['gzip',savefile],/noshell
 
     ;; Loop over exposures
@@ -291,6 +291,7 @@ setup = ['##### REQUIRED #####',$
         gdrefcat = where(refcat.ra ge min(vra)-0.02 and refcat.ra le max(vra)+0.02 and $
                          refcat.dec ge min(vdec)-0.02 and refcat.dec le max(vdec)+0.02,ngdrefcat)
         refcat1 = refcat[gdrefcat]
+stop
         refcatfile = chipdir+ifield+'-'+fexptoadd[e].expnum+'_'+string(ccdnum[c],format='(i02)')+'_refcat.fits'
         MWRFITS,refcat1,refcatfile,/create
         SPAWN,['gzip',refcatfile],/noshell

@@ -7,7 +7,7 @@ pro delvered_prep,delvedir,scriptsdir=scriptsdirs,irafdir=irafdir,workdir=workdi
 if n_elements(delvedir) gt 0 then delvedir=trailingslash(delvedir) else delvedir = '/dl1/users/dnidever/delve/'
 if FILE_TEST(delvedir,/directory) eq 0 then FILE_MKDIR,delvedir
 if n_elements(delvereddir) gt 0 then delvereddir=trailingslash(delvereddir) else delvereddir = '/home/dnidever/projects/delvered/'
-expfile = '/home/dnidever/projects/delvered/data/decam_mcs_20181009.fits.gz'
+;expfile = '/home/dnidever/projects/delvered/data/decam_mcs_20181009.fits.gz'
 if n_elements(scriptsdir) gt 0 then scriptsdir=trailingslash(scriptsdir) else scriptsdir = '/home/dnidever/projects/PHOTRED/scripts/'
 if n_elements(irafdir) gt 0 then irafdir=trailingslash(irafdir) else irafdir='/home/dnidever/iraf/'
 if n_elements(workdir) eq 0 then begin
@@ -94,7 +94,9 @@ setup = ['##### REQUIRED #####',$
 
 
 ;; Get the catalog of DECam exposures
-expfile = delvereddir+'data/decam_mcs_20181009.fits.gz'
+;;  Pick the most recent file
+;expfile = delvereddir+'data/decam_mcs_20181009.fits.gz'
+expfile = delvereddir+'data/decam_mcs_20190817.fits.gz'
 print,'' & print,'Loading ',expfile
 allexpstr = MRDFITS(expfile,1,/silent)
 nallexp = n_elements(allexpstr)
@@ -175,7 +177,7 @@ stop
 ;; Run PBS_DAEMON
 print,'Starting the JOBS'
 nmulti = 10
-PBS_DAEMON,cmd,cmddir,jobs=jobs,nmulti=nmulti,/hyperthread,/idle,prefix='smash',wait=5
+PBS_DAEMON,cmd,cmddir,jobs=jobs,nmulti=nmulti,/hyperthread,/idle,prefix='dlvntprep',wait=5
 
 ;stop
 
