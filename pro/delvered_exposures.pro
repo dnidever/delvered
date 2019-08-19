@@ -134,7 +134,7 @@ FOR i=0,nnights-1 do begin
   PHOTRED_SUMMARY
 
   ;; Create the nightly summary file
-  DELVERD_NIGHTSUMMARY,inight,delvedir=delvedir,redo=redo
+  DELVERED_NIGHTSUMMARY,inight,delvedir=delvedir,redo=redo
 ENDFOR
 
 ; End logfile

@@ -83,11 +83,11 @@ setup = ['##### REQUIRED #####',$
          '#split',$
          ' wcs',$
          ' daophot',$
-         ' zeropoint',$
          ' match',$
          '#allframe',$
          ' apcor',$
          ' astrom',$
+         ' zeropoint',$
          ' calib',$
          ' combine',$
          ' deredden',$
