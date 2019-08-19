@@ -1,15 +1,20 @@
-pro make_smash_symlinks_night,inight
+pro make_smash_symlinks_night,inight,redo=redo
 
 ;; Make symlinks to the SMASH data that has already been processedd
 ;; For a SINGLE NIGHT
 
 delvedir = '/dl1/users/dnidever/delve/exposures/'
 smashdir = '/dl1/users/dnidever/smash/cp/red/photred/'
+if n_elements(delvereddir) gt 0 then delvereddir=trailingslash(delvereddir) else delvereddir = '/home/dnidever/projects/delvered/'
 CD,current=origdir
 
 scriptsdir = '/home/dnidever/projects/PHOTRED/scripts/'
 irafdir = '/home/dnidever/iraf/'
 workdir = '/data0/dnidever/delve/'
+modeleqnfile = delvereddir+'params/modelmag_equations.txt'
+
+;; Redo by default
+if n_elements(redo) eq 0 then redo=1
 
 ;; The photed.setup file
 setup = ['##### REQUIRED #####',$
@@ -23,6 +28,7 @@ setup = ['##### REQUIRED #####',$
          'nmulti_daophot   30',$
          'nmulti_allframe  10',$
          'filtref     g,i,r,z,u',$
+         'modeleqnfile '+modeleqnfile,$
          'trans       delve.trans',$
          '##### OPTIONAL #####',$
          'sepfielddir  1',$
@@ -69,6 +75,16 @@ setup = ['##### REQUIRED #####',$
          ' save',$
          '#html']
 
+  ;; Load the list of DECam images
+  expstr = mrdfits('/dl1/users/dnidever/nsc/instcal/v3/lists/decam_instcal_list.fits.gz',1)
+  expstr.expnum = strtrim(expstr.expnum,2)
+  expstr.plver = strtrim(expstr.plver,2)
+  expstr.fluxfile = strtrim(expstr.fluxfile,2)
+  expstr.maskfile = strtrim(expstr.maskfile,2)
+  expstr.wtfile = strtrim(expstr.wtfile,2)
+
+  ;; Load the DECam extension name to ccdnum conversion file
+  decam = IMPORTASCII(delvereddir+'data/decam.txt',/header,/silent)
 
   CD,smashdir+inight
   CD,current=nightdir
@@ -128,31 +144,74 @@ setup = ['##### REQUIRED #####',$
       goto,FIELDBOMB
     endif
     fieldname = fieldstr[fieldind].name   ;; long field name
-    print,strtrim(f+1,2),'/',strtrim(nfields,2),' ',ifield,' ',fieldname,' ',strtrim(nind,2),' files'
 
     ;; Make sure the DELVE night+field directory exists
     if FILE_TEST(delvedir+inight+'/'+ifield,/directory) eq 0 then FILE_MKDIR,delvedir+inight+'/'+ifield
 
-    ;; File loop
-    For k=0,nind-1 do begin
-      ;; _cat.dat, _refcat.dat
-      ;; als, ap, coo, plst, fits/fits.fz, psf
-      base1 = first_el(PHOTRED_GETFITSEXT(fitsfiles1[k],/basename))
-      chipnum = PHOTRED_GETCHIPNUM(base1,{namps:62,separator:'_'})
-      chipdir = delvedir+inight+'/'+ifield+'/chip'+strtrim(chipnum,2)+'/'
-      if file_test(chipdir,/directory) eq 0 then FILE_MKDIR,chipdir
-      ;; Check that files exist
-      if file_test(nightdir+ifield+'/'+base1+'.opt') eq 1 then begin
-        FILE_LINK,nightdir+ifield+'/'+base1+['_cat.dat','_refcat.dat','.opt','.als.opt','.als','.ap','.coo','.plst','.psf','.psf.log','.log','a.als','a.ap'],$
-                  chipdir
-        FILE_LINK,nightdir+ifield+'/'+file_basename(fitsfiles1[k]),chipdir
+    ;; Match FITS files with the original CP c4d files
+    fbase = PHOTRED_GETFITSEXT(fitsfiles1,/basename)
+    dum = strsplitter(fbase,'-',/extract)
+    fexpnum = strmid(reform(dum[1,*]),0,8)
+    fexpnum = fexpnum[uniq(fexpnum,sort(fexpnum))]
+    nexpnum = n_elements(fexpnum)
+    MATCH,expstr.expnum,fexpnum,ind1,ind2,/sort,count=nmatch
+    if nmatch ne nexpnum then stop,'Not all exposures have matches in DECam master list'
+    fexpnum = fexpnum[ind2]
+    expstr1 = expstr[ind1]
 
-        ;; Update the lists, relative paths
-        wcslines[count] = ifield+'/chip'+strtrim(chipnum,2)+'/'+file_basename(fitsfiles1[k])
-        daophotlines[count] = ifield+'/chip'+strtrim(chipnum,2)+'/'+file_basename(fitsfiles1[k])
-        count++
-      endif else print,base1+' NOT FOUND'
-    Endfor  ; file loop
+    print,strtrim(f+1,2),'/',strtrim(nfields,2),' ',ifield,' ',fieldname,' ',strtrim(nexpnum,2),' exposures'
+
+    ;; Loop over exposures for this field
+    For e=0,nexpnum-1 do begin
+      fexpnum1 = fexpnum[e]
+      print,'  ',strtrim(e+1,2),' ',fexpnum1
+      fluxfile = repstr(expstr1[e].fluxfile,'/net/mss1/','/mss1/')
+      maskfile = repstr(expstr1[e].maskfile,'/net/mss1/','/mss1/')
+      wtfile = repstr(expstr1[e].wtfile,'/net/mss1/','/mss1/')
+      ;; Get number of extensions
+      ;;   use symlink to make fits_open think it's a normal FITS file
+      tmpfile = MKTEMP('tmp',/nodot,outdir=workdir) & TOUCHZERO,tmpfile+'.fits' & FILE_DELETE,[tmpfile,tmpfile+'.fits'],/allow
+      tmpfile += '.fits'
+      FILE_LINK,fluxfile,tmpfile
+      FITS_OPEN,tmpfile,fcb & FITS_CLOSE,fcb
+
+      ;; Get the CCDNUM for the extensions
+      MATCH,decam.name,fcb.extname,ind1,ind2,/sort,count=nmatch
+      extnum = ind2
+      ccdnum = decam[ind1].ccdnum
+      nccdnum = nmatch
+
+      ;; Chip loop
+      For c=0,nccdnum-1 do begin
+        chipnum1 = ccdnum[c]
+        extnum1 = extnum[c]  ; extension for the CP files
+        chbase1 = ifield+'-'+fexpnum1+'_'+string(chipnum1,format='(i02)')
+        ;; _cat.dat, _refcat.dat
+        ;; als, ap, coo, plst, fits/fits.fz, psf
+        chipdir1 = delvedir+inight+'/'+ifield+'/chip'+string(chipnum1,format='(i02)')+'/'
+        if file_test(chipdir1,/directory) eq 0 then FILE_MKDIR,chipdir1
+        ;; Check that files exist
+        if file_test(nightdir+ifield+'/'+chbase1+'.opt') eq 1 then begin
+          FILE_DELETE,chipdir1+chbase1+['_cat.dat','_refcat.dat','.opt','.als.opt','.als','.ap','.coo','.plst','.psf','.psf.log','.log','a.als','a.ap'],/allow
+          FILE_LINK,nightdir+ifield+'/'+chbase1+['_cat.dat','_refcat.dat','.opt','.als.opt','.als','.ap','.coo','.plst','.psf','.psf.log','.log','a.als','a.ap'],chipdir1
+
+          ;; Create FITS resource file 
+          FILE_DELETE,chipdir1+chbase1+['.fits','.fits.fz'],/allow
+          outfile1 = chipdir1+chbase1+'.fits'
+          WRITELINE,outfile1,''
+          routfile1 = chipdir1+'.'+chbase1+'.fits'
+          rlines = ['fluxfile = '+fluxfile+'['+strtrim(extnum1,2)+']',$
+                    'wtfile = '+wtfile+'['+strtrim(extnum1,2)+']',$
+                    'maskfile = '+maskfile+'['+strtrim(extnum1,2)+']']
+          WRITELINE,routfile1,rlines
+
+          ;; Update the lists, relative paths
+          wcslines[count] = chipdir1+'/'+chbase1+'.fits'
+          daophotlines[count] = chipdir1+'/'+chbase1+'.fits'
+          count++
+        endif else print,chbase+' NOT FOUND'
+      Endfor  ; chip loop
+    Endfor  ; exposure loop
 
     ;; MATCH files, mch, raw
     mchfiles = FILE_SEARCH(nightdir+ifield+'/'+ifield+'-????????_??.mch',count=nmchfiles)
@@ -161,7 +220,10 @@ setup = ['##### REQUIRED #####',$
       tfrfiles = FILE_DIRNAME(mchfiles)+'/'+FILE_BASENAME(mchfiles,'.mch')+'.tfr'
       ;; Get chip subdirectories
       chipdirs = strarr(nmchfiles)
-      for k=0,nmchfiles-1 do chipdirs[k]='chip'+strtrim(PHOTRED_GETCHIPNUM(file_basename(mchfiles[k],'.mch'),{namps:62,separator:'_'}),2)
+      for k=0,nmchfiles-1 do chipdirs[k]='chip'+string(PHOTRED_GETCHIPNUM(file_basename(mchfiles[k],'.mch'),{namps:62,separator:'_'}),format='(i02)')
+      FILE_DELETE,delvedir+inight+'/'+ifield+'/'+chipdirs+'/'+file_basename(mchfiles),/allow
+      FILE_DELETE,delvedir+inight+'/'+ifield+'/'+chipdirs+'/'+file_basename(rawfiles),/allow
+      FILE_DELETE,delvedir+inight+'/'+ifield+'/'+chipdirs+'/'+file_basename(tfrfiles),/allow
       FILE_LINK,mchfiles,delvedir+inight+'/'+ifield+'/'+chipdirs+'/'+file_basename(mchfiles)
       FILE_LINK,rawfiles,delvedir+inight+'/'+ifield+'/'+chipdirs+'/'+file_basename(rawfiles)
       FILE_LINK,tfrfiles,delvedir+inight+'/'+ifield+'/'+chipdirs+'/'+file_basename(tfrfiles)
@@ -179,15 +241,15 @@ setup = ['##### REQUIRED #####',$
     ;; Get Gaia DR2 and other reference data for this field
     if FILE_TEST(delvedir+inight+'/refcat/',/directory) eq 0 then FILE_MKDIR,delvedir+inight+'/refcat/'
     savefile = delvedir+inight+'/refcat/'+ifield+'_refcat.fits'
-    if file_test(savefile) eq 0 and file_test(savefile+'.gz') eq 0 then begin
-      refcat = DELVERED_GETREFDATA(['c4d-u','c4d-g','c4d-r','c4d-i','c4d-z','c4d-Y'],cenra,cendec,1.2,savefile=savefile)
-      SPAWN,['gzip',savefile],/noshell
+    if (file_test(savefile) eq 0 and file_test(savefile+'.gz') eq 0) or keyword_set(redo) then begin
+      refcat = DELVERED_GETREFDATA(['c4d-u','c4d-g','c4d-r','c4d-i','c4d-z','c4d-Y','c4d-VR'],cenra,cendec,1.5,savefile=savefile)
+      SPAWN,['gzip','-f',savefile],/noshell
     endif
     FIELDBOMB:
   Endfor  ; field loop
 
   ;; Copy apcor.lst and APCOR.success
-  FILE_COPY,nightdir+'apcor.lst',delvedir+inight
+  FILE_COPY,nightdir+'apcor.lst',delvedir+inight,/over
   FILE_CHMOD,delvedir+inight+'/apcor.lst',/a_write
   READLINE,nightdir+'logs/APCOR.success',apcorlines,count=napcor
   bd = where(stregex(apcorlines,'.fits.fz',/boolean) eq 0,nbd)
@@ -208,7 +270,7 @@ setup = ['##### REQUIRED #####',$
   WRITELINE,delvedir+inight+'/logs/APCOR.success',apcorlines
 
   ;; Copy the "fields" file
-  FILE_COPY,nightdir+'fields',delvedir+inight
+  FILE_COPY,nightdir+'fields',delvedir+inight,/over,/allow
   FILE_CHMOD,delvedir+inight+'/fields',/a_write  
 
   ;; Make the setup file
