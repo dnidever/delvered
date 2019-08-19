@@ -148,6 +148,20 @@ setup = ['##### REQUIRED #####',$
     ;; Make sure the DELVE night+field directory exists
     if FILE_TEST(delvedir+inight+'/'+ifield,/directory) eq 0 then FILE_MKDIR,delvedir+inight+'/'+ifield
 
+    ;; Gentral position of field
+    sumfile = nightdir+fieldname+'_summary.fits'
+    sumstr = MRDFITS(sumfile,1,/silent)
+    cenra = median([sumstr.ra])
+    cendec = median([sumstr.dec])
+
+    ;; Get Gaia DR2 and other reference data for this field
+    if FILE_TEST(delvedir+inight+'/refcat/',/directory) eq 0 then FILE_MKDIR,delvedir+inight+'/refcat/'
+    savefile = delvedir+inight+'/refcat/'+ifield+'_refcat.fits'
+    if (file_test(savefile) eq 0 and file_test(savefile+'.gz') eq 0) or keyword_set(redo) then begin
+      refcat = DELVERED_GETREFDATA(['c4d-u','c4d-g','c4d-r','c4d-i','c4d-z','c4d-Y','c4d-VR'],cenra,cendec,1.5,savefile=savefile)
+      SPAWN,['gzip','-f',savefile],/noshell
+    endif
+
     ;; Match FITS files with the original CP c4d files
     fbase = PHOTRED_GETFITSEXT(fitsfiles1,/basename)
     dum = strsplitter(fbase,'-',/extract)
@@ -170,10 +184,10 @@ setup = ['##### REQUIRED #####',$
       wtfile = repstr(expstr1[e].wtfile,'/net/mss1/','/mss1/')
       ;; Get number of extensions
       ;;   use symlink to make fits_open think it's a normal FITS file
-      tmpfile = MKTEMP('tmp',/nodot,outdir=workdir) & TOUCHZERO,tmpfile+'.fits' & FILE_DELETE,[tmpfile,tmpfile+'.fits'],/allow
-      tmpfile += '.fits'
-      FILE_LINK,fluxfile,tmpfile
-      FITS_OPEN,tmpfile,fcb & FITS_CLOSE,fcb
+      tmpfluxfile = MKTEMP('tmp',/nodot,outdir=workdir) & TOUCHZERO,tmpfluxfile+'.fits' & FILE_DELETE,[tmpfluxfile,tmpfluxfile+'.fits'],/allow
+      tmpfluxfile += '.fits'
+      FILE_LINK,fluxfile,tmpfluxfile
+      FITS_OPEN,tmpfluxfile,fcb & FITS_CLOSE,fcb
 
       ;; Get the CCDNUM for the extensions
       MATCH,decam.name,fcb.extname,ind1,ind2,/sort,count=nmatch
@@ -192,8 +206,8 @@ setup = ['##### REQUIRED #####',$
         if file_test(chipdir1,/directory) eq 0 then FILE_MKDIR,chipdir1
         ;; Check that files exist
         if file_test(nightdir+ifield+'/'+chbase1+'.opt') eq 1 then begin
-          FILE_DELETE,chipdir1+chbase1+['_cat.dat','_refcat.dat','.opt','.als.opt','.als','.ap','.coo','.plst','.psf','.psf.log','.log','a.als','a.ap'],/allow
-          FILE_LINK,nightdir+ifield+'/'+chbase1+['_cat.dat','_refcat.dat','.opt','.als.opt','.als','.ap','.coo','.plst','.psf','.psf.log','.log','a.als','a.ap'],chipdir1
+          FILE_DELETE,chipdir1+chbase1+['_cat.dat','.opt','.als.opt','.als','.ap','.coo','.plst','.psf','.psf.log','.log','a.als','a.ap'],/allow
+          FILE_LINK,nightdir+ifield+'/'+chbase1+['_cat.dat','.opt','.als.opt','.als','.ap','.coo','.plst','.psf','.psf.log','.log','a.als','a.ap'],chipdir1
 
           ;; Create FITS resource file 
           FILE_DELETE,chipdir1+chbase1+['.fits','.fits.fz'],/allow
@@ -204,6 +218,22 @@ setup = ['##### REQUIRED #####',$
                     'wtfile = '+wtfile+'['+strtrim(extnum1,2)+']',$
                     'maskfile = '+maskfile+'['+strtrim(extnum1,2)+']']
           WRITELINE,routfile1,rlines
+          
+          ;; Save the reference catalog for this chip
+          hd = HEADFITS(tmpfluxfile,exten=extnum1,/silent)
+          ;; Temporarily fix NAXIS1/2 values
+          sxaddpar,hd,'NAXIS1',sxpar(hd,'ZNAXIS1')
+          sxaddpar,hd,'NAXIS2',sxpar(hd,'ZNAXIS2')
+          nx = sxpar(hd,'naxis1')
+          ny = sxpar(hd,'naxis2')
+          HEAD_XYAD,hd,[0,nx-1,nx-1,0],[0,0,ny-1,ny-1],vra,vdec,/degree
+          gdrefcat = where(refcat.ra ge min(vra)-0.02 and refcat.ra le max(vra)+0.02 and $
+                           refcat.dec ge min(vdec)-0.02 and refcat.dec le max(vdec)+0.02,ngdrefcat)
+          refcat1 = refcat[gdrefcat]
+          FILE_DELETE,chipdir1+chbase1+'_refcat.dat',/allow
+          refcatfile = chipdir1+chbase1+'_refcat.fits'
+          MWRFITS,refcat1,refcatfile,/create
+          SPAWN,['gzip','-f',refcatfile],/noshell
 
           ;; Update the lists, relative paths
           wcslines[count] = chipdir1+'/'+chbase1+'.fits'
@@ -232,19 +262,7 @@ setup = ['##### REQUIRED #####',$
       PUSH,matchlines,ifield+'/'+chipdirs+'/'+file_basename(mchfiles)
     endif
 
-    sumfile = nightdir+fieldname+'_summary.fits'
-    sumstr = MRDFITS(sumfile,1,/silent)
 
-    cenra = median([sumstr.ra])
-    cendec = median([sumstr.dec])
-
-    ;; Get Gaia DR2 and other reference data for this field
-    if FILE_TEST(delvedir+inight+'/refcat/',/directory) eq 0 then FILE_MKDIR,delvedir+inight+'/refcat/'
-    savefile = delvedir+inight+'/refcat/'+ifield+'_refcat.fits'
-    if (file_test(savefile) eq 0 and file_test(savefile+'.gz') eq 0) or keyword_set(redo) then begin
-      refcat = DELVERED_GETREFDATA(['c4d-u','c4d-g','c4d-r','c4d-i','c4d-z','c4d-Y','c4d-VR'],cenra,cendec,1.5,savefile=savefile)
-      SPAWN,['gzip','-f',savefile],/noshell
-    endif
     FIELDBOMB:
   Endfor  ; field loop
 
@@ -264,7 +282,8 @@ setup = ['##### REQUIRED #####',$
   ;; Copy over the WCS.success, DAOPHOT.success and
   ;; MATCH.success/outlist files
   if FILE_TEST(delvedir+inight+'/logs',/directory) eq 0 then FILE_MKDIR,delvedir+inight+'/logs'
-  WRITELINE,delvedir+inight+'/logs/WCS.success',wcslines
+  ;;WRITELINE,delvedir+inight+'/logs/WCS.success',wcslines
+  WRITELINE,delvedir+inight+'/logs/WCS.inlist',wcslines   ;; we want to redo WCS with GaiaDR2
   WRITELINE,delvedir+inight+'/logs/DAOPHOT.success',daophotlines
   WRITELINE,delvedir+inight+'/logs/MATCH.outlist',matchlines
   WRITELINE,delvedir+inight+'/logs/APCOR.success',apcorlines
