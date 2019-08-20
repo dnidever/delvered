@@ -16,6 +16,7 @@ import time
 import socket
 #from dustmaps.sfd import SFDQuery
 from astropy.coordinates import SkyCoord
+import sqlite3
 
 def writecat2db(cat,dbfile,table='meas'):
     """ Write a catalog to the database """

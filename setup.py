@@ -8,7 +8,8 @@ setup(name='delvered',
       author='David Nidever',
       author_email='dnidever@montana.edu',
       url='https://github.com/dnidever/delvered',
-      packages=['python/delvered'],
+      package_dir = {'': 'python'},
+      packages=['delvered'],
       scripts=['bin/make_delvered_table'],
       requires=['numpy','astropy','scipy','dlnpyutils']
 )
