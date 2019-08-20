@@ -1,0 +1,39 @@
+#!/usr/bin/env python
+#
+# Script for querying the delvered exposures table
+
+import os
+import sys
+import shutil
+import time
+from argparse import ArgumentParser
+from dlnpyutils import utils as dln
+from delvered import delvered_exposuredb as delvedb
+from astropy.table import Table
+
+# Main command-line program
+if __name__ == "__main__":
+    parser = ArgumentParser(description='Query the delvered exposures table.')
+    parser.add_argument('ra', type=str, nargs=1, help='Right Ascension')
+    parser.add_argument('dec', type=str, nargs=1, help='Declination')
+    parser.add_argument('outfile', type=str, nargs=1, help='Output filename')
+    parser.add_argument('--radius', type=str, default=0.2, help='Search radius')
+    args = parser.parse_args()
+
+    # If the database exists already, back it up
+    expdir = '/dl1/users/dnidever/delve/exposures/'
+    dbfile = '/dl1/users/dnidever/delve/bricks/delvered_summary.db'
+    if not os.path.exists(dbfile):
+	print(dbfile+' NOT FOUND')
+	sys.exit()
+
+    # Run the code
+    rar = [ra-lim,ra+lim]
+    decr = [dec-lim,dec+lim]
+    cat = delverdb.getdatadb(dbfile,rar=rar,decr=decr)
+    if dln.size(cat)==0:
+	print('No results')
+	dln.writelines(outfile,'')
+    # Save the output
+    print('Writing results to '+outfile)
+    Table(cat).write(outfile)
