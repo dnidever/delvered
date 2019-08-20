@@ -17,7 +17,7 @@ if __name__ == "__main__":
     parser.add_argument('ra', type=str, nargs=1, help='Right Ascension')
     parser.add_argument('dec', type=str, nargs=1, help='Declination')
     parser.add_argument('outfile', type=str, nargs=1, help='Output filename')
-    parser.add_argument('--lim', type=str, default=0.2, help='Search size (+/- deg)')
+    parser.add_argument('--lim', type=float, default=0.2, help='Search size (+/- deg)')
     args = parser.parse_args()
 
     ra = float(dln.first_el(args.ra))

@@ -1,4 +1,4 @@
-pro delvered_bricks_prep,delvedir,scriptsdir=scriptsdirs,irafdir=irafdir,workdir=workdir,redo=redo
+pro delvered_bricks_prep,brick,scriptsdir=scriptsdirs,irafdir=irafdir,workdir=workdir,redo=redo
 
 ;; This bricks pre-processing script gets DELVE and community MC data ready
 ;; to run PHOTRED ALLFRAME on it.
@@ -10,6 +10,7 @@ if n_elements(delvereddir) gt 0 then delvereddir=trailingslash(delvereddir) else
 ;expfile = '/home/dnidever/projects/delvered/data/decam_mcs_20181009.fits.gz'
 if n_elements(scriptsdir) gt 0 then scriptsdir=trailingslash(scriptsdir) else scriptsdir = '/home/dnidever/projects/PHOTRED/scripts/'
 if n_elements(irafdir) gt 0 then irafdir=trailingslash(irafdir) else irafdir='/home/dnidever/iraf/'
+tempdir = '/tmp/'
 if n_elements(workdir) eq 0 then begin
   undefine,workdir
   host = getenv('HOST')
@@ -95,6 +96,27 @@ setup = ['##### REQUIRED #####',$
          ' save',$
          '#html']
 
+;; Load the brick information
+brickstr = MRDFITS(delvereddir+'data/delvemc_bricks_0.25deg.fits.gz',1)
+
+;; Get the brick information
+bind = where(brickstr.brickname eq brick,nbind)
+if nbind eq 0 then begin
+  printlog,logfile,ibrick+' not in DELVE-MC brick list'
+  return
+endif
+brickstr1 = brickstr[bind[0]]
+
+;; Get the list of exposures/chips that overlap this brick
+print,'Getting chips that overlap this brick'
+cenra = brickstr1.ra
+cendec = brickstr1.dec
+tmpfile = MKTEMP('tmp',/nodot,outdir=tempdir) & TOUCHZERO,tmpfile+'.fits' & FILE_DELETE,[tmpfile,tmpfile+'.fits'],/allow
+tmpfile += '.fits'
+spawn,['query_delvered_table',strtrim(cenra,2),strtrim(cendec,2),tmpfile,'--lim 0.5'],out,errout,/noshell
+chstr = MRDFITS(tmpfile,1,/silent)
+stop
+file_delete,tmpfile,/allow
 
 ;; Get the catalog of DECam exposures
 ;;  Pick the most recent file

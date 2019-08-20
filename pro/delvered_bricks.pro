@@ -123,16 +123,9 @@ FOR i=0,nbricks-1 do begin
   print,' RUNNING PHOTRED on BRICK ',ibrick
   print,'=================================' & print,''
 
-  ;; Get the brick information
-  bind = where(brickstr.brickname eq ibrick,nbind)
-  if nbind eq 0 then begin
-    printlog,logfile,ibrick+' not in DELVE-MC brick list'
-    goto,BOMB
-  endif
-  brickstr1 = brickstr[bind[0]]
-
   ;; Prepare the input for ALLFRAME??
   ;; Need to setup symlinks to exposure-level files
+  DELVERED_BRICK_PREP,redo=redo
   PHOTRED_MATCH,redo=redo
   PHOTRED_ALLFRAME,redo=redo
   PHOTRED_ASTROM,redo=redo
