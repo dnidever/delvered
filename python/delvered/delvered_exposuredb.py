@@ -48,7 +48,7 @@ def writecat2db(cat,dbfile,table='meas'):
     db.commit()
     db.close()
 
-def createindexdb(dbfile,col='measid',table='meas',unique=True):
+def createindexdb(dbfile,col='measid',table='meas',unique=True,verbose=False):
     """ Index a column in the database """
     t0 = time.time()
     db = sqlite3.connect(dbfile, detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
@@ -69,7 +69,7 @@ def createindexdb(dbfile,col='measid',table='meas',unique=True):
         c.execute('CREATE INDEX '+index_name+' ON '+table+'('+col+')')
     data = c.fetchall()
     db.close()
-    print('indexing done after '+str(time.time()-t0)+' sec')
+    if verbose: print('indexing done after '+str(time.time()-t0)+' sec')
 
 def getdatadb(dbfile,table='meas',cols='rowid,*',rar=None,decr=None,verbose=False):
     """ Get rows from the database """
@@ -151,12 +151,9 @@ def createtable(dbfile=None):
     nights = np.zeros(dirs.size,(np.str,10))
     for i,d in enumerate(dirs): nights[i]=os.path.basename(d)
     # Nightly summary files
-    allnightsumfiles = dln.strjoin(dirs,nights)
-    allnightsumfiles = dln.strjoin(allnightsumfiles,'_summary.fits.gz')
-    exists = np.zeros(dirs.size,np.bool)+False
-    for i,f in enumerate(allnightsumfiles):
-        exists[i] = os.path.exists(f)
-    gdnightsumfiles,nnightsumfiles = dln.where(exists)
+    allnightsumfiles = dln.strjoin(dirs,'/',nights)
+    allnightsumfiles = dln.strjoin(allnightsumfiles,'_summary.fits')
+    gdnightsumfiles,nnightsumfiles = dln.where(dln.exists(allnightsumfiles))
     print(str(nnightsumfiles)+' nightly summary files found')
     nightsumfiles = allnightsumfiles[gdnightsumfiles]
     # Load in the data
