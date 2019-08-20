@@ -37,7 +37,7 @@ if __name__ == "__main__":
        ssecond = str(int(ltime[5]))
        if ltime[5]<10: ssecond='0'+ssecond
        logtime = smonth+sday+syear+shour+sminute+ssecond
-       backupfile = os.path.splitext(os.path.basename(dbfile))[0]+logtime+'.db'
+       backupfile = os.path.splitext(os.path.basename(dbfile))[0]+'.'+logtime+'.db'
        shutil.move(dbfile,'/dl1/users/dnidever/delve/bricks/backup/'+backupfile)
 
     # Run the code

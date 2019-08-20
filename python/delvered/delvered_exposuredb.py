@@ -62,7 +62,7 @@ def createindexdb(dbfile,col='measid',table='meas',unique=True,verbose=False):
             print(index_name+' already exists')
             return
     # Create the index
-    print('Indexing '+col)
+    if verbose: print('Indexing '+col)
     if unique:
         c.execute('CREATE UNIQUE INDEX '+index_name+' ON '+table+'('+col+')')
     else:
@@ -160,6 +160,7 @@ def createtable(dbfile=None):
     expcount = 0
     chcount = 0
     for i in range(nnightsumfiles):
+        print('Loading '+nightsumfiles[i])
         expstr1 = fits.getdata(nightsumfiles[i],1)
         nexpstr1 = dln.size(expstr1)
         chstr1 = fits.getdata(nightsumfiles[i],2)
@@ -169,6 +170,7 @@ def createtable(dbfile=None):
         writecat2db(chstr1,dbfile,'chip')
 
     # Create the indices
+    print('Indexing')
     createindexdb(dbfile,'ra','exposure')
     createindexdb(dbfile,'dec','exposure')
     createindexdb(dbfile,'ra','chip')
