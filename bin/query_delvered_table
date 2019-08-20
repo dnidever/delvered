@@ -17,8 +17,18 @@ if __name__ == "__main__":
     parser.add_argument('ra', type=str, nargs=1, help='Right Ascension')
     parser.add_argument('dec', type=str, nargs=1, help='Declination')
     parser.add_argument('outfile', type=str, nargs=1, help='Output filename')
-    parser.add_argument('--radius', type=str, default=0.2, help='Search radius')
+    parser.add_argument('--lim', type=str, default=0.2, help='Search size (+/- deg)')
     args = parser.parse_args()
+
+    ra = float(dln.first_el(args.ra))
+    dec = float(dln.first_el(args.dec))
+    lim = float(dln.first_el(args.lim))
+    outfile = dln.first_el(args.outfile)
+
+    print('Querying the DELVERED Exposures/Chips table')
+    print('RA = '+str(ra))
+    print('DEC = '+str(dec))
+    print('LIM = '+str(lim)+' deg')
 
     # If the database exists already, back it up
     expdir = '/dl1/users/dnidever/delve/exposures/'
@@ -30,10 +40,13 @@ if __name__ == "__main__":
     # Run the code
     rar = [ra-lim,ra+lim]
     decr = [dec-lim,dec+lim]
-    cat = delverdb.getdatadb(dbfile,rar=rar,decr=decr)
+    cat = delvedb.getdatadb(dbfile,rar=rar,decr=decr,table='chip')
+    ncat = dln.size(cat)
+    print(str(ncat)+' matches found')
     if dln.size(cat)==0:
-	print('No results')
 	dln.writelines(outfile,'')
+        sys.exit()
     # Save the output
     print('Writing results to '+outfile)
+    if os.path.exists(outfile): os.remove(outfile)
     Table(cat).write(outfile)

@@ -21,10 +21,13 @@ import sqlite3
 def writecat2db(cat,dbfile,table='meas'):
     """ Write a catalog to the database """
     ncat = dln.size(cat)
+    sqlite3.register_adapter(np.int8, int)
     sqlite3.register_adapter(np.int16, int)
+    sqlite3.register_adapter(np.int32, int)
     sqlite3.register_adapter(np.int64, int)
-    sqlite3.register_adapter(np.float64, float)
+    sqlite3.register_adapter(np.float16, float)
     sqlite3.register_adapter(np.float32, float)
+    sqlite3.register_adapter(np.float64, float)
     db = sqlite3.connect(dbfile, detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     c = db.cursor()
 
@@ -71,13 +74,16 @@ def createindexdb(dbfile,col='measid',table='meas',unique=True,verbose=False):
     db.close()
     if verbose: print('indexing done after '+str(time.time()-t0)+' sec')
 
-def getdatadb(dbfile,table='meas',cols='rowid,*',rar=None,decr=None,verbose=False):
+def getdatadb(dbfile,table='meas',cols='*',rar=None,decr=None,verbose=False):
     """ Get rows from the database """
     t0 = time.time()
+    sqlite3.register_adapter(np.int8, int)
     sqlite3.register_adapter(np.int16, int)
+    sqlite3.register_adapter(np.int32, int)
     sqlite3.register_adapter(np.int64, int)
-    sqlite3.register_adapter(np.float64, float)
+    sqlite3.register_adapter(np.float16, float)
     sqlite3.register_adapter(np.float32, float)
+    sqlite3.register_adapter(np.float64, float)
     db = sqlite3.connect(dbfile, detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
     cur = db.cursor()
 
@@ -111,10 +117,10 @@ def getdatadb(dbfile,table='meas',cols='rowid,*',rar=None,decr=None,verbose=Fals
         return np.array([])
 
     # Get table column names and data types
-    cur.execute("select sql from sqlite_master where tbl_name = '+table+'")
-    d = cur.fetchall()
+    cur.execute("select sql from sqlite_master where tbl_name = '"+table+"'")
+    dum = cur.fetchall()
     db.close()
-    head = d[0][0]
+    head = dum[0][0]
     # 'CREATE TABLE exposure(expnum TEXT, nchips INTEGER, filter TEXT, exptime REAL, utdate TEXT, uttime TEXT, airmass REAL, wcstype TEXT)'
     lo = head.find('(')
     hi = head.find(')')
@@ -171,7 +177,7 @@ def createtable(dbfile=None):
 
     # Create the indices
     print('Indexing')
-    createindexdb(dbfile,'ra','exposure')
-    createindexdb(dbfile,'dec','exposure')
-    createindexdb(dbfile,'ra','chip')
-    createindexdb(dbfile,'dec','chip')
+    createindexdb(dbfile,'ra','exposure',unique=False)
+    createindexdb(dbfile,'dec','exposure',unique=False)
+    createindexdb(dbfile,'ra','chip',unique=False)
+    createindexdb(dbfile,'dec','chip',unique=False)
