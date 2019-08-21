@@ -21,6 +21,8 @@
 
 pro delvered_bricks,input,delvedir=delvedir,redo=redo,stp=stp
 
+t0 = systime(1)
+  
 ;; Defaults
 if n_elements(delvedir) gt 0 then delvedir=trailingslash(delvedir) else delvedir = '/dl1/users/dnidever/delve/'
 ;; Exposures directory
@@ -30,6 +32,14 @@ brickdir = trailingslash(delvedir)+'bricks/'
 ;; Logs directory
 logsdir = expdir+'logs/'
 if file_test(logsdir,/directory) eq 0 then file_mkdir,logsdir
+tempdir = '/tmp/'
+if n_elements(workdir) eq 0 then begin
+  undefine,workdir
+  host = getenv('HOST')
+  hostname = first_el(strsplit(host,'.',/extract))
+  workdir = '/data0/dnidever/delve/'
+  if n_elements(workdir) gt 0 then if FILE_TEST(workdir,/directory) eq 0 then FILE_MKDIR,workdir
+endif
 
 ;; Not enough inputs
 if n_elements(input) eq 0 then begin
@@ -55,7 +65,8 @@ sminute = strtrim(minute,2)
 if minute lt 10 then sminute='0'+sminute
 ssecond = strtrim(round(second),2)
 if second lt 10 then ssecond='0'+ssecond
-logfile = logsdir+'delvered_bricks.'+hostname+'.'+smonth+sday+syear+shour+sminute+ssecond+'.log'
+logtime = smonth+sday+syear+shour+sminute+ssecond
+logfile = logsdir+'delvered_bricks.'+hostname+'.'+logtime+'.log'
 JOURNAL,logfile
 
 ;; Get all of the bricks
@@ -115,52 +126,12 @@ print,'Processing ',strtrim(nbricks,2),' bricks'
 ;#########################################
 CD,current=origdir
 
-;; Brick loop
-FOR i=0,nbricks-1 do begin
-  ibrick = bricks[i]
-  CD,brickdir+ibrick
-  print,'' & print,'================================='
-  print,' RUNNING PHOTRED on BRICK ',ibrick
-  print,'=================================' & print,''
+bricks = file_basename(dirs)
+cmd = 'delvered_forcebrick,"'+bricks+'"'
+cmddirs = strarr(nbricks)+workdir
+PBS_DAEMON,cmd,dirs,jobs=jobs,prefix='dlvbrcks',/idle,/hyperthread,nmulti=nmulti,wait=wait
 
-  ;; Prepare the input for ALLFRAME??
-  ;; Need to setup symlinks to exposure-level files
-  DELVERED_BRICK_PREP,redo=redo
-  PHOTRED_MATCH,redo=redo
-  PHOTRED_ALLFRAME,redo=redo
-  PHOTRED_ASTROM,redo=redo
-  PHOTRED_CALIB,redo=redo
-  PHOTRED_COMBINE,redo=redo  ; only 1 brick/tile, nothing to combine
-  PHOTRED_DEREDDEN,redo=redo
-  PHOTRED_SAVE,redo=redo
-
-  print,'PHOTRED FINISHED'
-
-  ;;PHOTRED_SUMMARY
-
-  ;;; Create the brick summary file
-  ;sumfiles = FILE_SEARCH('*_summary.fits',count=nsumfiles)
-  ;undefine,brickstr
-  ;fields = IMPORTASCII('fields',fieldnames=['shname','name'],fieldtypes=[7,7],/silent)
-  ;For j=0,nsumfiles-1 do begin
-  ;  base = FILE_BASENAME(sumfiles[j],'_summary.fits')
-  ;  MATCH,fields.name,base,ind1,ind2,/sort,count=nmatch
-  ;  shname = fields[ind1[0]].shname
-  ;  expstr1 = MRDFITS(sumfiles[j],1,/silent)
-  ;  add_tag,expstr1,'fieldname',base,expstr1
-  ;  add_tag,expstr1,'field',shname,expstr1
-  ;  PUSH,brickstr,expstr1
-  ;  chipstr1 = MRDFITS(sumfiles[j],2,/silent)
-  ;  add_tag,chipstr1,'fieldname',base,chipstr1
-  ;  PUSH,chipstr,chipstr1
-  ;Endfor
-  ;bricksumfile = brickdir+ibrick+'/'+ibrick+'_summary.fits'
-  ;print,'Writing brick summary file to ',bricksumfile
-  ;MWRFITS,expstr,bricksumfile,/create
-  ;MWRFITS,chipstr,bricksumfile,/silent
-
-  BOMB:
-ENDFOR
+print,'DELVERED_BRICKS done after ',strtrim(systime(1)-t0,2),' sec'
 
 ; End logfile
 ;------------
