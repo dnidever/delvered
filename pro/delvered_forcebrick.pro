@@ -15,6 +15,7 @@ pro delvered_forcebrick,brick,scriptsdir=scriptsdirs,irafdir=irafdir,workdir=wor
 ;; This bricks pre-processing script gets DELVE and community MC data ready
 ;; to run PHOTRED ALLFRAME on it.
 
+t0 = systime(1)
 CD,current=curdir
 
 ;; Not enough inputs
@@ -448,13 +449,16 @@ phot.ebv = dust_getval(glon,glat,/noloop,/interp)
 
 ;; Saving final catalog
 photfile = bdir+brick+'.fits'
-printlog,logfile,'Writing photometry to ',photfile
+printlog,logfile,'Writing photometry to ',photfile,'.gz'
 MWRFITS,phot,photfile,/create
+spawn,['gzip','-f',photfile],/noshell
 
 ;; Save metadata
 metafile = bdir+brick+'_meta.fits'
 printlog,logfile,'Writing meta-data to ',metafile
 MWRFITS,chstr,metafile,/create
+
+printlog,logfile,'DELVERED_FORCEBRICK done after '+strtrim(systime(1)-t0,2)+' sec.'
 
 stop
 
