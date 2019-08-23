@@ -276,30 +276,30 @@ ny = 3600
 step = 0.25 / 3600    ; 0.25" per pixel
 xref = nx/2
 yref = ny/2
-ntiles = 1
-push,lines,'CENRA  = '+strtrim(brickstr1.ra,2)
-push,lines,'NX     = '+strtrim(nx,2)
-push,lines,'XSTEP  = '+strtrim(step,2)
-push,lines,'XREF   = '+strtrim(xref+1,2)
-push,lines,'CENDEC = '+strtrim(brickstr1.dec,2)
-push,lines,'NY     = '+strtrim(ny,2)
-push,lines,'YSTEP  = '+strtrim(step,2)
-push,lines,'YREF   = '+strtrim(yref+1,2)
-push,lines,'NTILES = '+strtrim(ntiles,2)
+;ntiles = 1
+;push,lines,'CENRA  = '+strtrim(brickstr1.ra,2)
+;push,lines,'NX     = '+strtrim(nx,2)
+;push,lines,'XSTEP  = '+strtrim(step,2)
+;push,lines,'XREF   = '+strtrim(xref+1,2)
+;push,lines,'CENDEC = '+strtrim(brickstr1.dec,2)
+;push,lines,'NY     = '+strtrim(ny,2)
+;push,lines,'YSTEP  = '+strtrim(step,2)
+;push,lines,'YREF   = '+strtrim(yref+1,2)
+;push,lines,'NTILES = '+strtrim(ntiles,2)
 ; Then one file with info for each tile
-tilestr = {type:'WCS',num:1,name:'tile1',x0:0,x1:nx-1,nx:nx,y0:0,y1:ny-1,ny:ny,nimages:nchstr}
-ntiles = 1
-for i=0,ntiles-1 do begin
-  tilestr1 = tilestr[i]
-  fmt = '(I-6,A8,6I8,I6)'
-  ; Using IRAF indexing
-  line = string(format=fmt,tilestr1.num,tilestr1.name,tilestr1.x0+1,tilestr1.x1+1,tilestr1.nx,$
-                tilestr1.y0+1,tilestr1.y1+1,tilestr1.ny,tilestr1.nimages)
-  push,lines,line
-endfor
-tilefile = bdir+brick+'.tiling'
-printlog,logfile,'Writing tiling information to >>'+tilefile+'<<'
-WRITELINE,tilefile,lines
+;tilestr = {type:'WCS',num:1,name:'tile1',x0:0,x1:nx-1,nx:nx,y0:0,y1:ny-1,ny:ny,nimages:nchstr}
+;ntiles = 1
+;for i=0,ntiles-1 do begin
+;  tilestr1 = tilestr[i]
+;  fmt = '(I-6,A8,6I8,I6)'
+;  ; Using IRAF indexing
+;  line = string(format=fmt,tilestr1.num,tilestr1.name,tilestr1.x0+1,tilestr1.x1+1,tilestr1.nx,$
+;                tilestr1.y0+1,tilestr1.y1+1,tilestr1.ny,tilestr1.nimages)
+;  push,lines,line
+;endfor
+;tilefile = bdir+brick+'.tiling'
+;printlog,logfile,'Writing tiling information to >>'+tilefile+'<<'
+;WRITELINE,tilefile,lines
 
 ;;  Make the header as well
 MKHDR,tilehead,fltarr(5,5)
@@ -314,22 +314,25 @@ SXADDPAR,tilehead,'CRPIX2',yref+1L
 SXADDPAR,tilehead,'CRVAL2',brickstr1.dec
 SXADDPAR,tilehead,'CTYPE2','DEC--TAN'
 EXTAST,tilehead,tileast
-tilestr = create_struct(tilestr,'head',tilehead)
-groupstr = {x0:0,y0:0}
+tileast.equinox = 2000
+                     
+; Create the TILE structure
+tilestr = {type:'WCS',naxis:long([nx,ny]),cdelt:double([step,step]),crpix:double([xref+1L,yref+1L]),$
+           crval:double([brickstr1.ra,brickstr1.dec]),ctype:['RA--TAN','DEC--TAN'],$
+           head:tilehead,ast:tileast,xrange:[0,nx-1],yrange:[0,ny-1],nx:nx,ny:ny}
 
 ;; Step 2: Run DAOMATCH_TILE.PRO on the files
 ;;--------------------------------------------
 printlog,logfile,'Step 2: Matching up objects with DAOPHOT_TILE'
 cd,bdir
+groupstr = {x0:0,y0:0}
 DAOMATCH_TILE,chstr.base+'.als',tilestr,groupstr
 mchfile = chstr[0].base+'.mch'
 
 ;; Step 3: Run ALLFRAME
 ;;----------------------
 printlog,logfile,'Step 3: Run ALLFRAME'
-; Copy over and compile lstfilter
-file_copy,scriptsdir+'lstfilter.f',bdir,/over
-spawn,['gfortran','lstfilter.f','-o','lstfilter'],/noshell
+;; DO I NEED TO HAVE IT TRIM THE COMBINED IMAGE???
 ALLFRAME,mchfile,tile=tilestr,setupdir=bdir,scriptsdir=scriptsdir,irafdir=irafdir,$
          logfile=logfile,catformat='FITS',imager=thisimager,workdir=workdir
 magfile = chstr[0].base+'.mag'
