@@ -34,8 +34,8 @@ if __name__ == "__main__":
     expdir = '/dl1/users/dnidever/delve/exposures/'
     dbfile = '/dl1/users/dnidever/delve/bricks/delvered_summary.db'
     if not os.path.exists(dbfile):
-	print(dbfile+' NOT FOUND')
-	sys.exit()
+        print(dbfile+' NOT FOUND')
+        sys.exit()
 
     # Run the code
     rar = [ra-lim,ra+lim]
@@ -44,7 +44,7 @@ if __name__ == "__main__":
     ncat = dln.size(cat)
     print(str(ncat)+' matches found')
     if dln.size(cat)==0:
-	dln.writelines(outfile,'')
+        dln.writelines(outfile,'')
         sys.exit()
     # Save the output
     print('Writing results to '+outfile)
