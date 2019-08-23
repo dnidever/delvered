@@ -287,7 +287,7 @@ push,lines,'YSTEP  = '+strtrim(step,2)
 push,lines,'YREF   = '+strtrim(yref+1,2)
 push,lines,'NTILES = '+strtrim(ntiles,2)
 ; Then one file with info for each tile
-tilestr = {num:1,name:'tile1',x0:0,x1:nx-1,nx:nx,y0:0,y1:ny-1,ny:ny,nimages:nchstr}
+tilestr = {type:'WCS',num:1,name:'tile1',x0:0,x1:nx-1,nx:nx,y0:0,y1:ny-1,ny:ny,nimages:nchstr}
 ntiles = 1
 for i=0,ntiles-1 do begin
   tilestr1 = tilestr[i]
