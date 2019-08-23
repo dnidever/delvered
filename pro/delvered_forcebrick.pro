@@ -166,13 +166,13 @@ setup = ['##### REQUIRED #####',$
          '#save',$
          '#html']
 WRITELINE,bdir+'photred.setup',setup
-PHOTRED_LOADSETUP,setup
+PHOTRED_LOADSETUP,setup,setupdir=bdir
 
 ;; Print out some information about the brick
 printlog,logfile,'RA = ',stringize(brickstr1.ra,ndec=5)
 printlog,logfile,'DEC = ',stringize(brickstr1.dec,ndec=5)
-printlog,logfile,'RA range  = [ ',stringize(brickstr1.ra1,ndec=5),',',stringize(brickstr1.ra2,nec=5),' ]'
-printlog,logfile,'DEC range = [ ',stringize(brickstr1.dec1,ndec=5),',',stringize(brickstr1.dec2,nec=5),' ]'
+printlog,logfile,'RA range  = [ ',stringize(brickstr1.ra1,ndec=5),',',stringize(brickstr1.ra2,ndec=5),' ]'
+printlog,logfile,'DEC range = [ ',stringize(brickstr1.dec1,ndec=5),',',stringize(brickstr1.dec2,ndec=5),' ]'
 
 
 ;; Step 1: Get the list of exposures/chips that overlap this brick
@@ -218,7 +218,6 @@ nchstr = ng
 ;;------------------------------------
 printlog,logfile,'Applying quality cuts'
 fwhmthresh = 2.0                ; seeing 2.0" threshold
-printlog,logfile,'Applying quality cuts'
 gdch = where(chstr.fwhm*chstr.pixscale le fwhmthresh,ngdch)
 if ngdch eq 0 then begin
   printlog,logfile,'No chips passed the quality cuts'
@@ -229,7 +228,7 @@ chstr = chstr[gdch]
 nchstr = ngdch
 chstr.file = strtrim(chstr.file,2)
 chstr.base = strtrim(chstr.base,2)
-add_tag,chstr,'newbase','',chstr
+;add_tag,chstr,'newbase','',chstr
 
 ;; Create the symlinks
 ;;---------------------
@@ -238,10 +237,7 @@ printlog,logfile,'Copying over the necessary files to ',bdir
 for i=0,nchstr-1 do begin
   printlog,logfile,'Copying over files for ',chstr[i].file
   ;; New filename
-  chstr[i].newbase = 'chip'+string(chstr[i].chip,format='(i02)')+'/'+chstr[i].base
-  ;; Make chip directory if necessary
-  chdir = bdir+'chip'+string(chstr[i].chip,format='(i02)')+'/'
-  if file_test(chdir,/directory) eq 0 then file_mkdir,chdir
+  ;chstr[i].newbase = chstr[i].base
   odir = file_dirname(chstr[i].file)+'/'
   obase = PHOTRED_GETFITSEXT(chstr[i].file,/basename)
   ;; Need symlinks to .psf, .als
@@ -253,21 +249,21 @@ for i=0,nchstr-1 do begin
     printlog,logfile,odir+obase+'.als NOT FOUND.  Skipping this chip'
     goto,BOMB1
   endif
-  FILE_DELETE,chdir+chstr[i].base+['.psf','.als','.ap','.opt','.als.opt','.log'],/allow
-  FILE_LINK,odir+obase+'.psf',chdir+chstr[i].base+'.psf'
-  FILE_LINK,odir+obase+'.als',chdir+chstr[i].base+'.als'
-  FILE_LINK,odir+obase+'.ap',chdir+chstr[i].base+'.ap'
-  FILE_LINK,odir+obase+'.opt',chdir+chstr[i].base+'.opt'
-  FILE_LINK,odir+obase+'.als.opt',chdir+chstr[i].base+'.als.opt'
-  FILE_LINK,odir+obase+'.log',chdir+chstr[i].base+'.log'
+  FILE_DELETE,bdir+chstr[i].base+['.psf','.als','.ap','.opt','.als.opt','.log'],/allow
+  FILE_LINK,odir+obase+'.psf',bdir+chstr[i].base+'.psf'
+  FILE_LINK,odir+obase+'.als',bdir+chstr[i].base+'.als'
+  FILE_LINK,odir+obase+'.ap',bdir+chstr[i].base+'.ap'
+  FILE_LINK,odir+obase+'.opt',bdir+chstr[i].base+'.opt'
+  FILE_LINK,odir+obase+'.als.opt',bdir+chstr[i].base+'.als.opt'
+  FILE_LINK,odir+obase+'.log',bdir+chstr[i].base+'.log'
   ;; Copy the fits, fits resource file and header files locally
   if file_test(odir+obase+'.fits') eq 0 then begin
     printlog,logfile,odir+obase+'.fits NOT FOUND.  Skipping this chip'
     goto,BOMB1
   endif
-  FILE_COPY,odir+obase+'.fits',chdir,/over
-  if file_test(odir+'.'+obase+'.fits') eq 1 then FILE_COPY,odir+'.'+obase+'.fits',chdir,/over
-  if file_test(odir+obase+'.head') eq 1 then FILE_COPY,odir+obase+'.head',chdir,/over
+  FILE_COPY,odir+obase+'.fits',bdir,/over
+  if file_test(odir+'.'+obase+'.fits') eq 1 then FILE_COPY,odir+'.'+obase+'.fits',bdir,/over
+  if file_test(odir+obase+'.fits.head') eq 1 then FILE_COPY,odir+obase+'.fits.head',bdir,/over
   BOMB1:
 endfor
 
@@ -307,7 +303,7 @@ WRITELINE,tilefile,lines
 
 ;;  Make the header as well
 MKHDR,tilehead,fltarr(5,5)
-SXADDPAR,tilehead,'NAXIS1',nx2
+SXADDPAR,tilehead,'NAXIS1',nx
 SXADDPAR,tilehead,'CDELT1',step
 SXADDPAR,tilehead,'CRPIX1',xref+1L
 SXADDPAR,tilehead,'CRVAL1',brickstr1.ra
@@ -318,20 +314,29 @@ SXADDPAR,tilehead,'CRPIX2',yref+1L
 SXADDPAR,tilehead,'CRVAL2',brickstr1.dec
 SXADDPAR,tilehead,'CTYPE2','DEC--TAN'
 EXTAST,tilehead,tileast
-
+tilestr = create_struct(tilestr,'head',tilehead)
+groupstr = {x0:0,y0:0}
 
 ;; Step 2: Run DAOMATCH_TILE.PRO on the files
 ;;--------------------------------------------
 printlog,logfile,'Step 2: Matching up objects with DAOPHOT_TILE'
-DAOMATCH_TILE,chstr.newbase+'.als',tilestr
-mchfile = chstr[0].newbase+'.mch'
+cd,bdir
+DAOMATCH_TILE,chstr.base+'.als',tilestr,groupstr
+mchfile = chstr[0].base+'.mch'
 
 ;; Step 3: Run ALLFRAME
 ;;----------------------
 printlog,logfile,'Step 3: Run ALLFRAME'
-ALLFRAME,mchfile,tile=tilestr,setupdir=curdir,scriptsdir=scriptsdir,irafdir=irafdir,$
+; Copy over and compile lstfilter
+file_copy,scriptsdir+'lstfilter.f',bdir,/over
+spawn,['gfortran','lstfilter.f','-o','lstfilter'],/noshell
+ALLFRAME,mchfile,tile=tilestr,setupdir=bdir,scriptsdir=scriptsdir,irafdir=irafdir,$
          logfile=logfile,catformat='FITS',imager=thisimager,workdir=workdir
-
+magfile = chstr[0].base+'.mag'
+if file_test(magfile) eq 0 then begin
+  printlog,logfile,magfile+' NOT FOUND'
+  return
+endif
 
 ;; Step 4: Calculate coordinates
 ;;-------------------------------
