@@ -273,7 +273,7 @@ undefine,lines
 ; Lines with the tiling scheme first
 nx = 3600
 ny = 3600
-step = 0.25 / nx    ; 0.25 deg wide
+step = 0.25 / 3600    ; 0.25" per pixel
 xref = nx/2
 yref = ny/2
 ntiles = 1
