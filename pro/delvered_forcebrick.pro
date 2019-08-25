@@ -327,12 +327,13 @@ printlog,logfile,'Step 2: Matching up objects with DAOPHOT_TILE'
 cd,bdir
 groupstr = {x0:0,y0:0}
 DAOMATCH_TILE,chstr.base+'.als',tilestr,groupstr
-mchfile = chstr[0].base+'.mch'
+
 
 ;; Step 3: Run ALLFRAME
 ;;----------------------
 printlog,logfile,'Step 3: Run ALLFRAME'
 ;; DO I NEED TO HAVE IT TRIM THE COMBINED IMAGE???
+mchfile = bdir+chstr[0].base+'.mch'  ;; allframe needs absolute path
 ALLFRAME,mchfile,tile=tilestr,setupdir=bdir,scriptsdir=scriptsdir,irafdir=irafdir,$
          logfile=logfile,catformat='FITS',imager=thisimager,workdir=workdir
 magfile = chstr[0].base+'.mag'
@@ -371,14 +372,14 @@ for i=0,nchstr-1 do begin
     ;; exptime, aperture correction, zero-point
      ;; aperture correction is SUBTRACTIVE, makes it brighter
     ;; ZPTERM is a SUBTRACTIVE constant offset
-    cmag[gdmag,i] = imag[gdmag] + 2.5*alog10(chstr[i].exptime) - chstr[i].apcor - chstr[i].zpterm
+    cmag[gdmag,i] = imag[gdmag] + 2.5*alog10(chstr[i].exptime) - chstr[i].apcor - chstr[i].calib_zpterm
     ;; Add zero-point error in quadrature
-    cerr[gdmag,i] = sqrt(ierr[gdmag]^2+chstr[i].zptermerr^2)
+    cerr[gdmag,i] = sqrt(ierr[gdmag]^2+chstr[i].calib_zptermsig^2)
   endif
 endfor
 ;; Calculate average photometry per filter
 ufilt = chstr[uniq(chstr.filter,sort(chstr.filter))].filter
-nufilt = n_elements(ufile)
+nufilt = n_elements(ufilt)
 avgmag = fltarr(nphot,nufilt)
 avgerr = fltarr(nphot,nufilt)
 for i=0,nufilt-1 do begin
@@ -396,7 +397,7 @@ for i=0,nufilt-1 do begin
       gdmag = where(cmag[*,gdf[k]] lt 50,ngdmag)
       if ngdmag gt 0 then begin
         totalwt[gdmag] += 1.0d0/cerr[gdmag,gdf[k]]^2
-        totalfluxwt[gdag] += 2.5118864d^cmag[gdmag,gdf[k]] * (1.0d0/cerr[gdmag,gdf[k]]^2)
+        totalfluxwt[gdmag] += 2.5118864d^cmag[gdmag,gdf[k]] * (1.0d0/cerr[gdmag,gdf[k]]^2)
       endif
     endfor
     newflux = totalfluxwt/totalwt
@@ -418,12 +419,12 @@ cmagnames = strarr(nchstr)
 cerrnames = strarr(nchstr)
 for i=0,nufilt-1 do begin
   ind = where(chstr.filter eq ufilt[i],nind)
-  cmagnames[ind] = strupcase(ufilt[i])+strtrim(lindgen(ind)+1,2)+'MAG'
-  cerrnames[ind] = strupcase(ufilt[i])+strtrim(lindgen(ind)+1,2)+'ERR'
+  cmagnames[ind] = strupcase(ufilt[i])+strtrim(lindgen(nind)+1,2)+'MAG'
+  cerrnames[ind] = strupcase(ufilt[i])+strtrim(lindgen(nind)+1,2)+'ERR'
 endfor
 for i=0,nchstr-1 do newschema = create_struct(newschema,cmagnames[i],0.0,cerrnames[i],0.0)
 ;; Add columns for average photometry per filter
-for i=0,nufilt-1 do newschema = create_struct(newschema,ufilt[i]+'MAG',0.0,ufilt[i]+'ERR')
+for i=0,nufilt-1 do newschema = create_struct(newschema,ufilt[i]+'MAG',0.0,ufilt[i]+'ERR',0.0)
 ;; Extra columns
 newschema = create_struct(newschema,'chi',0.0,'sharp',0.0,'prob',0.0,'ebv',0.0)
 ;; Create final catalog
@@ -457,13 +458,13 @@ phot.ebv = dust_getval(glon,glat,/noloop,/interp)
 
 ;; Saving final catalog
 photfile = bdir+brick+'.fits'
-printlog,logfile,'Writing photometry to ',photfile,'.gz'
+printlog,logfile,'Writing photometry to '+photfile+'.gz'
 MWRFITS,phot,photfile,/create
 spawn,['gzip','-f',photfile],/noshell
 
 ;; Save metadata
 metafile = bdir+brick+'_meta.fits'
-printlog,logfile,'Writing meta-data to ',metafile
+printlog,logfile,'Writing meta-data to '+metafile
 MWRFITS,chstr,metafile,/create
 
 printlog,logfile,'DELVERED_FORCEBRICK done after '+strtrim(systime(1)-t0,2)+' sec.'
