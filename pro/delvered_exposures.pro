@@ -128,7 +128,7 @@ FOR i=0,nnights-1 do begin
   PHOTRED_CALIB,redo=redo
   PHOTRED_COMBINE,redo=redo
   PHOTRED_DEREDDEN,redo=redo
-  PHOTRED_SAVE,redo=redo
+  PHOTRED_SAVE,redo=redo,/sumquick
 
   print,'PHOTRED FINISHED'
   PHOTRED_SUMMARY

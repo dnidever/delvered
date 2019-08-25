@@ -78,6 +78,7 @@ setup = ['##### REQUIRED #####',$
          'avgmag        1',$
          'avgonlymag    0',$
          'todered       u,g,r,i,z,g-i',$
+         'sumquick      1',$
          '##### STAGES #####',$
          '#rename',$
          '#split',$
