@@ -77,12 +77,14 @@ setup = ['##### REQUIRED #####',$
          '#html']
 
   ;; Load the list of DECam images
-  expstr = mrdfits('/dl1/users/dnidever/nsc/instcal/v3/lists/decam_instcal_list.fits.gz',1)
+  ;expstr = mrdfits('/dl1/users/dnidever/nsc/instcal/v3/lists/decam_instcal_list.fits.gz',1)
+  expstr = mrdfits('/dl1/users/dnidever/nsc/instcal/v3/lists/decam_instcal_list_full.fits.gz',1)
   expstr.expnum = strtrim(expstr.expnum,2)
   expstr.plver = strtrim(expstr.plver,2)
   expstr.fluxfile = strtrim(expstr.fluxfile,2)
   expstr.maskfile = strtrim(expstr.maskfile,2)
   expstr.wtfile = strtrim(expstr.wtfile,2)
+  expstr_expnumplver = expstr.expnum+'-'+expstr.plver
 
   ;; Load the DECam extension name to ccdnum conversion file
   decam = IMPORTASCII(delvereddir+'data/decam.txt',/header,/silent)
@@ -167,9 +169,13 @@ setup = ['##### REQUIRED #####',$
     fbase = PHOTRED_GETFITSEXT(fitsfiles1,/basename)
     dum = strsplitter(fbase,'-',/extract)
     fexpnum = strmid(reform(dum[1,*]),0,8)
-    fexpnum = fexpnum[uniq(fexpnum,sort(fexpnum))]
+    fui = uniq(fexpnum,sort(fexpnum))
+    fexpnum = fexpnum[fui]
     nexpnum = n_elements(fexpnum)
-    MATCH,expstr.expnum,fexpnum,ind1,ind2,/sort,count=nmatch
+    plver = strarr(nexpnum)
+    for k=0,nexpnum-1 do plver[k]=sxpar(PHOTRED_READFILE(fitsfiles1[fui[k]],exten=1,/header),'plver')
+    plver = strtrim(plver,2)
+    MATCH,expstr_expnumplver,fexpnum+'-'+plver,ind1,ind2,/sort,count=nmatch
     if nmatch ne nexpnum then stop,'Not all exposures have matches in DECam master list'
     fexpnum = fexpnum[ind2]
     expstr1 = expstr[ind1]
