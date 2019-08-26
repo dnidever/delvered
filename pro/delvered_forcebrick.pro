@@ -92,6 +92,13 @@ bdir = subdir+brick+'/'
 if file_test(bdir,/directory) eq 0 then file_mkdir,bdir
 logfile = bdir+brick+'.'+logtime+'.log'
 
+;; Check the output file
+photfile = bdir+brick+'.fits'
+if file_test(photfile+'.gz') and not keyword_set(redo) then begin
+  printlog,logfile,photfile+'.gz EXISTS and /redo NOT set'
+  return
+endif
+
 ;; DECam imager
 thisimager = {telescope:'BLANCO',instrument:'DECam',namps:62,separator:'_'}
 
@@ -174,6 +181,9 @@ printlog,logfile,'DEC = ',stringize(brickstr1.dec,ndec=5)
 printlog,logfile,'RA range  = [ ',stringize(brickstr1.ra1,ndec=5),',',stringize(brickstr1.ra2,ndec=5),' ]'
 printlog,logfile,'DEC range = [ ',stringize(brickstr1.dec1,ndec=5),',',stringize(brickstr1.dec2,ndec=5),' ]'
 
+;; Get the Brick WCS information
+tilestr = MAKE_BRICK_WCS(brickstr1)
+
 
 ;; Step 1: Get the list of exposures/chips that overlap this brick
 ;;----------------------------------------------------------------
@@ -195,8 +205,8 @@ nchstr = n_elements(chstr)
 printlog,logfile,'Found ',strtrim(nchstr,2),' overlapping chips within 0.5 deg of brick center'
 
 ;; Do more rigorous overlap checking
-bvra = [brickstr1.ra1,brickstr1.ra2,brickstr1.ra2,brickstr1.ra1]
-bvdec = [brickstr1.dec1,brickstr1.dec1,brickstr1.dec2,brickstr1.dec2]
+;;  the brick region with overlap
+HEAD_XYAD,tilestr.head,[0,tilestr.nx-1,tilestr.nx-1,0],[0,0,tilestr.ny-1,tilestr.ny-1],bvra,bvdec,/deg
 olap = intarr(nchstr)
 for i=0,nchstr-1 do begin
   hd1 = PHOTRED_READFILE(chstr[i].file,/header)
@@ -267,63 +277,10 @@ for i=0,nchstr-1 do begin
   BOMB1:
 endfor
 
-; Make the tiling file
-;---------------------
-undefine,lines
-; Lines with the tiling scheme first
-nx = 3600
-ny = 3600
-step = 0.25 / 3600    ; 0.25" per pixel
-xref = nx/2
-yref = ny/2
-;ntiles = 1
-;push,lines,'CENRA  = '+strtrim(brickstr1.ra,2)
-;push,lines,'NX     = '+strtrim(nx,2)
-;push,lines,'XSTEP  = '+strtrim(step,2)
-;push,lines,'XREF   = '+strtrim(xref+1,2)
-;push,lines,'CENDEC = '+strtrim(brickstr1.dec,2)
-;push,lines,'NY     = '+strtrim(ny,2)
-;push,lines,'YSTEP  = '+strtrim(step,2)
-;push,lines,'YREF   = '+strtrim(yref+1,2)
-;push,lines,'NTILES = '+strtrim(ntiles,2)
-; Then one file with info for each tile
-;tilestr = {type:'WCS',num:1,name:'tile1',x0:0,x1:nx-1,nx:nx,y0:0,y1:ny-1,ny:ny,nimages:nchstr}
-;ntiles = 1
-;for i=0,ntiles-1 do begin
-;  tilestr1 = tilestr[i]
-;  fmt = '(I-6,A8,6I8,I6)'
-;  ; Using IRAF indexing
-;  line = string(format=fmt,tilestr1.num,tilestr1.name,tilestr1.x0+1,tilestr1.x1+1,tilestr1.nx,$
-;                tilestr1.y0+1,tilestr1.y1+1,tilestr1.ny,tilestr1.nimages)
-;  push,lines,line
-;endfor
-;tilefile = bdir+brick+'.tiling'
-;printlog,logfile,'Writing tiling information to >>'+tilefile+'<<'
-;WRITELINE,tilefile,lines
-
-;;  Make the header as well
-MKHDR,tilehead,fltarr(5,5)
-SXADDPAR,tilehead,'NAXIS1',nx
-SXADDPAR,tilehead,'CDELT1',step
-SXADDPAR,tilehead,'CRPIX1',xref+1L
-SXADDPAR,tilehead,'CRVAL1',brickstr1.ra
-SXADDPAR,tilehead,'CTYPE1','RA---TAN'
-SXADDPAR,tilehead,'NAXIS2',ny
-SXADDPAR,tilehead,'CDELT2',step
-SXADDPAR,tilehead,'CRPIX2',yref+1L
-SXADDPAR,tilehead,'CRVAL2',brickstr1.dec
-SXADDPAR,tilehead,'CTYPE2','DEC--TAN'
-EXTAST,tilehead,tileast
-tileast.equinox = 2000
-                     
-; Create the TILE structure
-tilestr = {type:'WCS',naxis:long([nx,ny]),cdelt:double([step,step]),crpix:double([xref+1L,yref+1L]),$
-           crval:double([brickstr1.ra,brickstr1.dec]),ctype:['RA--TAN','DEC--TAN'],$
-           head:tilehead,ast:tileast,xrange:[0,nx-1],yrange:[0,ny-1],nx:nx,ny:ny}
 
 ;; Step 2: Run DAOMATCH_TILE.PRO on the files
 ;;--------------------------------------------
-printlog,logfile,'Step 2: Matching up objects with DAOPHOT_TILE'
+printlog,logfile,'Step 2: Matching up objects with DAOMATCH_TILE'
 cd,bdir
 groupstr = {x0:0,y0:0}
 DAOMATCH_TILE,chstr.base+'.als',tilestr,groupstr
@@ -455,6 +412,17 @@ endfor
 ;; Calculate SFD E(B-V)
 GLACTC,phot.ra,phot.dec,2000.0,glon,glat,1,/deg
 phot.ebv = dust_getval(glon,glat,/noloop,/interp)
+
+;; Only include objects that are INSIDE the UNIQUE brick area
+;;   INCLUSIVE at the lower RA and DEC limit
+ginside = where(phot.ra ge brickstr1.ra1 and phot.ra lt brickstr1.ra2 and $
+                phot.dec ge brickstr1.dec1 and phot.dec lt brickstr1.dec2,ninside)
+printlog,logfile,'Only including '+strtrim(ninside,2)+' objects inside the unique brick area'
+if ninside eq 0 then begin
+  printlog,logfile,'No objects left to save'
+  return
+endif
+phot = phot[ginside]
 
 ;; Saving final catalog
 photfile = bdir+brick+'.fits'
