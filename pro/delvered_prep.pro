@@ -1,4 +1,4 @@
-pro delvered_prep,delvedir,scriptsdir=scriptsdirs,irafdir=irafdir,workdir=workdir,redo=redo
+pro delvered_prep,delvedir,scriptsdir=scriptsdirs,irafdir=irafdir,workdir=workdir,redo=redo,nmulti=nmulti
 
 ;; This pre-processing script gets DELVE and community MC data ready
 ;; from the NOAO mass store to be processed with PHOTRED.
@@ -19,6 +19,7 @@ if n_elements(workdir) eq 0 then begin
 endif
 ;; Exposures directory
 expdir = trailingslash(delvedir)+'exposures/'
+if n_elements(nmulti) eq 0 then nmulti=5
 
 ;; Print information
 print,'--------------------------------------------------------------------'
@@ -166,7 +167,9 @@ For n=0,nnights-1 do begin
   expfile = nightdir+inight+'_exposures.fits'
   MWRFITS,expstr1,expfile,/create
   print,'Saving exposure structure to ',expfile
-  push,cmd,'delvered_prep_night,"'+expfile+'"'
+  cmd1 = 'delvered_prep_night,"'+expfile+'"'
+  if keyword_set(redo) then cmd1+=',/redo'
+  push,cmd,cmd1
   NIGHTBOMB:
 Endfor
 
@@ -177,7 +180,6 @@ stop
 
 ;; Run PBS_DAEMON
 print,'Starting the JOBS'
-nmulti = 10
 PBS_DAEMON,cmd,cmddir,jobs=jobs,nmulti=nmulti,/hyperthread,/idle,prefix='dlvntprep',wait=5
 
 ;stop
