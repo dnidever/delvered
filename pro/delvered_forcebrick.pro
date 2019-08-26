@@ -311,7 +311,7 @@ nphot = n_elements(phot)
 printlog,logfile,'Nstars = '+strtrim(nphot,2)
 ;; Converting to IDL X/Y convention, starting at (0,0)
 ;; DAOPHOT has X/Y start at (1,1)
-HEAD_XYAD,tilehead,phot.x-1.0,phot.y-1.0,ra,dec,/degree
+HEAD_XYAD,tilestr.head,phot.x-1.0,phot.y-1.0,ra,dec,/degree
 
 
 ;; Step 5: Calibrating photometry with zero-points
@@ -441,8 +441,6 @@ printlog,logfile,'Writing meta-data to '+metafile
 MWRFITS,chstr,metafile,/create
 
 printlog,logfile,'DELVERED_FORCEBRICK done after '+strtrim(systime(1)-t0,2)+' sec.'
-
-stop
 
 JOURNAL
 
