@@ -415,8 +415,13 @@ phot.ebv = dust_getval(glon,glat,/noloop,/interp)
 
 ;; Only include objects that are INSIDE the UNIQUE brick area
 ;;   INCLUSIVE at the lower RA and DEC limit
-ginside = where(phot.ra ge brickstr1.ra1 and phot.ra lt brickstr1.ra2 and $
-                phot.dec ge brickstr1.dec1 and phot.dec lt brickstr1.dec2,ninside)
+if brickstr1.dec eq -90 then begin
+  ;; the brick right at the pole does not have any RA limits
+  ginside = where(phot.dec lt brickstr1.dec2,ninside)
+endif else begin
+  ginside = where(phot.ra ge brickstr1.ra1 and phot.ra lt brickstr1.ra2 and $
+                  phot.dec ge brickstr1.dec1 and phot.dec lt brickstr1.dec2,ninside)
+endelse
 printlog,logfile,'Only including '+strtrim(ninside,2)+' objects inside the unique brick area'
 if ninside eq 0 then begin
   printlog,logfile,'No objects left to save'
