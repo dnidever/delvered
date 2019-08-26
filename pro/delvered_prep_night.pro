@@ -253,7 +253,7 @@ setup = ['##### REQUIRED #####',$
       if sphdist(fexptoadd[0].ra,fexptoadd[0].dec,tra,tdec,/deg) gt 0.05 then undefine,refcat
     endif
     if (file_test(savefile+'.gz') eq 0 and n_elements(refcat) eq 0) or keyword_set(redo) then begin
-      refcat = DELVERED_GETREFDATA('c4d-'+['u','g','r','i','z','Y'],fexptoadd[0].ra,fexptoadd[0].dec,1.5,savefile=savefile)
+      refcat = DELVERED_GETREFDATA('c4d-'+['u','g','r','i','z','Y','VR'],fexptoadd[0].ra,fexptoadd[0].dec,1.5,savefile=savefile)
       SPAWN,['gzip','-f',savefile],/noshell
     endif
 
