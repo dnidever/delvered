@@ -204,7 +204,7 @@ endif else begin
     ;; Use Python code
     Endif else begin
       ; Use python code, it's much faster, ~18x
-      tempfile = MKTEMP('vzr')
+      tempfile = MKTEMP('vzr',/nodata,outdir=tmpdir)
       file_delete,tempfile+'.fits',/allow
       pylines = 'python -c "from astroquery.vizier import Vizier;'+$
                 'import astropy.units as u;'+$
