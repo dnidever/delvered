@@ -97,8 +97,9 @@ setup = ['##### REQUIRED #####',$
 
 ;; Get the catalog of DECam exposures
 ;;  Pick the most recent file
+;; make_exposures_list.pro makes this file
 ;expfile = delvereddir+'data/decam_mcs_20181009.fits.gz'
-expfile = delvereddir+'data/decam_mcs_20190817.fits.gz'
+expfile = delvereddir+'data/decam_mcs_20191017.fits.gz'
 print,'' & print,'Loading ',expfile
 allexpstr = MRDFITS(expfile,1,/silent)
 nallexp = n_elements(allexpstr)
@@ -164,12 +165,17 @@ For n=0,nnights-1 do begin
   endif
 
   if file_test(nightdir,/directory) eq 0 then FILE_MKDIR,nightdir
+  ;; Has this one already been done before
   expfile = nightdir+inight+'_exposures.fits'
-  MWRFITS,expstr1,expfile,/create
-  print,'Saving exposure structure to ',expfile
-  cmd1 = 'delvered_prep_night,"'+expfile+'"'
-  if keyword_set(redo) then cmd1+=',/redo'
-  push,cmd,cmd1
+  if (file_test(expfile) eq 0 or file_test(nightdir+'photred.setup') eq 0) or keyword_set(redo) then begin
+    MWRFITS,expstr1,expfile,/create
+    print,'Saving exposure structure to ',expfile
+    cmd1 = 'delvered_prep_night,"'+expfile+'"'
+    if keyword_set(redo) then cmd1+=',/redo'
+    push,cmd,cmd1
+  endif else begin
+    print,inight,' already processed'
+  endelse
   NIGHTBOMB:
 Endfor
 
