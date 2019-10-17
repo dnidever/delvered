@@ -248,6 +248,8 @@ setup = ['##### REQUIRED #####',$
           count++
         endif else print,chbase+' NOT FOUND'
       Endfor  ; chip loop
+      ;; Delete the temporary file link
+      FILE_DELETE,tmpfluxfile
     Endfor  ; exposure loop
 
     ;; MATCH files, mch, raw
