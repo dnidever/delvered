@@ -257,6 +257,17 @@ setup = ['##### REQUIRED #####',$
       SPAWN,['gzip','-f',savefile],/noshell
     endif
 
+    ;; coordinates relative to the center of the field
+    cendec = mean(minmax(refcat.dec))
+    if range(refcat.ra) gt 100 then begin
+      ra = refcat.ra
+      bd = where(ra gt 180,nbd)
+      if nbd gt 0 then ra[bd]-=360
+      cenra = mean(minmax(ra))
+      if cenra lt 0 then cenra+=360
+    endif else cenra=mean(minmax(refcat.ra))
+    ROTSPHCEN,refcat.ra,refcat.dec,cenra,cendec,reflon,reflat,/gnomic
+
     ;; Loop over exposures
     For e=0,nfind-1 do begin
       filename = fexptoadd[e].fluxfile
@@ -289,9 +300,9 @@ setup = ['##### REQUIRED #####',$
         outfile1 = chipdir+ifield+'-'+fexptoadd[e].expnum+'_'+schip+'.fits'
         WRITELINE,outfile1,''
         routfile1 = chipdir+'.'+ifield+'-'+fexptoadd[e].expnum+'_'+schip+'.fits'
-        rlines = ['fluxfile = '+fexptoadd[e].fluxfile+'['+strtrim(extnum[c],2)+']',$
-                  'wtfile = '+fexptoadd[e].wtfile+'['+strtrim(extnum[c],2)+']',$
-                  'maskfile = '+fexptoadd[e].maskfile+'['+strtrim(extnum[c],2)+']']
+        rlines = ['fluxfile = '+strtrim(fexptoadd[e].fluxfile,2)+'['+strtrim(extnum[c],2)+']',$
+                  'wtfile = '+strtrim(fexptoadd[e].wtfile,2)+'['+strtrim(extnum[c],2)+']',$
+                  'maskfile = '+strtrim(fexptoadd[e].maskfile,2)+'['+strtrim(extnum[c],2)+']']
         WRITELINE,routfile1,rlines
         outfiles[ocount] = ifield+'/chip'+schip+'/'+ifield+'-'+fexptoadd[e].expnum+'_'+schip+'.fits'  ; relative path
         ocount++
@@ -304,8 +315,11 @@ setup = ['##### REQUIRED #####',$
         nx = sxpar(hd,'naxis1')
         ny = sxpar(hd,'naxis2')
         HEAD_XYAD,hd,[0,nx-1,nx-1,0],[0,0,ny-1,ny-1],vra,vdec,/degree
-        gdrefcat = where(refcat.ra ge min(vra)-0.02 and refcat.ra le max(vra)+0.02 and $
-                         refcat.dec ge min(vdec)-0.02 and refcat.dec le max(vdec)+0.02,ngdrefcat)
+        ROTSPHCEN,vra,vdec,cenra,cendec,vlon,vlat,/gnomic
+        ;gdrefcat = where(refcat.ra ge min(vra)-0.02 and refcat.ra le max(vra)+0.02 and $
+        ;                 refcat.dec ge min(vdec)-0.02 and refcat.dec le max(vdec)+0.02,ngdrefcat)
+        gdrefcat = where(reflon ge min(vlon)-0.02 and reflon le max(vlon)+0.02 and $
+                         reflat ge min(vlat)-0.02 and reflat le max(vlat)+0.02,ngdrefcat)
         refcat1 = refcat[gdrefcat]
         refcatfile = chipdir+ifield+'-'+fexptoadd[e].expnum+'_'+string(ccdnum[c],format='(i02)')+'_refcat.fits'
         MWRFITS,refcat1,refcatfile,/create

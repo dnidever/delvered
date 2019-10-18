@@ -161,12 +161,13 @@ For n=0,nnights-1 do begin
   MATCH,inight,smashnights,ind1,ind2,count=nmatch
   if nmatch gt 0 then begin
     print,'SMASH night.  Skipping.'
-    goto,NIGHTBOMB
+  ;  goto,NIGHTBOMB
   endif
 
   if file_test(nightdir,/directory) eq 0 then FILE_MKDIR,nightdir
   ;; Has this one already been done before
   expfile = nightdir+inight+'_exposures.fits'
+if inight eq '20130319' then stop
   if (file_test(expfile) eq 0 or file_test(nightdir+'photred.setup') eq 0) or keyword_set(redo) then begin
     MWRFITS,expstr1,expfile,/create
     print,'Saving exposure structure to ',expfile
