@@ -61,23 +61,13 @@ For n=0,nnights-1 do begin
         schip = string(ccdnum,format='(i02)')
         chipdir = delvedir+'exposures/'+inight+'/'+ifield+'/chip'+schip+'/'
         outfile1 = chipdir+ifield+'-'+iexpnum+'_'+schip+'.fits'
-        if file_test(outfile1) eq 0 and ccdnum ne 2 then begin
-          print,outfile1,' NOT FOUND'
+        if file_test(outfile1) eq 0 then begin
+          if ccdnum ne 2 then print,outfile1,' NOT FOUND'
           goto,CHIPBOMB
-        endif
-
-        ;; Check resource file
-        ;;   some have extra spaces in them
-        rfile = file_dirname(outfile1)+'/.'+file_basename(outfile1)
-        if file_test(rfile) eq 1 then begin
-          READLINE,rfile,rlines
-          ;; Remove blank spaces
-          stop
         endif
 
         ;; Save the reference catalog for this chip
         hd = PHOTRED_READFILE(outfile1,/header)
-stop
         ;; Temporarily fix NAXIS1/2 values
         if sxpar(hd,'ZNAXIS1') ne 0 then begin
           sxaddpar,hd,'NAXIS1',sxpar(hd,'ZNAXIS1')
@@ -93,7 +83,7 @@ stop
                          reflat ge min(vlat)-0.02 and reflat le max(vlat)+0.02,ngdrefcat)
         refcat1 = refcat[gdrefcat]
         refcatfile = chipdir+ifield+'-'+iexpnum+'_'+schip+'_refcat.fits'
-stop
+        print,'  Writing ',refcatfile
         MWRFITS,refcat1,refcatfile,/create
         SPAWN,['gzip','-f',refcatfile],/noshell
         CHIPBOMB:
