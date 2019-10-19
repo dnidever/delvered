@@ -221,9 +221,9 @@ setup = ['##### REQUIRED #####',$
           outfile1 = chipdir1+chbase1+'.fits'
           WRITELINE,outfile1,''
           routfile1 = chipdir1+'.'+chbase1+'.fits'
-          rlines = ['fluxfile = '+fluxfile+'['+strtrim(extnum1,2)+']',$
-                    'wtfile = '+wtfile+'['+strtrim(extnum1,2)+']',$
-                    'maskfile = '+maskfile+'['+strtrim(extnum1,2)+']']
+          rlines = ['fluxfile = '+strtrim(fluxfile,2)+'['+strtrim(extnum1,2)+']',$
+                    'wtfile = '+strtrim(wtfile,2)+'['+strtrim(extnum1,2)+']',$
+                    'maskfile = '+strtrim(maskfile,2)+'['+strtrim(extnum1,2)+']']
           WRITELINE,routfile1,rlines
           
           ;; Save the reference catalog for this chip
