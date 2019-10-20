@@ -24,8 +24,8 @@ setup = ['##### REQUIRED #####',$
          'instrument  DECAM',$
          'observatory CTIO',$
          'nmulti      10',$
-         'nmulti_wcs       40',$
-         'nmulti_daophot   30',$
+         'nmulti_wcs       20',$
+         'nmulti_daophot   20',$
          'nmulti_allframe  10',$
          'filtref     g,i,r,z,u',$
          'modeleqnfile '+modeleqnfile,$
@@ -84,7 +84,39 @@ setup = ['##### REQUIRED #####',$
   expstr.fluxfile = strtrim(expstr.fluxfile,2)
   expstr.maskfile = strtrim(expstr.maskfile,2)
   expstr.wtfile = strtrim(expstr.wtfile,2)
+
+  ;; Add few exposures that are missing wtmap files
+  schema = expstr[0]
+  struct_assign,{dum:''},schema
+  new = replicate(schema,5)
+  ;; 2014128
+  new[0].expnum = '00389257'
+  new[0].plver = 'V3.5.3'
+  new[0].fluxfile = '/mss1/archive/pipeline/Q20141220/DEC14B/20141217/c4d_141219_073510_ooi_r_v1.fits.fz'
+  new[0].maskfile = '/mss1/archive/pipeline/Q20141220/DEC14B/20141217/c4d_141219_073510_ood_r_v1.fits.fz'
+  ;; 20160213  00517155 missing
+  new[1].expnum = '00517155'
+  new[1].plver = 'V3.9'
+  new[1].fluxfile = '/mss1/archive/pipeline/Q20160224/DEC16A/20160213/c4d_160214_031240_ooi_u_v1.fits.fz'
+  new[1].maskfile = '/mss1/archive/pipeline/Q20160224/DEC16A/20160213/c4d_160214_031240_ood_u_v1.fits.fz'
+  ;; 20160215  00517852 missing
+  new[2].expnum = '00517852'
+  new[2].plver = 'V3.9'
+  new[2].fluxfile = '/mss1/archive/pipeline/Q20160224/DEC16A/20160213/c4d_160216_023825_ooi_u_v1.fits.fz'
+  new[2].maskfile = '/mss1/archive/pipeline/Q20160224/DEC16A/20160213/c4d_160216_023825_ood_u_v1.fits.fz'
+  ;; 20160217  00518435 missing
+  new[3].expnum = '00518435'
+  new[3].plver = 'V3.9'
+  new[3].fluxfile = '/mss1/archive/pipeline/Q20160224/DEC16A/20160213/c4d_160218_004440_ooi_u_v1.fits.fz'
+  new[3].maskfile = '/mss1/archive/pipeline/Q20160224/DEC16A/20160213/c4d_160218_004440_ood_u_v1.fits.fz'
+  ;; 00518648 missing
+  new[4].expnum = '00518648'
+  new[4].plver = 'V3.9'
+  new[4].fluxfile = '/mss1/archive/pipeline/Q20160224/DEC16A/20160213/c4d_160218_084146_ooi_u_v1.fits.fz'
+  new[4].maskfile = '/mss1/archive/pipeline/Q20160224/DEC16A/20160213/c4d_160218_084146_ood_u_v1.fits.fz'
+  PUSH,expstr,new
   expstr_expnumplver = expstr.expnum+'-'+expstr.plver
+
 
   ;; Load the DECam extension name to ccdnum conversion file
   decam = IMPORTASCII(delvereddir+'data/decam.txt',/header,/silent)
@@ -153,6 +185,7 @@ setup = ['##### REQUIRED #####',$
 
     ;; Gentral position of field
     sumfile = nightdir+fieldname+'_summary.fits'
+    if file_test(sumfile) eq 0 then goto,fieldbomb
     sumstr = MRDFITS(sumfile,1,/silent)
     cenra = median([sumstr.ra])
     cendec = median([sumstr.dec])
