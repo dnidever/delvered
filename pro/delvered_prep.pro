@@ -43,8 +43,8 @@ setup = ['##### REQUIRED #####',$
          'instrument  DECAM',$
          'observatory CTIO',$
          'nmulti      10',$
-         'nmulti_wcs       40',$
-         'nmulti_daophot   30',$
+         'nmulti_wcs       20',$
+         'nmulti_daophot   20',$
          'nmulti_allframe  10',$
          'filtref     g,i,r,z,u',$
          'trans       delve.trans',$
