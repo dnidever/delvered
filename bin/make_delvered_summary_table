@@ -6,7 +6,7 @@ import os
 import shutil
 import time
 #from argparse import ArgumentParser
-from delvered import delvered_exposuredb as delvedb
+from delvered import delvered_db as delvedb
 
 # Main command-line program
 if __name__ == "__main__":

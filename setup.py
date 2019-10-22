@@ -10,6 +10,6 @@ setup(name='delvered',
       url='https://github.com/dnidever/delvered',
       package_dir = {'': 'python'},
       packages=['delvered'],
-      scripts=['bin/make_delvered_table','bin/query_delvered_table'],
+      scripts=['bin/make_delvered_summary_table','bin/query_delvered_summary_table'],
       requires=['numpy','astropy','scipy','dlnpyutils']
 )
