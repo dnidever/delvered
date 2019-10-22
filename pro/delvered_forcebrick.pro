@@ -461,6 +461,7 @@ FILE_DELETE,base+'_comb'+['.lst','.lst1','.lst2','.lst1.chi','.lst2.chi','.grp',
 FILE_DELETE,'check.fits',/allow
 
 ;; fpack _comb.fits and _combs.fits
+FILE_DELETE,base+['_comb.fits.fz','_combs.fits.fz'],/allow
 spawn,['fpack','-D','-Y',base+'_comb.fits'],/noshell
 spawn,['fpack','-D','-Y',base+'_combs.fits'],/noshell
 ;; gzip _comb.mask.fits and _comb.bpm.fits
