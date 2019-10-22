@@ -29,6 +29,8 @@ expdir = trailingslash(delvedir)+'exposures/'
 logsdir = expdir+'logs/'
 if file_test(logsdir,/directory) eq 0 then file_mkdir,logsdir
 
+COMMON photred,setup
+
 ;; Not enough inputs
 if n_elements(input) eq 0 then begin
   print,'Syntax - delvered_exposures,input,delvedir=delvedir,redo=redo,stp=stp'
@@ -119,22 +121,37 @@ FOR i=0,nnights-1 do begin
   print,' RUNNING PHOTRED on ',inight
   print,'=================================' & print,''
 
-  PHOTRED_WCS,redo=redo
-  PHOTRED_DAOPHOT,redo=redo
-  PHOTRED_MATCH,redo=redo
-  PHOTRED_APCOR,redo=redo
-  PHOTRED_ASTROM,redo=redo
-  DELVERED_ZEROPOINT,redo=redo
-  PHOTRED_CALIB,redo=redo
-  PHOTRED_COMBINE,redo=redo
-  PHOTRED_DEREDDEN,redo=redo
-  PHOTRED_SAVE,redo=redo,/sumquick
+  if file_test('photred.setup') eq 0 then begin
+    print,'NO photred.setup'
+    goto,nightbomb
+  endif
+  ; LOAD THE SETUP FILE
+  undefine,setup
+  PHOTRED_LOADSETUP,setup,count=count
+  if (count lt 1) then begin
+    print,'Problem with photred.setup file'
+    goto,nightbomb
+  endif
+
+
+  if READPAR(setup,'WCS') ne '0' then DELVERED_WCS,redo=redo
+  if READPAR(setup,'DAOPHOT') ne '0' then PHOTRED_DAOPHOT,redo=redo
+  if READPAR(setup,'MATCH') ne '0' then PHOTRED_MATCH,redo=redo
+  if READPAR(setup,'APCOR') ne '0' then PHOTRED_APCOR,redo=redo
+  if READPAR(setup,'ASTROM') ne '0' then PHOTRED_ASTROM,redo=redo
+  if READPAR(setup,'ZEROPOINT') ne '0' then DELVERED_ZEROPOINT,redo=redo
+  if READPAR(setup,'CALIB') ne '0' then PHOTRED_CALIB,redo=redo
+  if READPAR(setup,'COMBINE') ne '0' then PHOTRED_COMBINE,redo=redo
+  if READPAR(setup,'DEREDDEN') ne '0' then PHOTRED_DEREDDEN,redo=redo
+  if READPAR(setup,'SAVE') ne '0' then PHOTRED_SAVE,redo=redo,/sumquick
 
   print,'PHOTRED FINISHED'
   PHOTRED_SUMMARY
 
   ;; Create the nightly summary file
   DELVERED_NIGHTSUMMARY,inight,delvedir=delvedir,redo=redo
+
+  NIGHTBOMB:
 ENDFOR
 
 ; End logfile
