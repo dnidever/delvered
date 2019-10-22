@@ -142,11 +142,12 @@ def getdatadb(dbfile,table='meas',cols='*',rar=None,decr=None,verbose=False):
 
     return cat
 
-def createtable(dbfile=None):
-    """ Create the DELVE-MV exposures and chips database"""
+def createsumtable(dbfile=None,delvedir='/dl1/users/dnidever/delve/'):
+    """ Create the DELVE-MC exposures and chips database"""
 
-    expdir = '/dl1/users/dnidever/delve/exposures/'
-    dbfile = '/dl1/users/dnidever/delve/bricks/delvered_summary.db'
+    expdir = delvedir+'exposures/'
+    if dbfile is None:
+        dbfile = delvedir+'bricks/db/delvered_summary.db'
 
     # Loop over list of nightly summary files
 
@@ -165,15 +166,30 @@ def createtable(dbfile=None):
     # Load in the data
     expcount = 0
     chcount = 0
+    lexpstr = []  # lists
+    lchstr = []
     for i in range(nnightsumfiles):
         print('Loading '+nightsumfiles[i])
         expstr1 = fits.getdata(nightsumfiles[i],1)
         nexpstr1 = dln.size(expstr1)
+        lexpstr.append(expstr1)
         chstr1 = fits.getdata(nightsumfiles[i],2)
         nchstr1 = dln.size(chstr1)
-        # Load the database
-        writecat2db(expstr1,dbfile,'exposure')
-        writecat2db(chstr1,dbfile,'chip')
+        lchstr.append(chstr1)
+        # Concatenate them
+        
+       # # Load the database
+       # writecat2db(expstr1,dbfile,'exposure')
+       # writecat2db(chstr1,dbfile,'chip')
+
+    # Concatenate them
+    expstr = dln.concatenate(lexpstr)
+    chstr = dln.concatenate(lchstr)
+
+    # Load the database
+    writecat2db(expstr,dbfile,'exposure')
+    writecat2db(chstr,dbfile,'chip')
+
 
     # Create the indices
     print('Indexing')
