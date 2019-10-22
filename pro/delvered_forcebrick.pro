@@ -445,6 +445,11 @@ printlog,logfile,'Writing meta-data to '+metafile
 MWRFITS,chstr,metafile,/create
 
 ;; Clean up
+;;----------
+;; Individual fits files
+alsbase = file_basename(alsfiles,'.als')
+FILE_DELETE,alsbase+'.fits',/allow
+;; Combined files
 ;;   _comb  lst, lst1, lst2, lst1.chi, grp, nst, lst2.chi, plst.chi, psfini.ap
 ;;   nei, als.inp, a.fits, cmn.log, cmn.coo, cmn.ap, cmn.lst,
 ;;   _sub.fits, _sub.cat, _sub.als, _all.coo, makemag
@@ -455,13 +460,11 @@ FILE_DELETE,base+'_comb'+['.lst','.lst1','.lst2','.lst1.chi','.lst2.chi','.grp',
 FILE_DELETE,'check.fits',/allow
 
 ;; fpack _comb.fits and _combs.fits
-spawn,['fpack','-D',base+'_comb.fits'],/noshell
-spawn,['fpack','-D',base+'_combs.fits'],/noshell
+spawn,['fpack','-D','-Y',base+'_comb.fits'],/noshell
+spawn,['fpack','-D','-Y',base+'_combs.fits'],/noshell
 ;; gzip _comb.mask.fits and _comb.bpm.fits
 spawn,['gzip','-f',base+'_comb.mask.fits'],/noshell
 spawn,['gzip','-f',base+'_comb.bpm.fits'],/noshell
-
-;stop
 
 printlog,logfile,'DELVERED_FORCEBRICK done after '+strtrim(systime(1)-t0,2)+' sec.'
 
