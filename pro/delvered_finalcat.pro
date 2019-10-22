@@ -13,6 +13,8 @@ if n_elements(delvereddir) gt 0 then delvereddir=trailingslash(delvereddir) else
 expdir = trailingslash(delvedir)+'exposures/'
 ;; Bricks directory
 brickdir = trailingslash(delvedir)+'bricks/'
+finaldbfile = brickdir+'db/delvered_final.db'
+tempdir = '/tmp/'
 
 ;; Load the brick information
 brickstr = MRDFITS(delvereddir+'data/delvemc_bricks_0.25deg.fits.gz',1)
@@ -69,15 +71,16 @@ for i=0,nbdirs-1 do begin
      ginside = where(cat.ra ge bstr[i].ra1 and cat.ra lt bstr[i].ra2 and $
                      cat.dec ge bstr[i].dec1 and cat.dec lt bstr[i].dec2,ninside)
   endelse
-  print,'Only including '+strtrim(ninside,2)+' objects inside the unique brick area'
+  print,'  Keeping '+strtrim(ninside,2)+' objects inside the unique brick area'
   if ninside eq 0 then begin
     print,'No objects left to save'
     return
   endif
   cat = cat[ginside]
+  ncat = n_elements(cat)
 
   ;; Convert to final format
-  new = replicate(fschema,ngcat)
+  new = replicate(fschema,ncat)
   struct_assign,cat,new,/nozero
   new.brick = brick
   new.id = brick+'.'+strtrim(cat.id,2)
@@ -101,16 +104,32 @@ for i=0,nbdirs-1 do begin
 
   ;; Concatenate
 
+  ;; Write to a temporary file
+  tmpfile = MKTEMP('tmp',/nodot,outdir=tempdir) & TOUCHZERO,tmpfile+'.fits' & FILE_DELETE,[tmpfile,tmpfile+'.fits'],/allow
+  tmpfile += '.fits'
+  MWRFITS,new,tmpfile,/create
+
   ;; maybe load the database every ~5th brick or so
+  print,'  Writing to the database'
+  pylines = 'python -c "from delvered import delvered_db as delvedb;'+$
+            'from astropy.io import fits;'+$
+            "cat = fits.getdata('"+tmpfile+"',1);"+$
+            "delvedb.writecat2db(cat,'"+finaldbfile+"',table='object')"+'"'
+  SPAWN,pylines,out,errout
+  file_delete,tmpfile,/allow
 
   ;; KEEP TRACK OF INDIVIDUAL MEASUREMENTS? 
-
-  stop
 
   BOMB:
 endfor
 
+;; Index database
+print,'Indexing the table'
+pylines = 'python -c "from delvered import delvered_db as delvedb;'+$
+          "delvedb.createindexdb('"+finaldbfile+"',col='ra',table='object',unique=False);"+$
+          "delvedb.createindexdb('"+finaldbfile+"',col='dec',table='object',unique=False)"+'"'
+SPAWN,pylines,out,errout
 
-stop
+;stop
 
 end
