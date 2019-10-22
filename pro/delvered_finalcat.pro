@@ -35,7 +35,8 @@ if nmatch lt nbdirs then print,strtrim(nbricks,2),' bricks retained'
 
 ;; Final schema
 fschema = {brick:'',id:'',ring256:0L,ra:0.0d0,dec:0.0d0,ndet:0L,ndetg:0L,gmag:99.99,gerr:9.99,ndetr:0L,rmag:99.99,rerr:9.99,$
-           ndeti:0L,imag:99.99,ierr:9.99,ndetz:0L,zmag:99.99,zerr:9.99,chi:0.0,sharp:0.0,prob:0.0,sfd_ebv:0.0}
+           ndeti:0L,imag:99.99,ierr:9.99,ndetz:0L,zmag:99.99,zerr:9.99,chi:0.0,sharp:0.0,prob:0.0,sfd_ebv:0.0,$
+           mag_auto:999.0,magerr_auto:999.0,asemi:999.0,bsemi:999.0,theta:999.0,ellipticity:999.0,fwhm:999.0}
 ftags = tag_names(fschema)
 
 ;; Brick loop
@@ -58,16 +59,22 @@ for i=0,nbdirs-1 do begin
   nmeta = n_elements(meta)
   print,'  ',strtrim(ncat,2),' objects'
 
-  ;; Keep objects inside this brick's UNIQUE area
-  if bstr[i].dec eq -90.0 then begin
-    gcat = where(cat.dec lt bstr[i].dec2,ngcat)
+  
+  ;; Only include objects that are INSIDE the UNIQUE brick area
+  ;;   INCLUSIVE at the lower RA and DEC limit
+  if bstr[i].dec eq -90 then begin
+     ;; the brick right at the pole does not have any RA limits
+     ginside = where(cat.dec lt bstr[i].dec2,ninside)
   endif else begin
-    ;; include on the bottom edge but not the top
-    gcat = where(cat.ra ge bstr[i].ra1 and cat.ra lt bstr[i].ra2 and $
-                 cat.dec ge bstr[i].dec1 and cat.dec lt bstr[i].dec2,ngcat)
+     ginside = where(cat.ra ge bstr[i].ra1 and cat.ra lt bstr[i].ra2 and $
+                     cat.dec ge bstr[i].dec1 and cat.dec lt bstr[i].dec2,ninside)
   endelse
-  print,'  ',strtrim(ngcat,2),' objects in unique area'
-  cat = cat[gcat]
+  print,'Only including '+strtrim(ninside,2)+' objects inside the unique brick area'
+  if ninside eq 0 then begin
+    print,'No objects left to save'
+    return
+  endif
+  cat = cat[ginside]
 
   ;; Convert to final format
   new = replicate(fschema,ngcat)

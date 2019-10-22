@@ -417,21 +417,22 @@ endfor
 GLACTC,phot.ra,phot.dec,2000.0,glon,glat,1,/deg
 phot.ebv = dust_getval(glon,glat,/noloop,/interp)
 
-;; Only include objects that are INSIDE the UNIQUE brick area
-;;   INCLUSIVE at the lower RA and DEC limit
-if brickstr1.dec eq -90 then begin
-  ;; the brick right at the pole does not have any RA limits
-  ginside = where(phot.dec lt brickstr1.dec2,ninside)
-endif else begin
-  ginside = where(phot.ra ge brickstr1.ra1 and phot.ra lt brickstr1.ra2 and $
-                  phot.dec ge brickstr1.dec1 and phot.dec lt brickstr1.dec2,ninside)
-endelse
-printlog,logfile,'Only including '+strtrim(ninside,2)+' objects inside the unique brick area'
-if ninside eq 0 then begin
-  printlog,logfile,'No objects left to save'
-  return
-endif
-phot = phot[ginside]
+;; THIS IS NOW BEING DONE IN DELVERED_FINALCAT.PRO THAT COMBINES ALL CATALOGS
+;;; Only include objects that are INSIDE the UNIQUE brick area
+;;;   INCLUSIVE at the lower RA and DEC limit
+;if brickstr1.dec eq -90 then begin
+;  ;; the brick right at the pole does not have any RA limits
+;  ginside = where(phot.dec lt brickstr1.dec2,ninside)
+;endif else begin
+;  ginside = where(phot.ra ge brickstr1.ra1 and phot.ra lt brickstr1.ra2 and $
+;                  phot.dec ge brickstr1.dec1 and phot.dec lt brickstr1.dec2,ninside)
+;endelse
+;printlog,logfile,'Only including '+strtrim(ninside,2)+' objects inside the unique brick area'
+;if ninside eq 0 then begin
+;  printlog,logfile,'No objects left to save'
+;  return
+;endif
+;phot = phot[ginside]
 
 ;; Saving final catalog
 photfile = bdir+brick+'.fits'
