@@ -27,6 +27,7 @@ t0 = systime(1)
   
 ;; Defaults
 if n_elements(delvedir) gt 0 then delvedir=trailingslash(delvedir) else delvedir = '/dl1/users/dnidever/delve/'
+if n_elements(delvereddir) gt 0 then delvereddir=trailingslash(delvereddir) else delvereddir = '/home/dnidever/projects/delvered/'
 ;; Exposures directory
 expdir = trailingslash(delvedir)+'exposures/'
 ;; Bricks directory
@@ -72,22 +73,28 @@ logtime = smonth+sday+syear+shour+sminute+ssecond
 logfile = logsdir+'delvered_bricks.'+hostname+'.'+logtime+'.log'
 JOURNAL,logfile
 
-;; Get all of the bricks
-dirs = FILE_SEARCH(brickdir+'*',/test_directory,count=ndirs)
-dirs = FILE_BASENAME(dirs)
-numdirs = long(dirs)
+;; Load the brick information
+brickstr = MRDFITS(delvereddir+'data/delvemc_bricks_0.25deg.fits.gz',1)
 
 ;; Parse the input nights
 for i=0,n_elements(input)-1 do begin
   input1 = input[i]
   ;; See if there is a -
+  ;; Use RA-DEC coordinate as a BOX selection
+  ;;   could also think of them as an ordered list and take all bricks
+  ;;   between the two (inclusive)
   if strpos(input1,'-') ne -1 then begin
     brickrange = strsplit(input1,'-',/extract)
-    ind_dirs = where(numdirs ge long(brickrange[0]) and numdirs le long(brickrange[1]),nind_dirs)
-    if nind_dirs gt 0 then push,bricks,dirs[ind_dirs] else print,'No directories found matching ',input1
+    br = float(strsplitter(brickrange,'pm',/extract)) / 10.  ;; RA and DEC components
+    br = transpose(br)
+    ind_bricks = where(brickstr.ra ge br[0,0] and brickstr.ra le br[0,1] and $
+                       brickstr.dec ge br[0,1] and brickstr.dec le br[1,1],nind_bricks)
+    if nind_bricks gt 0 then push,bricks,brickstr[ind_bricks] else print,'No brick found matching ',input1
   endif else begin
-    MATCH,dirs,input1,ind1,ind2,/sort,count=nmatch
-    if nmatch gt 0 then push,bricks,input1 else print,input1,' directory not found'
+    if input1[0] eq '*' then push,bricks,brickstr.brickname else begin
+      MATCH,brickstr.brickname,input1,ind1,ind2,/sort,count=nmatch
+      if nmatch gt 0 then push,bricks,input1 else print,input1,' brick not found'
+    endelse
   endelse
 endfor
 nbricks = n_elements(bricks)
@@ -95,9 +102,9 @@ if nbricks eq 0 then begin
   print,'No bricks to process'
   return
 endif
-
-;; Load the brick information
-brickstr = MRDFITS(delvereddir+'data/delvemc_bricks_0.25deg.fits.gz',1)
+bricks = strtrim(bricks,2)
+bricks = bricks[uniq(bricks,sort(bricks))]
+nbricks = n_elements(bricks)
 
 ; Print info
 ;-----------
@@ -123,6 +130,7 @@ endif
 
 ;; Check if bricks were previously done
 if not keyword_set(redo) then begin
+  print,'Checking for any bricks were previously done'
   outfiles = brickdir+bricks+'/'+bricks+'.fits.gz'
   bd = where(file_test(outfiles) eq 1,nbd,comp=gd,ncomp=ngd)
   if ngd eq 0 then begin
@@ -135,13 +143,28 @@ if not keyword_set(redo) then begin
     nbricks = ngd
   endif
 endif
-  
-print,'Processing ',strtrim(nbricks,2),' bricks'
+
+;; Check if we need to update the exposures database
+print,'Checking if exposures database needs to be updated'
+dbfile = '/dl1/users/dnidever/delve/bricks/db/delvered_summary.db'
+dbinfo = file_info(dbfile)
+nightdirs = file_search(delvedir+'exposures/201?????',count=nnightdirs)
+sumfiles = nightdirs+'/'+file_basename(nightdirs)+'_summary.fits'
+suminfo = file_info(sumfiles)  
+gsum = where(suminfo.exists eq 1 and suminfo.size gt 0,ngsum)
+if ngsum gt 0 then begin
+  if max(suminfo[gsum].mtime) gt dbinfo.mtime then begin
+    print,'Need to update the database'
+    SPAWN,delvereddir+'bin/make_delvered_summary_table',/noshell
+  endif
+endif
+
+print,'Processing ',strtrim(nbricks,2),' brick(s)'
 
 ;#########################################
 ;#  STARTING THE PROCESSING
 ;#########################################
-cmd = 'delvered_forcebrick,"'+bricks+'"'
+cmd = "delvered_forcebrick,'"+bricks+"'"
 if keyword_set(redo) then cmd += ',/redo'
 cmddirs = strarr(nbricks)+workdir
 PBS_DAEMON,cmd,cmddirs,jobs=jobs,prefix='dlvbrcks',/idle,/hyperthread,nmulti=nmulti,wait=5
