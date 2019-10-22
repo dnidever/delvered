@@ -193,7 +193,7 @@ cenra = brickstr1.ra
 cendec = brickstr1.dec
 tmpfile = MKTEMP('tmp',/nodot,outdir=tempdir) & TOUCHZERO,tmpfile+'.fits' & FILE_DELETE,[tmpfile,tmpfile+'.fits'],/allow
 tmpfile += '.fits'
-spawn,['query_delvered_table',strtrim(cenra,2),strtrim(cendec,2),tmpfile,'--lim','0.5'],out,errout,/noshell
+spawn,[delvereddir+'bin/query_delvered_table',strtrim(cenra,2),strtrim(cendec,2),tmpfile,'--lim','0.5'],out,errout,/noshell
 info = file_info(tmpfile)
 if info.size eq 0 then begin
   printlog,logfile,'No overlapping chips found'
@@ -202,7 +202,9 @@ endif
 chstr = MRDFITS(tmpfile,1,/silent)
 file_delete,tmpfile,/allow
 nchstr = n_elements(chstr)
+chstr.file = repstr(chstr.file,'/net/dl1/','/dl1/')   ;; fix /net/dl1 to /dl1
 printlog,logfile,'Found ',strtrim(nchstr,2),' overlapping chips within 0.5 deg of brick center'
+
 
 ;; Do more rigorous overlap checking
 ;;  the brick region with overlap
@@ -384,6 +386,8 @@ for i=0,nchstr-1 do newschema = create_struct(newschema,cmagnames[i],0.0,cerrnam
 for i=0,nufilt-1 do newschema = create_struct(newschema,ufilt[i]+'MAG',0.0,ufilt[i]+'ERR',0.0)
 ;; Extra columns
 newschema = create_struct(newschema,'chi',0.0,'sharp',0.0,'prob',0.0,'ebv',0.0)
+;; other SE columns
+newschema = create_struct(newschema,'mag_auto',0.0,'magerr_auto',0.0,'asemi',0.0,'bsemi',0.0,'theta',0.0,'ellipticity',0.0,'fwhm',0.0)
 ;; Create final catalog
 orig = phot
 undefine,phot
@@ -440,7 +444,28 @@ metafile = bdir+brick+'_meta.fits'
 printlog,logfile,'Writing meta-data to '+metafile
 MWRFITS,chstr,metafile,/create
 
+;; Clean up
+;;   _comb  lst, lst1, lst2, lst1.chi, grp, nst, lst2.chi, plst.chi, psfini.ap
+;;   nei, als.inp, a.fits, cmn.log, cmn.coo, cmn.ap, cmn.lst,
+;;   _sub.fits, _sub.cat, _sub.als, _all.coo, makemag
+base = file_basename(mchfile,'.mch')
+FILE_DELETE,base+'_comb'+['.lst','.lst1','.lst2','.lst1.chi','.lst2.chi','.grp','.nst','.plst.chi',$
+                          '.nei','.als.inp','.cmn.log','.cmn.coo','.cmn.ap','.cmn.lst','a.fits',$
+                          'a.fits.fz','_sub.fits','_sub.cat','_sub.als','_all.coo','.makemag'],/allow
+FILE_DELETE,'check.fits',/allow
+
+;; fpack _comb.fits and _combs.fits
+spawn,['fpack','-D',base+'_comb.fits'],/noshell
+spawn,['fpack','-D',base+'_combs.fits'],/noshell
+;; gzip _comb.mask.fits and _comb.bpm.fits
+spawn,['gzip','-f',base+'_comb.mask.fits'],/noshell
+spawn,['gzip','-f',base+'_comb.bpm.fits'],/noshell
+
+;stop
+
 printlog,logfile,'DELVERED_FORCEBRICK done after '+strtrim(systime(1)-t0,2)+' sec.'
+
+CD,curdir  ;; back to original directory
 
 JOURNAL
 
