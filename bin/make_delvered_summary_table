@@ -41,4 +41,4 @@ if __name__ == "__main__":
        shutil.move(dbfile,'/dl1/users/dnidever/delve/bricks/db/backup/'+backupfile)
 
     # Run the code
-    delvedb.createsummarytable(dbfile)
+    delvedb.createsumtable(dbfile)
