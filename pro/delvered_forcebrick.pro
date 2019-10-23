@@ -301,6 +301,7 @@ if file_test(magfile) eq 0 then begin
   return
 endif
 
+
 ;; Step 4: Calculate coordinates
 ;;-------------------------------
 printlog,logfile,'Step 4: Adding coordinates'
@@ -308,24 +309,24 @@ printlog,logfile,'Step 4: Adding coordinates'
 LOADMCH,mchfile,alsfiles
 nalsfiles = n_elements(alsfiles)
 ; Load the photometry file
-phot = PHOTRED_READFILE(magfile)
-nphot = n_elements(phot)
-printlog,logfile,'Nstars = '+strtrim(nphot,2)
+instphot = PHOTRED_READFILE(magfile)
+ninstphot = n_elements(instphot)
+printlog,logfile,'Nstars = '+strtrim(ninstphot,2)
 ;; Converting to IDL X/Y convention, starting at (0,0)
 ;; DAOPHOT has X/Y start at (1,1)
-HEAD_XYAD,tilestr.head,phot.x-1.0,phot.y-1.0,ra,dec,/degree
+HEAD_XYAD,tilestr.head,instphot.x-1.0,instphot.y-1.0,ra,dec,/degree
 
 
 ;; Step 5: Calibrating photometry with zero-points
 ;;-------------------------------------------------
 printlog,logfile,'Step 5: Calibrating photometry with zero-points'
-cmag = fltarr(nphot,nchstr)+99.99
-cerr = fltarr(nphot,nchstr)+9.99
+cmag = fltarr(ninstphot,nchstr)+99.99
+cerr = fltarr(ninstphot,nchstr)+9.99
 ;; Chip loop
 for i=0,nchstr-1 do begin
-  ; id, x, y, unsolved magnitudes, chi, sharp
-  imag = phot.(2*i+3)
-  ierr = phot.(2*i+4)
+  ; id, x, y, ra, dec, unsolved magnitudes, chi, sharp
+  imag = instphot.(2*i+3)
+  ierr = instphot.(2*i+4)
   gdmag = where(imag lt 50,ngdmag)
   if ngdmag gt 0 then begin
     ;; exptime, aperture correction, zero-point
@@ -339,24 +340,27 @@ endfor
 ;; Calculate average photometry per filter
 ufilt = chstr[uniq(chstr.filter,sort(chstr.filter))].filter
 nufilt = n_elements(ufilt)
-avgmag = fltarr(nphot,nufilt)
-avgerr = fltarr(nphot,nufilt)
+avgmag = fltarr(ninstphot,nufilt)
+avgerr = fltarr(ninstphot,nufilt)
+ndet = lonarr(ninstphot,nufilt)
 for i=0,nufilt-1 do begin
   gdf = where(chstr.filter eq ufilt[i],ngdf)
   ;; Single exposure
-  if ngdf eq 0 then begin
+  if ngdf eq 1 then begin
     avgmag[*,i] = cmag[*,gdf[0]]
     avgerr[*,i] = cerr[*,gdf[0]]
+    ndet[*,i] = (cmag[*,gdf[0]] lt 50)
   ;; Multiple exposures
   endif else begin
     ;; Loop through all of the exposures and add up the flux, totalwt, etc.
-    totalwt = dblarr(nphot)
-    totalfluxwt = dblarr(nphot)
+    totalwt = dblarr(ninstphot)
+    totalfluxwt = dblarr(ninstphot)
     for k=0,ngdf-1 do begin
       gdmag = where(cmag[*,gdf[k]] lt 50,ngdmag)
       if ngdmag gt 0 then begin
         totalwt[gdmag] += 1.0d0/cerr[gdmag,gdf[k]]^2
         totalfluxwt[gdmag] += 2.5118864d^cmag[gdmag,gdf[k]] * (1.0d0/cerr[gdmag,gdf[k]]^2)
+        ndet[gdmag,i]++
       endif
     endfor
     newflux = totalfluxwt/totalwt
@@ -371,6 +375,21 @@ for i=0,nufilt-1 do begin
     avgerr[*,i] = newerr
   endelse
 endfor
+;; Measure scatter
+scatter = fltarr(ninstphot,nufilt)+99.99
+for i=0,nufilt-1 do begin
+  gdf = where(chstr.filter eq ufilt[i],ngdf)
+  if ngdf gt 1 then begin
+    totaldiff = fltarr(ninstphot)
+    for k=0,ngdf-1 do begin
+      gdmag = where(cmag[*,gdf[k]] lt 50,ngdmag)
+      if ngdmag gt 0 then totaldiff[gdmag] += (avgmag[gdmag,i]-cmag[gdmag,gdf[k]])^2
+    endfor
+    scatter[*,i] = sqrt( totaldiff/(ndet[*,i]>1) )
+    bd = where(ndet[*,i] le 1,nbd)
+    if nbd gt 0 then scatter[bd,i]=99.99
+  endif
+endfor
 ;; Create final catalog schema
 newschema = {id:'',x:0.0,y:0.0,ra:0.0d0,dec:0.0d0}
 ;; Add columns for calibrated single-epoch photometry columns
@@ -383,17 +402,16 @@ for i=0,nufilt-1 do begin
 endfor
 for i=0,nchstr-1 do newschema = create_struct(newschema,cmagnames[i],0.0,cerrnames[i],0.0)
 ;; Add columns for average photometry per filter
-for i=0,nufilt-1 do newschema = create_struct(newschema,ufilt[i]+'MAG',0.0,ufilt[i]+'ERR',0.0)
+for i=0,nufilt-1 do newschema = create_struct(newschema,ufilt[i]+'MAG',0.0,ufilt[i]+'ERR',0.0,ufilt[i]+'SCATTER',0.0,'NDET'+ufilt[i],0L)
 ;; Extra columns
 newschema = create_struct(newschema,'chi',0.0,'sharp',0.0,'prob',0.0,'ebv',0.0)
 ;; other SE columns
 newschema = create_struct(newschema,'mag_auto',0.0,'magerr_auto',0.0,'asemi',0.0,'bsemi',0.0,'theta',0.0,'ellipticity',0.0,'fwhm',0.0)
+;; in unique brick area
+newschema = create_struct(newschema,'brickuniq',0B)
 ;; Create final catalog
-orig = phot
-undefine,phot
-phot = replicate(newschema,nphot)
-struct_assign,orig,phot,/nozero
-undefine,orig
+phot = replicate(newschema,ninstphot)
+struct_assign,instphot,phot,/nozero
 phtags = tag_names(phot)
 ;; Stuff in the coordinates calculated above
 phot.ra = ra
@@ -408,9 +426,13 @@ endfor
 ;; Stuff in the average photometry per filter
 for i=0,nufilt-1 do begin
   magind = where(strupcase(phtags) eq strupcase(ufilt[i])+'MAG',nmagind)
-  errind = where(strupcase(phtags) eq strupcase(ufilt[i])+'ERR',nerrind)   
+  errind = where(strupcase(phtags) eq strupcase(ufilt[i])+'ERR',nerrind)
+  scatind = where(strupcase(phtags) eq strupcase(ufilt[i])+'SCATTER',nscatind)
+  detind = where(strupcase(phtags) eq 'NDET'+strupcase(ufilt[i]),ndetind)
   phot.(magind) = avgmag[*,i]
   phot.(errind) = avgerr[*,i]
+  phot.(scatind) = scatter[*,i]
+  phot.(detind) = ndet[*,i]
 endfor
 
 ;; Calculate SFD E(B-V)
@@ -418,21 +440,17 @@ GLACTC,phot.ra,phot.dec,2000.0,glon,glat,1,/deg
 phot.ebv = dust_getval(glon,glat,/noloop,/interp)
 
 ;; THIS IS NOW BEING DONE IN DELVERED_FINALCAT.PRO THAT COMBINES ALL CATALOGS
-;;; Only include objects that are INSIDE the UNIQUE brick area
-;;;   INCLUSIVE at the lower RA and DEC limit
-;if brickstr1.dec eq -90 then begin
-;  ;; the brick right at the pole does not have any RA limits
-;  ginside = where(phot.dec lt brickstr1.dec2,ninside)
-;endif else begin
-;  ginside = where(phot.ra ge brickstr1.ra1 and phot.ra lt brickstr1.ra2 and $
-;                  phot.dec ge brickstr1.dec1 and phot.dec lt brickstr1.dec2,ninside)
-;endelse
-;printlog,logfile,'Only including '+strtrim(ninside,2)+' objects inside the unique brick area'
-;if ninside eq 0 then begin
-;  printlog,logfile,'No objects left to save'
-;  return
-;endif
-;phot = phot[ginside]
+;; Only include objects that are INSIDE the UNIQUE brick area
+;;   INCLUSIVE at the lower RA and DEC limit
+;; Getting objects that are in the UNIQUE brick area
+if brickstr1.dec eq -90 then begin
+  ;; the brick right at the pole does not have any RA limits
+  ginside = where(phot.dec lt brickstr1.dec2,ninside)
+endif else begin
+  ginside = where(phot.ra ge brickstr1.ra1 and phot.ra lt brickstr1.ra2 and $
+                  phot.dec ge brickstr1.dec1 and phot.dec lt brickstr1.dec2,ninside)
+endelse
+if ninside gt 0 then phot[ginside].brickuniq=1B
 
 ;; Saving final catalog
 photfile = bdir+brick+'.fits'
