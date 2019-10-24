@@ -10,6 +10,7 @@ from argparse import ArgumentParser
 from dlnpyutils import utils as dln
 from delvered import delvered_db as delvedb
 from astropy.table import Table
+import numpy as np
 
 # Main command-line program
 if __name__ == "__main__":
@@ -41,6 +42,8 @@ if __name__ == "__main__":
     # Run the code
     rar = [ra-ralim,ra+ralim]
     decr = [dec-lim,dec+lim]
+    print(rar)
+    print(decr)
     cat = delvedb.getdatadb(dbfile,rar=rar,decr=decr,table='chip')
     ncat = dln.size(cat)
     print(str(ncat)+' matches found')
