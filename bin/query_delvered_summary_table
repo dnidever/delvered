@@ -23,6 +23,7 @@ if __name__ == "__main__":
     ra = float(dln.first_el(args.ra))
     dec = float(dln.first_el(args.dec))
     lim = float(dln.first_el(args.lim))
+    ralim = lim/np.cos(np.deg2rad(dec))
     outfile = dln.first_el(args.outfile)
 
     print('Querying the DELVERED Exposures/Chips table')
@@ -38,7 +39,7 @@ if __name__ == "__main__":
         sys.exit()
 
     # Run the code
-    rar = [ra-lim,ra+lim]
+    rar = [ra-ralim,ra+ralim]
     decr = [dec-lim,dec+lim]
     cat = delvedb.getdatadb(dbfile,rar=rar,decr=decr,table='chip')
     ncat = dln.size(cat)
