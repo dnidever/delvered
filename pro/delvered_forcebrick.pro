@@ -205,7 +205,6 @@ nchstr = n_elements(chstr)
 chstr.file = repstr(chstr.file,'/net/dl1/','/dl1/')   ;; fix /net/dl1 to /dl1
 printlog,logfile,'Found ',strtrim(nchstr,2),' overlapping chips within 0.5 deg of brick center'
 
-
 ;; Do more rigorous overlap checking
 ;;  the brick region with overlap
 HEAD_XYAD,tilestr.head,[0,tilestr.nx-1,tilestr.nx-1,0],[0,0,tilestr.ny-1,tilestr.ny-1],bvra,bvdec,/deg
@@ -226,16 +225,18 @@ printlog,logfile,strtrim(ng,2),' chips overlap this brick'
 chstr = chstr[g]
 nchstr = ng
 
-;; APPLY Quality cuts on the exposures
-;;------------------------------------
-printlog,logfile,'Applying quality cuts'
+;; APPLY cuts on the exposures
+;;-----------------------------
+printlog,logfile,'Applying quality, filter and exptime cuts'
 fwhmthresh = 2.0                ; seeing 2.0" threshold
-gdch = where(chstr.fwhm*chstr.pixscale le fwhmthresh,ngdch)
+filt = strmid(chstr.filter,0,1)
+gdch = where(chstr.fwhm*chstr.pixscale le fwhmthresh and chstr.exptime ge 90. and $
+             (filt eq 'u' or filt eq 'g' or filt eq 'r' or filt eq 'i' or filt eq 'z' or filt eq 'Y'),ngdch)
 if ngdch eq 0 then begin
-  printlog,logfile,'No chips passed the quality cuts'
+  printlog,logfile,'No chips passed the cuts'
   return
 endif
-printlog,logfile,strtrim(ngdch,2),' chips passed the quality cuts'
+printlog,logfile,strtrim(ngdch,2),' chips passed the cuts'
 chstr = chstr[gdch]
 nchstr = ngdch
 chstr.file = strtrim(chstr.file,2)
