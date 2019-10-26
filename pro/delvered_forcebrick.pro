@@ -209,14 +209,20 @@ printlog,logfile,'Found ',strtrim(nchstr,2),' overlapping chips within 0.5 deg o
 ;;  the brick region with overlap
 HEAD_XYAD,tilestr.head,[0,tilestr.nx-1,tilestr.nx-1,0],[0,0,tilestr.ny-1,tilestr.ny-1],bvra,bvdec,/deg
 olap = intarr(nchstr)
+vxarr = fltarr(nchstr,4)
+vyarr = fltarr(nchstr,4)
 for i=0,nchstr-1 do begin
   hd1 = PHOTRED_READFILE(chstr[i].file,/header)
   nx = sxpar(hd1,'naxis1')
   ny = sxpar(hd1,'naxis2')
   head_xyad,hd1,[0,nx-1,nx-1,0],[0,0,ny-1,ny-1],vra,vdec,/degree
   olap[i] = dopolygonsoverlap(bvra,bvdec,vra,vdec)
+  head_adxy,tilestr.head,vra,vdec,vx,vy,/deg
+  vxarr[i,*] = vx
+  vyarr[i,*] = vy
 endfor
-g = where(olap eq 1,ng)
+;; Require at least a 2 pixel overlap in X and Y
+g = where(olap eq 1 and max(vxarr,dim=2) ge 2 and max(vyarr,dim=2) ge 2 and min(vxarr,dim=2) le tilestr.nx-3 and min(vyarr,dim=2) le tilestr.ny-3,ng)
 if ng eq 0 then begin
   printlog,logfile,'No chips overlap this brick'
   return
