@@ -459,6 +459,12 @@ endif else begin
 endelse
 if ninside gt 0 then phot[ginside].brickuniq=1B
 
+;; Get some meta-data
+for i=0,nchstr-1 do begin
+  alffile = chstr[i].base+'.alf'
+  if file_test(allfile) eq 1 then chstr[i].alf_nsources=file_lines(alffile)
+endfor
+
 ;; Saving final catalog
 photfile = bdir+brick+'.fits'
 printlog,logfile,'Writing photometry to '+photfile+'.gz'
@@ -474,7 +480,15 @@ MWRFITS,chstr,metafile,/create
 ;;----------
 ;; Individual fits files
 alsbase = file_basename(alsfiles,'.als')
-FILE_DELETE,alsbase+'.fits',/allow
+;; if fits files have resources files then replace the fits file by a
+;;  dummy file
+for i=0,n_elements(alsbase)-1 do begin
+  info1 = file_info(alsbase[i]+'.fits')
+  if info1.exists and info1.size gt 1 then begin
+    file_delete,alsbase[i]+'.fits'
+    if file_test('.'+alsbase[i]+'.fits') eq 1 then WRITELINE,alsbase[i]+'.fits',''
+  endif
+endfor
 ;; Combined files
 ;;   _comb  lst, lst1, lst2, lst1.chi, grp, nst, lst2.chi, plst.chi, psfini.ap
 ;;   nei, als.inp, a.fits, cmn.log, cmn.coo, cmn.ap, cmn.lst,
