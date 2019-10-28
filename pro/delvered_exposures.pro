@@ -115,6 +115,7 @@ CD,current=origdir
 
 ;; Night loop
 FOR i=0,nnights-1 do begin
+  t0 = systime(1)
   inight = nights[i]
   CD,expdir+inight
   print,'' & print,'================================='
@@ -150,6 +151,8 @@ FOR i=0,nnights-1 do begin
 
   ;; Create the nightly summary file
   DELVERED_NIGHTSUMMARY,inight,delvedir=delvedir,redo=redo
+
+  print,'dt = ',systime(1)-t0,' sec.'
 
   NIGHTBOMB:
 ENDFOR
