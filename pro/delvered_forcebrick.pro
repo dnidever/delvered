@@ -462,7 +462,7 @@ if ninside gt 0 then phot[ginside].brickuniq=1B
 ;; Get some meta-data
 for i=0,nchstr-1 do begin
   alffile = chstr[i].base+'.alf'
-  if file_test(allfile) eq 1 then chstr[i].alf_nsources=file_lines(alffile)
+  if file_test(alffile) eq 1 then chstr[i].alf_nsources=file_lines(alffile)
 endfor
 
 ;; Saving final catalog
