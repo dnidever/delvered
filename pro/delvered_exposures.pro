@@ -161,6 +161,13 @@ ENDFOR
 ;------------
 JOURNAL
 
+;; Send email that we are done
+sinput = strtrim(input,2)
+if n_elements(sinput) gt 1 then sinput='['+strjoin(sinput,',')+']'
+body = 'delvered_exposures '+sinput+' FINISHED at '+systime(0)+' on HOST='+hostname
+cmd = 'echo "'+body+'" |  mail -s "delvered_exposures FINISHED on '+hostname+'" dnidever@noao.edu'
+spawn,cmd,out,errout
+
 if keyword_set(stp) then stop
 
 end
