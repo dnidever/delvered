@@ -63,6 +63,7 @@ For i=0,ndirs-1 do begin
       str[i].setupfile = file_test(idir+'photred.setup')
       str[i].exposurefile = file_test(idir+inight+'_exposures.fits')
       str[i].nightsumfile = file_test(idir+inight+'_summary.fits')
+      if str[i].exposurefile eq 1 then str[i].nexp=sxpar(headfits(idir+inight+'_exposures.fits',exten=1),'naxis2')
       if str[i].logsdir eq 1 then begin
         for j=0,nstages-1 do begin
           sind = where(tags eq stages[j]+'_SUCCESS',nsind)
@@ -72,7 +73,7 @@ For i=0,ndirs-1 do begin
           str[i].success[j] = str[i].(sind[0])
           str[i].failure[j] = str[i].(find[0])
         endfor
-        str[i].nexp = max(str[i].success) / 61
+        if str[i].nexp lt 0 then str[i].nexp = max(str[i].success) / 61
       endif
     endif
   endif
@@ -98,6 +99,8 @@ For i=0,ndirs-1 do begin
 Endfor
 done = where(str.done eq 1,ndone)
 print,strtrim(ndone,2),'/',strtrim(ndirs,2),' finished'
+if ndone gt 0 then nexpdone = long(total(str[done].nexp)) else nexpdone=0
+print,strtrim(nexpdone,2),'/',strtrim(long(total(str.nexp>0)),2),' exposures finished'
 
 ;; Save summary file
 jd = systime(/julian)
