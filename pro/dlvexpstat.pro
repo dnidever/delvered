@@ -51,30 +51,30 @@ For i=0,ndirs-1 do begin
   dir_info = file_info(expdir+inight)
   str[i].dir_times = [dir_info.atime,dir_info.ctime,dir_info.mtime]
   str[i].dir_size = dir_info.size
+  str[i].logsdir = file_test(idir+'logs/',/directory)
+  ;; Check logs directory now
+  logs_info = file_info(idir+'logs/')
+  str[i].logsdir_times = [logs_info.atime,logs_info.ctime,logs_info.mtime]
+  str[i].logsdir_size = logs_info.size
   ;; Something changed 
-  if max(abs([str[i].dir_times,str[i].dir_size]-[last[i].dir_times,last[i].dir_size])) gt 0 or keyword_set(redo) then begin
-    str[i].logsdir = file_test(idir+'logs/',/directory)
-    ;; Check logs directory now
-    logs_info = file_info(expdir+inight+'logs/')
-    str[i].logsdir_times = [logs_info.atime,logs_info.ctime,logs_info.mtime]
-    str[i].logsdir_size = logs_info.size
-    if max(abs([str[i].logsdir_times,str[i].logsdir_size]-[last[i].logsdir_times,last[i].logsdir_size])) gt 0 or keyword_set(redo) then begin
-      str[i].fieldsfile = file_test(idir+'fields')
-      str[i].setupfile = file_test(idir+'photred.setup')
-      str[i].exposurefile = file_test(idir+inight+'_exposures.fits')
-      str[i].nightsumfile = file_test(idir+inight+'_summary.fits')
-      if str[i].exposurefile eq 1 then str[i].nexp=sxpar(headfits(idir+inight+'_exposures.fits',exten=1),'naxis2')
-      if str[i].logsdir eq 1 then begin
-        for j=0,nstages-1 do begin
-          sind = where(tags eq stages[j]+'_SUCCESS',nsind)
-          if file_test(idir+'/logs/'+stages[j]+'.success') then str[i].(sind[0])=file_lines(idir+'logs/'+stages[j]+'.success')
-          find = where(tags eq stages[j]+'_FAILURE',nfind)
-          if file_test(idir+'/logs/'+stages[j]+'.failure') then str[i].(find[0])=file_lines(idir+'logs/'+stages[j]+'.failure')
-          str[i].success[j] = str[i].(sind[0])
-          str[i].failure[j] = str[i].(find[0])
-        endfor
-        if str[i].nexp lt 0 then str[i].nexp = max(str[i].success) / 61
-      endif
+  if max(abs([str[i].dir_times,str[i].dir_size]-[last[i].dir_times,last[i].dir_size])) gt 0 or keyword_set(redo) or $
+     max(abs([str[i].logsdir_times,str[i].logsdir_size]-[last[i].logsdir_times,last[i].logsdir_size])) gt 0 then begin
+
+    str[i].fieldsfile = file_test(idir+'fields')
+    str[i].setupfile = file_test(idir+'photred.setup')
+    str[i].exposurefile = file_test(idir+inight+'_exposures.fits')
+    str[i].nightsumfile = file_test(idir+inight+'_summary.fits')
+    if str[i].exposurefile eq 1 then str[i].nexp=sxpar(headfits(idir+inight+'_exposures.fits',exten=1),'naxis2')
+    if str[i].logsdir eq 1 then begin
+      for j=0,nstages-1 do begin
+        sind = where(tags eq stages[j]+'_SUCCESS',nsind)
+        if file_test(idir+'/logs/'+stages[j]+'.success') then str[i].(sind[0])=file_lines(idir+'logs/'+stages[j]+'.success')
+        find = where(tags eq stages[j]+'_FAILURE',nfind)
+        if file_test(idir+'/logs/'+stages[j]+'.failure') then str[i].(find[0])=file_lines(idir+'logs/'+stages[j]+'.failure')
+        str[i].success[j] = str[i].(sind[0])
+        str[i].failure[j] = str[i].(find[0])
+      endfor
+      if str[i].nexp lt 0 then str[i].nexp = max(str[i].success) / 61
     endif
   endif
 
@@ -108,5 +108,7 @@ caldat,jd,month,day,year,hour,minute,second
 time = string(year,month,day,hour,minute,second,format='(I4,I02,I02,I02,I02,I02)')
 outfile = expdir+'/summary/delve_expsummary_'+time+'.fits'
 MWRFITS,str,outfile,/create
+
+;stop
 
 end
