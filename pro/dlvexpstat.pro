@@ -1,4 +1,4 @@
-pro dlvexpstat,delvedir=delvedir,redo=redo
+pro dlvexpstat,delvedir=delvedir,redo=redo,all=all
 
 ;; DELVERED exposure status
 
@@ -58,7 +58,7 @@ For i=0,ndirs-1 do begin
   str[i].logsdir_size = logs_info.size
   ;; Something changed 
   if max(abs([str[i].dir_times,str[i].dir_size]-[last[i].dir_times,last[i].dir_size])) gt 0 or keyword_set(redo) or $
-     max(abs([str[i].logsdir_times,str[i].logsdir_size]-[last[i].logsdir_times,last[i].logsdir_size])) gt 0 then begin
+     max(abs([str[i].logsdir_times,str[i].logsdir_size]-[last[i].logsdir_times,last[i].logsdir_size])) gt 0 or keyword_set(all) then begin
 
     str[i].fieldsfile = file_test(idir+'fields')
     str[i].setupfile = file_test(idir+'photred.setup')
@@ -78,7 +78,7 @@ For i=0,ndirs-1 do begin
     endif
   endif
 
-  if str[i].logsdir eq 1 and max(str[i].success) gt 0 then begin
+  if (str[i].logsdir eq 1 and max(str[i].success) gt 0) or keyword_set(all) then begin
     if ngivesum mod 40 eq 0 then print,'NIGHT      NEXP     WCS     DAOPHOT    MATCH     APCOR   ASTROM   ZEROPT  CALIB   COMBINE  DERED   SAVE  NIGHTSUM    DONE'
 
     comment = ''
@@ -107,6 +107,7 @@ jd = systime(/julian)
 caldat,jd,month,day,year,hour,minute,second
 time = string(year,month,day,hour,minute,second,format='(I4,I02,I02,I02,I02,I02)')
 outfile = expdir+'/summary/delve_expsummary_'+time+'.fits'
+print,'Writing summary file to ',outfile
 MWRFITS,str,outfile,/create
 
 ;stop
