@@ -216,54 +216,6 @@ uidirs = uidirs[sort(uidirs)]
 dirs = alsdirlist[uidirs]
 ndirs = n_elements(dirs)
 
-;;----------------------
-;; SETTING UP THE TILES
-;;======================
-if keyword_set(mchusetiles) then begin
-
-  printlog,logfile,''
-  printlog,logfile,'Making Tiling schemes'
-  printlog,logfile,'---------------------'
-  printlog,logfile,''
-   
-  ;; Loop through the directories
-  For i=0,ndirs-1 do begin
-     
-    ; Getting the files in this directory
-    gdals = where(alsdirlist eq dirs[i],ngdals)
-    alsfiles = alsbaselist[gdals]
-     
-    ;; Loop over the fields in this directory
-    dum = strsplitter(alsfiles,'-',/extract)
-    allfields = reform(dum[0,*])
-    uifields = uniq(allfields,sort(allfields))
-    ufields = allfields[uifields]
-    nfields = n_elements(ufields)
-    For j=0,nfields-1 do begin
-       gdfieldals = where(allfields eq ufields[j],ngdfieldals)
-       fieldalsfiles = alsfiles[gdfieldals]
-       ;; All of the files for this field will be in THIS directory
-       ;; whether SEPFIELDDIR is set or not.  They get put in their
-       ;; appropriate directory in RENAME and it gets passed on via
-       ;; the input/output files from there.
-       
-       ;; Make tiling scheme
-       tilingfile = dirs[i]+'/'+ufields[j]+'.tiling'
-       if file_test(tilingfile) eq 0 or keyword_set(redo) then begin
-
-         ;; Run photred_maketiles
-         PHOTRED_MAKETILES,dirs[i]+'/'+ufields[j],thisimager,logfile=logfile
-         
-       ;; Tiling file already exists, using it
-       endif else begin
-         printlog,logfile,'Tiling file >>'+tilingfile+'<< already exists and /redo NOT set.  Using existing file.'
-       endelse
-       
-    Endfor  ; fields loop
-  Endfor  ; directory loop
-endif  ; using tiles
-
-
 
 ;##################################################
 ;#  PROCESSING THE FILES
@@ -280,6 +232,8 @@ undefine,outlist,successlist,failurelist
 ;#############################################
 ; Loop through all of the unique directories
 ;#############################################
+;; Start new field structure for DAOMATCH jobs
+undefine,mstr
 FOR i=0,ndirs-1 do begin
 
   printlog,logfile,''
@@ -352,9 +306,6 @@ FOR i=0,ndirs-1 do begin
       printlog,logfile,'NO FILES WITH ASSOCIATED FITS FILES'
       goto,BOMB
     endelse    
-
-    ;; Start new field structure for DAOMATCH jobs
-    undefine,fstr
 
     
     ;;##########################
@@ -613,42 +564,10 @@ FOR i=0,ndirs-1 do begin
             if keyword_set(maxshift) then cmd1+=',maxshift='+strtrim(maxshift,2)
             if keyword_set(fake) then cmd1+=',/fake'
 
-            fstr1 = {field:thisfield,dir:dirs[i],base:'',nfiles:long(n_elements(inlist)),cmd:cmd1,inlist:strjoin(inlist,','),mchbase:ampfiles[gdref[0]]}
-            PUSH,fstr,fstr1
+            mstr1 = {field:thisfield,dir:dirs[i],refbase:refimbase,chip:long(amps[k]),nfiles:long(n_elements(inlist)),cmd:cmd1,inlist:strjoin(inlist,','),mchbase:ampfiles[gdref[0]]}
+            PUSH,mstr,mstr1
 
-            ;; Were we successful?
-            ;mchfile = ampfiles[gdref[0]]+'.mch'
-            ;mchtest = FILE_TEST(mchfile)
-            ;if mchtest eq 1 then mchlines=FILE_LINES(mchfile) else mchlines=0
-            ;rawfile = ampfiles[gdref[0]]+'.raw'
-            ;rawtest = FILE_TEST(rawfile)
-            ;if rawtest eq 1 then rawlines=FILE_LINES(rawfile) else rawlines=0
-            ;
-            ;; Successful
-            ;if ((mchlines eq nampind) and (rawlines gt 3) and (n_elements(daoerror) eq 0)) then begin
-            ;  PUSH,successlist,dirs[i]+'/'+inlist
-            ;  PUSH,outlist,dirs[i]+'/'+mchfile
-            ;
-            ;  ; Getting total number of stars
-            ;  nrecords = FILE_LINES(rawfile)-3
-            ;
-            ;  ; Printing the results
-            ;  printlog,logfile,'NSTARS = ',strtrim(nrecords,2)
-            ;  printlog,logfile,'MCH file = ',mchfile
-            ;  printlog,logfile,'RAW file = ',rawfile
-            ;
-            ;; Failure
-            ;endif else begin
-            ;  PUSH,failurelist,dirs[i]+'/'+inlist  ; add to failure list
-            ;  ; failure information
-            ;  if n_elements(error) gt 0 then printlog,logfile,'DAOMATCH ERROR - '+daoerror
-            ;  if mchtest eq 0 then printlog,logfile,mchfile+' NOT FOUND'
-            ;  if mchtest eq 1 and mchlines ne nampind then printlog,logfile,mchfile+' DOES NOT HAVE THE RIGHT NUMBER OF LINES'
-            ;  if rawtest eq 0 then printlog,logfile,rawfile+' NOT FOUND'
-            ;  if rawlines le 3 then printlog,logfile,'NO SOURCES IN '+rawfile
-            ;endelse
-
-          ; No reference image, or only 1 image
+          ;; No reference image, or only 1 image
           endif else begin
             PUSH,failurelist,dirs[i]+'/'+ampfiles+'.als'
             ;if nampind eq 1 then printlog,logfile,'ONLY 1 FILE.  NEED AT LEAST 2'
@@ -656,15 +575,6 @@ FOR i=0,ndirs-1 do begin
           endelse
 
           BOMB1:
-
-          ;#####################
-          ; UPDATE the Lists
-          ;#####################
-          CD,curdir
-          PHOTRED_UPDATELISTS,lists,outlist=outlist,successlist=successlist,$
-                              failurelist=failurelist,setupdir=curdir,/silent
-          CD,dirs[i]
-
         Endfor ; amp loop
 
 
@@ -828,81 +738,58 @@ FOR i=0,ndirs-1 do begin
         if keyword_set(logfile) then cmd1+=',logfile="'+logfile+'"'
         if keyword_set(maxshift) then cmd1+=',maxshift='+strtrim(maxshift,2)
         if keyword_set(fake) then cmd1+=',/fake'
-        PUSH,cmd,cmd1
-        PUSH,mchbase,base[gdref[0]]
-       
 
+        mstr1 = {field:thisfield,dir:dirs[i],refbase:refimbase,chip:1L,nfiles:long(n_elements(inlist)),cmd:cmd1,inlist:strjoin(inlist,','),mchbase:base[gdref[0]]}
+        PUSH,mstr,mstr1
       Endelse  ; single-amp imagers
-
     BOMB:
-
-
-    ;; Run PBS_DAEMON
-
-stop
-    PBS_DAEMON,cmd,cmddirs,jobs=jobs,/idle,/hyperthread,prefix=,'match',nmulti=nmulti,wait=1,
-
-
-    ;; Were we successful?
-    For j=0,n_elements(mchbase)-1 do begin
-      mchfiles = mchbase[j]+'.mch'
-      mchtest = FILE_TEST(mchfile)
-      if mchtest eq 1 then mchlines=FILE_LINES(mchfile) else mchlines=0
-      rawfile = mchbase[j]+'.raw'
-      rawtest = FILE_TEST(rawfile)
-      if rawtest eq 1 then rawlines=FILE_LINES(rawfile) else rawlines=0
-
-      ;; Successful
-      if ((mchlines eq nbase) and (rawlines gt 3) and (n_elements(daoerror) eq 0)) then begin
-        PUSH,successlist,dirs[i]+'/'+inlist
-        PUSH,outlist,dirs[i]+'/'+mchfile
-        
-        ;; Getting total number of stars
-        nrecords = FILE_LINES(rawfile)-3
-        
-        ;; Printing the results
-        printlog,logfile,'NSTARS = ',strtrim(nrecords,2)
-        printlog,logfile,'MCH file = ',mchfile
-        printlog,logfile,'RAW file = ',rawfile
-        
-      ;; Failure
-      endif else begin
-        PUSH,failurelist,dirs[i]+'/'+inlist
-        ;; failure information
-        if n_elements(error) gt 0 then printlog,logfile,'DAOMATCH ERROR - '+daoerror
-        if mchtest eq 0 then printlog,logfile,mchfile+' NOT FOUND'
-        if rawtest eq 0 then printlog,logfile,rawfile+' NOT FOUND'
-        if rawlines le 3 then printlog,logfile,'NO SOURCES IN '+rawfile
-      endelse
-
-      printlog,logfile,''
-    Endfor
-
-
-
-    ;#####################
-    ; UPDATE the Lists
-    ;#####################
-    CD,curdir
-    PHOTRED_UPDATELISTS,lists,outlist=outlist,successlist=successlist,$
-                        failurelist=failurelist,setupdir=curdir,/silent
     CD,dirs[i]
-
-
   ENDFOR  ; field loop
-
-
   ; Go back to original directory
   CD,curdir
-
-  ;#####################
-  ; UPDATE the Lists
-  ;#####################
-  PHOTRED_UPDATELISTS,lists,outlist=outlist,successlist=successlist,$
-                      failurelist=failurelist,setupdir=curdir,/silent
-
-
 ENDFOR  ; directoryloop
+
+;; Run PBS_DAEMON
+print,strtrim(n_elements(mstr),2)+' matches to run'
+
+cmd = "cd,'"+mstr.dir+"' & "+mstr.cmd  ; go to the directory
+; Submit the jobs to the daemon
+PBS_DAEMON,cmd,mstr.dir,jobs=jobs,nmulti=nmulti,prefix='match',hyperthread=hyperthread,/idle,waittime=1,scriptsdir=scriptsdir
+
+
+;; Were we successful?
+For i=0,n_elements(mstr)-1 do begin
+  mchfiles = mstr[i].mchbase+'.mch'
+  mchtest = FILE_TEST(mchfile)
+  if mchtest eq 1 then mchlines=FILE_LINES(mchfile) else mchlines=0
+  rawfile = mstr[i].mchbase+'.raw'
+  rawtest = FILE_TEST(rawfile)
+  if rawtest eq 1 then rawlines=FILE_LINES(rawfile) else rawlines=0
+
+  ;; Successful
+  if ((mchlines eq mstr.nfiles) and (rawlines gt 3) then begin
+    PUSH,successlist,mstr[i].dir+'/'+strsplit(mstr[i].inlist,',',/extract)
+    PUSH,outlist,mstr[i].dir+'/'+mchfile
+        
+    ;; Getting total number of stars
+    nrecords = FILE_LINES(rawfile)-3
+        
+    ;; Printing the results
+    printlog,logfile,'NSTARS = ',strtrim(nrecords,2)
+    printlog,logfile,'MCH file = ',mchfile
+    printlog,logfile,'RAW file = ',rawfile
+        
+  ;; Failure
+  endif else begin
+    PUSH,failurelist,mstr[i].dir+'/'+strsplit(mstr[i].inlist,',',/extract)
+    ;; failure information
+    if mchtest eq 0 then printlog,logfile,mchfile+' NOT FOUND'
+    if rawtest eq 0 then printlog,logfile,rawfile+' NOT FOUND'
+    if rawlines le 3 then printlog,logfile,'NO SOURCES IN '+rawfile
+  endelse
+
+  printlog,logfile,''
+Endfor
 
 
 
