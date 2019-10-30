@@ -92,6 +92,11 @@ endif
 ; REDO
 doredo = READPAR(setup,'REDO')
 if keyword_set(redo) or (doredo ne '-1' and doredo ne '0') then redo=1
+; Hyperthread?
+hyperthread = READPAR(setup,'hyperthread')
+if hyperthread ne '0' and hyperthread ne '' and hyperthread ne '-1' then hyperthread=1
+if strtrim(hyperthread,2) eq '0' then hyperthread=0
+if n_elements(hyperthread) eq 0 then hyperthread=0
 ; TELESCOPE
 telescope = READPAR(setup,'TELESCOPE')
 telescope = strupcase(strtrim(telescope,2))
@@ -759,17 +764,17 @@ PBS_DAEMON,cmd,mstr.dir,jobs=jobs,nmulti=nmulti,prefix='match',hyperthread=hyper
 
 ;; Were we successful?
 For i=0,n_elements(mstr)-1 do begin
-  mchfiles = mstr[i].mchbase+'.mch'
+  mchfile = mstr[i].dir+'/'+mstr[i].mchbase+'.mch'
   mchtest = FILE_TEST(mchfile)
   if mchtest eq 1 then mchlines=FILE_LINES(mchfile) else mchlines=0
-  rawfile = mstr[i].mchbase+'.raw'
+  rawfile = mstr[i].dir+'/'+mstr[i].mchbase+'.raw'
   rawtest = FILE_TEST(rawfile)
   if rawtest eq 1 then rawlines=FILE_LINES(rawfile) else rawlines=0
 
   ;; Successful
-  if ((mchlines eq mstr.nfiles) and (rawlines gt 3) then begin
+  if ((mchlines eq mstr[i].nfiles) and (rawlines gt 3)) then begin
     PUSH,successlist,mstr[i].dir+'/'+strsplit(mstr[i].inlist,',',/extract)
-    PUSH,outlist,mstr[i].dir+'/'+mchfile
+    PUSH,outlist,mchfile
         
     ;; Getting total number of stars
     nrecords = FILE_LINES(rawfile)-3
