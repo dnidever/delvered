@@ -128,6 +128,7 @@ if lists.ninputlines eq 0 then begin
   return
 endif
 fitsfiles = lists.inputlines
+nfitsfiles = n_elements(fitsfiles)
 ;; Get the unique exposures
 allbase = PHOTRED_GETFITSEXT(fitsfiles,/basename)
 ;; Remove the ccdnum suffix
