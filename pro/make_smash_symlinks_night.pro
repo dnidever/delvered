@@ -275,9 +275,11 @@ setup = ['##### REQUIRED #####',$
           MWRFITS,refcat1,refcatfile,/create
           SPAWN,['gzip','-f',refcatfile],/noshell
 
-          ;; Update the lists, relative paths
-          wcslines[count] = chipdir1+'/'+chbase1+'.fits'
-          daophotlines[count] = chipdir1+'/'+chbase1+'.fits'
+          ;; Update the lists, RELATIVE paths
+          wcslines[count] = ifield+'/chip'+string(chipnum1,format='(i02)')+'/'+chbase1+'.fits'
+          daophotlines[count] = ifield+'/chip'+string(chipnum1,format='(i02)')+'/'+chbase1+'.fits'
+          ;wcslines[count] = chipdir1+'/'+chbase1+'.fits'
+          ;daophotlines[count] = chipdir1+'/'+chbase1+'.fits'
           count++
         endif else print,chbase+' NOT FOUND'
       Endfor  ; chip loop
@@ -312,23 +314,23 @@ setup = ['##### REQUIRED #####',$
   FILE_COPY,nightdir+'apcor.lst',delvedir+inight,/over
   FILE_CHMOD,delvedir+inight+'/apcor.lst',/a_write
   READLINE,nightdir+'logs/APCOR.success',apcorlines,count=napcor
-  bd = where(stregex(apcorlines,'.fits.fz',/boolean) eq 0,nbd)
-  if nbd gt 0 then apcorlines[bd]+='.fz'
+  ;bd = where(stregex(apcorlines,'.fits.fz',/boolean) eq 0,nbd)
+  ;if nbd gt 0 then apcorlines[bd]+='.fz'
   for k=0,napcor-1 do apcorlines[k]=strmid(apcorlines[k],strpos(apcorlines[k],inight)+9) ;; make relative
   ;; Get chip subdirectories
   chipdirs = strarr(napcor)
-  for k=0,napcor-1 do chipdirs[k]='chip'+strtrim(PHOTRED_GETCHIPNUM(file_basename(apcorlines[k],'.fits.fz'),{namps:62,separator:'_'}),2)
+  for k=0,napcor-1 do chipdirs[k]='chip'+strtrim(PHOTRED_GETCHIPNUM(file_basename(apcorlines[k],'.fits'),{namps:62,separator:'_'}),2)
   apcorlines0 = apcorlines
-  apcorlines = file_dirname(apcorlines)+'/'+chipdirs+'/'+file_basename(apcorlines)  ;; F7/chip34/F7-00421651_34.fits.fz
+  apcorlines = file_dirname(apcorlines)+'/'+chipdirs+'/'+file_basename(apcorlines)  ;; F7/chip34/F7-00421651_34.fits
 
   ;; Copy over the WCS.success, DAOPHOT.success and
   ;; MATCH.success/outlist files
   if FILE_TEST(delvedir+inight+'/logs',/directory) eq 0 then FILE_MKDIR,delvedir+inight+'/logs'
   ;;WRITELINE,delvedir+inight+'/logs/WCS.success',wcslines
-  WRITELINE,delvedir+inight+'/logs/WCS.inlist',wcslines   ;; we want to redo WCS with GaiaDR2
-  WRITELINE,delvedir+inight+'/logs/DAOPHOT.success',daophotlines
-  WRITELINE,delvedir+inight+'/logs/MATCH.outlist',matchlines
-  WRITELINE,delvedir+inight+'/logs/APCOR.success',apcorlines
+  WRITELINE,delvedir+inight+'/logs/WCS.inlist',wcslines            ;; relative paths, we want to redo WCS with GaiaDR2
+  WRITELINE,delvedir+inight+'/logs/DAOPHOT.success',daophotlines   ;; relative paths
+  WRITELINE,delvedir+inight+'/logs/MATCH.outlist',matchlines       ;; relative paths
+  WRITELINE,delvedir+inight+'/logs/APCOR.success',apcorlines       ;; relative paths
 
   ;; Copy the "fields" file
   FILE_COPY,nightdir+'fields',delvedir+inight,/over,/allow
