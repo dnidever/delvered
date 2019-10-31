@@ -121,7 +121,13 @@ printlog,logfile,''
 ;###################
 
 ;; Get all of the files from DAOPHOT.success
-READLIST,curdir+'/logs/DAOPHOT.success',fitsfiles,/unique,/fully,setupdir=curdir,count=nfitsfiles,logfile=logfile,/silent
+;READLIST,curdir+'/logs/DAOPHOT.success',fitsfiles,/unique,/fully,setupdir=curdir,count=nfitsfiles,logfile=logfile,/silent
+lists = PHOTRED_GETINPUT('ZEROPOINT','DAOPHOT.success',redo=redo,ext=['fits','fits.fz'])
+if lists.ninputlines eq 0 then begin
+  printlog,logfile,'NO FILES TO PROCESS'
+  return
+endif
+fitsfiles = lists.inputlines
 ;; Get the unique exposures
 allbase = PHOTRED_GETFITSEXT(fitsfiles,/basename)
 ;; Remove the ccdnum suffix
@@ -130,8 +136,7 @@ if thisimager.namps gt 1 then $
   for i=0,nfitsfiles-1 do expbase[i] = first_el(strsplit(expbase[i],thisimager.separator,/extract))
 expindex = CREATE_INDEX(expbase)
 nexp = n_elements(expindex.value)
-printlog,logfile,strtrim(nexp,2),' exposures to process'
-
+printlog,logfile,strtrim(nexp,2),' unique exposures to process'
 
 ;; Load the apcor.lst file
 apcor = IMPORTASCII('apcor.lst',fieldnames=['name','value'],/noprint)
@@ -150,11 +155,12 @@ printlog,logfile,systime(0)
 
 ;; Exposure loop
 expstr = replicate({name:'',field:'',filter:'',exptime:0.0,ncat:0L,nref:0L,num:0L,zpterm:99.99,zptermerr:9.99,translines:strarr(3)},nexp)
+undefine,outlist,successlist,failurelist
 FOR i=0,nexp-1 do begin
-;FOR i=54,nexp-1 do begin
   ind = expindex.index[expindex.lo[i]:expindex.hi[i]]
   nind = n_elements(ind)
   expname = expindex.value[i]
+  expfiles = fitsfiles[ind]
   field = first_el(strsplit(file_basename(fitsfiles[ind[0]]),'-',/extract))  ; F1
   hd = headfits(fitsfiles[ind[0]])
   exptime = PHOTRED_GETEXPTIME(fitsfiles[ind[0]])
@@ -233,6 +239,7 @@ FOR i=0,nexp-1 do begin
   reffile = 'refcat/'+field+'_refcat.fits.gz'
   if file_test(reffile) eq 0 then begin
     print,reffile,' REFERENCE FILE NOT FOUND'
+    push,failurelist,expfiles
     goto,EXPBOMB
   endif
   ref = MRDFITS(reffile,1,/silent)  
@@ -246,6 +253,7 @@ FOR i=0,nexp-1 do begin
   printlog,logfile,strtrim(nmatch,2),' matches to reference catalog'
   if nmatch eq 0 then begin
     printlog,logfile,'No matches to reference catalog'
+    push,failurelist,expfiles
     goto,EXPBOMB
   endif
   ; Matched catalogs
@@ -257,6 +265,7 @@ FOR i=0,nexp-1 do begin
   mmags = DELVERED_GETMODELMAG(ref1,instfilt,cendec,modeleqnfile)
   if n_elements(mmags) eq 1 and mmags[0] lt -1000 then begin
     printlog,logfile,'No good model mags'
+    push,failurelist,expfiles
     goto,EXPBOMB
   endif
   ;; Get good stars
@@ -267,6 +276,7 @@ FOR i=0,nexp-1 do begin
                   mmags[*,0] lt 50 and mmags[*,1] lt 5,ngdcat)
   if ngdcat eq 0 then begin
     printlog,logfile,'No stars that pass all of the quality/error cuts'
+    push,failurelist,expfiles
     goto,EXPBOMB
   endif
   ref2 = ref1[gdcat]
@@ -305,14 +315,20 @@ FOR i=0,nexp-1 do begin
   ;  F5-00517150_43  G  G-R  -0.4089    0.1713   -0.1193   0.0000   0.0000
   ;                           0.0040   -0.0000    0.0001   0.0000   0.0000
 
+  push,outlist,expstr[i].name
+  push,successlist,expfiles
+
   EXPBOMB:
 ENDFOR
 
 ;; Check for any exposures that failed
 bdexp = where(expstr.num le 0,nbdexp)
-printlog,logfile,'Found '+strtrim(nbdexp,2)+' exposures with no zero-point'
+if nbdexp gt 0 then printlog,logfile,'Found '+strtrim(nbdexp,2)+' exposures with no zero-point'
 for i=0,nbdexp-1 do begin
   printlog,logfile,strtrim(i+1,2)+' '+expstr[bdexp[i]].name
+  ind = expindex.index[expindex.lo[bdexp[i]]:expindex.hi[bdexp[i]]]
+  nind = n_elements(ind)
+  expfiles = fitsfiles[ind]
   ;; See if there any other exposures for this filter
   gdexp = where(expstr.num gt 1 and expstr.filter eq expstr[bdexp[i]].filter,ngdexp)
   ;; Getting mean zero-point for this filter
@@ -326,6 +342,8 @@ for i=0,nbdexp-1 do begin
     expstr[bdexp[i]].num = 1
     expstr[bdexp[i]].translines = [expname+'  '+filter+'  '+filter+'-'+filter+'  '+string(-mnzpterm,format='(f7.4)')+'    0.0000    0.0000   0.0000   0.0000',$
                           '                     '+string(mnzptermerr,format='(f7.4)')+'    0.0000    0.0000   0.0000   0.0000','']
+    push,outlist,expstr[bdexp[i]].name
+    push,successlist,expfiles
   endif else begin
     printlog,logfile,'No good zero-points for filter='+expstr[bdexp[i]].filter
   endelse
@@ -346,14 +364,17 @@ endelse
 ;##########################################
 ;#  UPDATING LIST FILES
 ;##########################################
-undefine,outlist,successlist,failurelist
-if ngdexp gt 0 then successlist = expstr[gdexp].name
-if bdexp gt 0 then failurelist = expstr[bdexp].name
-lists = {thisprog:'ZEROPOINT',precursor:'DAOPHOT',ninputlines:nexp,inputlines:expstr.name,$
-         noutputlines:0,nsuccesslines:0,nfailurelines:0}
+;undefine,outlist,successlist,failurelist
+;if ngdexp gt 0 then successlist = expstr[gdexp].name
+;if bdexp gt 0 then failurelist = expstr[bdexp].name
+;lists = {thisprog:'ZEROPOINT',precursor:'DAOPHOT',ninputlines:nexp,inputlines:expstr.name,$
+;         noutputlines:0,nsuccesslines:0,nfailurelines:0}
+
 PHOTRED_UPDATELISTS,lists,outlist=outlist,successlist=successlist,$
                     failurelist=failurelist,setupdir=curdir
 
-;stop
+printlog,logfile,'DELVERED_ZEROPOINT Finished  ',systime(0)
+
+if keyword_set(stp) then stop
 
 end
