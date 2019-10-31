@@ -169,10 +169,11 @@ endif else im=float(inpim)
 ; Get the FWHM
 ;IMFWHM,filename,fwhm,im=im
 if n_elements(inpfwhm) eq 0 then begin
-  IMFWHM,filename,fwhm,ellip,silent=silent,exten=exten,im=im,head=head
+  undefine,gstr
+  IMFWHM,filename,fwhm,ellip,silent=silent,exten=exten,im=im,head=head,gstr=gstr
   ;; Sometimes it doesn't find any good sources b/c the
   ;; saturation level in the header is too low
-  if fwhm gt 50 then IMFWHM,filename,fwhm,ellip,silent=silent,exten=exten,im=im
+  if fwhm gt 20 or n_elements(gstr) lt 10 then IMFWHM,filename,fwhm,ellip,silent=silent,exten=exten,im=im
 endif else begin
   fwhm = inpfwhm
   ellip = 0.0
