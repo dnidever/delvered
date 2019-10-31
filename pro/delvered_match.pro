@@ -805,7 +805,7 @@ PHOTRED_UPDATELISTS,lists,outlist=outlist,successlist=successlist,$
                     failurelist=failurelist,setupdir=curdir
 
 
-printlog,logfile,'PHOTRED_MATCH Finished  ',systime(0)
+printlog,logfile,'DELVERED_MATCH Finished  ',systime(0)
 
 if keyword_set(stp) then stop
 
