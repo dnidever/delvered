@@ -139,6 +139,27 @@ expindex = CREATE_INDEX(expbase)
 nexp = n_elements(expindex.value)
 printlog,logfile,strtrim(nexp,2),' unique exposures to process'
 
+;; Loop for other chips for these exposures that were previously
+;; processed successfully
+if lists.nsuccesslines gt 0 then begin
+  printlog,logfile,'Looking for previous success for these exposures'
+  sallbase = PHOTRED_GETFITSEXT(lists.successlines,/basename)
+  sexpbase = sallbase
+  if thisimager.namps gt 1 then $
+    for i=0,n_elements(sallbase)-1 do sexpbase[i] = first_el(strsplit(sexpbase[i],thisimager.separator,/extract))
+  ;; Loop over the exposures
+  for i=0,nexp-1 do begin
+    MATCH,expindex.value[i],sexpbase,ind1,ind2,/sort,count=nmatch
+    if nmatch gt 0 then begin
+      push,allbase,sallbase[ind2]
+      push,expbase,sexpbase[ind2]
+      push,fitsfiles,lists.successlines[ind2]
+    endif
+  endfor
+  ;; Some added
+  if n_elements(expbase) gt n_elements(expindex.index) then expindex = CREATE_INDEX(expbase)
+endif
+
 ;; Load the apcor.lst file
 apcor = IMPORTASCII('apcor.lst',fieldnames=['name','value'],/noprint)
 add_tag,apcor,'file','',apcor
@@ -365,12 +386,6 @@ endelse
 ;##########################################
 ;#  UPDATING LIST FILES
 ;##########################################
-;undefine,outlist,successlist,failurelist
-;if ngdexp gt 0 then successlist = expstr[gdexp].name
-;if bdexp gt 0 then failurelist = expstr[bdexp].name
-;lists = {thisprog:'ZEROPOINT',precursor:'DAOPHOT',ninputlines:nexp,inputlines:expstr.name,$
-;         noutputlines:0,nsuccesslines:0,nfailurelines:0}
-
 PHOTRED_UPDATELISTS,lists,outlist=outlist,successlist=successlist,$
                     failurelist=failurelist,setupdir=curdir
 
