@@ -2062,24 +2062,33 @@ if (npmra gt 0 and npmde gt 0) then begin
 endif
 
 ; Keeping only REFERENCE stars within the magnitude limit
-if tag_exist(refcat1b,'JMAG') then begin
-  if n_elements(refmaglim) gt 0 then maglim=refmaglim else maglim=16.5
-  gd = where(refcat1b.jmag lt maglim,ngd)
-  print,'Keeping only REFERENCE stars with JMAG < ',strtrim(maglim,2),'  ',strtrim(ngd,2),' sources'
-  refcat1b = refcat1b[gd]
+if refname eq 'GAIADR2' then begin
+  if tag_exist(refcat1b,'GMAG') then begin
+    if n_elements(refmaglim) gt 0 then maglim=refmaglim else maglim=20.0
+    gd = where(refcat1b.gmag lt maglim,ngd)
+    print,'Keeping only REFERENCE stars with GMAG < ',strtrim(maglim,2),'  ',strtrim(ngd,2),' sources'
+    refcat1b = refcat1b[gd]
+  endif
 endif else begin
-  gd = lindgen(n_elements(refcat1b))
-  if n_elements(refmaglim) gt 0 then maglim=refmaglim else maglim = 21.0
-  if tag_exist(refcat1b,'RMAG') then begin
-    gd = where(refcat1b.rmag lt maglim,ngd)
-    print,'Keeping only REFERENCE stars with RMAG < ',strtrim(maglim,2),'  ',strtrim(ngd,2),' sources'
+  if tag_exist(refcat1b,'JMAG') then begin
+    if n_elements(refmaglim) gt 0 then maglim=refmaglim else maglim=16.5
+    gd = where(refcat1b.jmag lt maglim,ngd)
+    print,'Keeping only REFERENCE stars with JMAG < ',strtrim(maglim,2),'  ',strtrim(ngd,2),' sources'
+    refcat1b = refcat1b[gd]
   endif else begin
-    if tag_exist(refcat1b,'R1MAG') then begin
-      gd = where(refcat1b.r1mag lt maglim,ngd)
-      print,'Keeping only REFERENCE stars with RMAG1 < ',strtrim(maglim,2),'  ',strtrim(ngd,2),' sources'
-    endif
+    gd = lindgen(n_elements(refcat1b))
+    if n_elements(refmaglim) gt 0 then maglim=refmaglim else maglim = 21.0
+    if tag_exist(refcat1b,'RMAG') then begin
+      gd = where(refcat1b.rmag lt maglim,ngd)
+      print,'Keeping only REFERENCE stars with RMAG < ',strtrim(maglim,2),'  ',strtrim(ngd,2),' sources'
+    endif else begin
+      if tag_exist(refcat1b,'R1MAG') then begin
+        gd = where(refcat1b.r1mag lt maglim,ngd)
+        print,'Keeping only REFERENCE stars with RMAG1 < ',strtrim(maglim,2),'  ',strtrim(ngd,2),' sources'
+      endif
+    endelse
+    refcat1b = refcat1b[gd]
   endelse
-  refcat1b = refcat1b[gd]
 endelse
 
 ; Keeping only DETECTED sources within the magnitude limit
