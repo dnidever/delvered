@@ -157,7 +157,15 @@ if lists.nsuccesslines gt 0 then begin
     endif
   endfor
   ;; Some added
-  if n_elements(expbase) gt n_elements(expindex.index) then expindex = CREATE_INDEX(expbase)
+  if n_elements(expbase) gt n_elements(expindex.index) then begin
+    ;; Make sure they are unique
+    ui = uniq(allbase,sort(allbase))
+    allbase = allbase[ui]
+    expbase = expbase[ui]
+    fitsfiles = fitsfiles[ui]
+    expindex = CREATE_INDEX(expbase)
+    nexp = n_elements(expindex.value)
+  endif
 endif
 
 ;; Load the apcor.lst file
@@ -184,7 +192,7 @@ FOR i=0,nexp-1 do begin
   expname = expindex.value[i]
   expfiles = fitsfiles[ind]
   field = first_el(strsplit(file_basename(fitsfiles[ind[0]]),'-',/extract))  ; F1
-  hd = headfits(fitsfiles[ind[0]])
+  hd = PHOTRED_READFILE(fitsfiles[ind[0]],/header)
   exptime = PHOTRED_GETEXPTIME(fitsfiles[ind[0]])
   filter = PHOTRED_GETFILTER(fitsfiles[ind[0]])
   printlog,logfile,strtrim(i+1,2)+' '+expname+' '+filter+' '+stringize(exptime,ndec=1)
@@ -376,6 +384,8 @@ gdexp = where(expstr.num gt 0,ngdexp,comp=bdexp,ncomp=nbdexp)
 if ngdexp gt 0 then begin
   printlog,logfile,'Writing transformation equations to >>delve.trans<<'
   undefine,tlines
+  ;; Check if it already exists
+  if file_test('delve.trans') eq 1 and not keyword_set(redo) then READLINE,'delve.trans',tlines
   for i=0,ngdexp-1 do push,tlines,expstr[gdexp[i]].translines
   WRITELINE,'delve.trans',tlines
 endif else begin
