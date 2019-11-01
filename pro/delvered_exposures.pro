@@ -152,7 +152,7 @@ FOR i=0,nnights-1 do begin
   ;; Create the nightly summary file
   DELVERED_NIGHTSUMMARY,inight,delvedir=delvedir,redo=redo
 
-  print,'dt = ',systime(1)-t0,' sec.'
+  print,'dt = ',strtrim(systime(1)-t0,2),' sec.'
 
   NIGHTBOMB:
 ENDFOR
