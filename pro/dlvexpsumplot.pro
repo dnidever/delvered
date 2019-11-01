@@ -56,7 +56,22 @@ nightsumfiles = delvedir+'exposures/'+dirs+'/'+dirs+'_summary.fits'
 test = file_test(nightsumfiles)
 g = where(test eq 1,ng)
 print,'Wrapping up '+strtrim(ng,2)+' summary files'
-for i=0,ng-1 do push,sumstr,mrdfits(nightsumfiles[g[i]],1)
+nights = strarr(ng)
+nexp = lonarr(ng)
+undefine,sumstr
+for i=0,ng-1 do begin
+  print,nightsumfiles[g[i]]
+  inight = file_basename(nightsumfiles[g[i]],'_summary.fits')
+  nights[i] = inight
+  str1 = mrdfits(nightsumfiles[g[i]],1)
+  nstr1 = n_elements(str1)
+  if nstr1 gt 0 and size(str1,/type) eq 8 then begin
+    nexp[i] = nstr1
+    add_tag,str1,'night','',str1
+    str1.night = inight
+    push,sumstr,str1
+  endif
+endfor
 nsumstr = n_elements(sumstr)
 add_tag,sumstr,'mlon',0.0,sumstr
 add_tag,sumstr,'mlat',0.0,sumstr

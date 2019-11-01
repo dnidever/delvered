@@ -18,7 +18,7 @@ schema = {night:'',dir_times:lon64arr(3)-1,dir_size:-1L,logsdir:-1,logsdir_times
           daophot_success:-1L,daophot_failure:0L,match_success:-1L,match_failure:0L,apcor_success:-1L,apcor_failure:0L,$
           astrom_success:-1L,astrom_failure:0L,zeropoint_success:-1L,zeropoint_failure:0L,calib_success:-1L,calib_failure:0L,$
           combine_success:-1L,combine_failure:0L,deredden_success:-1L,deredden_failure:0L,save_success:-1L,save_failure:0L,$
-          success:lonarr(10)-1,failure:lonarr(10),nexp:-1L,done:0B}
+          success:lonarr(10)-1,failure:lonarr(10),nexpall:-1L,nexp:-1L,done:0B}
 tags = tag_names(schema)
 
 ;; Start with last summary
@@ -30,7 +30,13 @@ if nsumfiles gt 0 then begin
   str0 = mrdfits(sumfiles[si[0]],1,/silent)
   nstr0 = n_elements(str0)
   match,last.night,str0.night,ind1,ind2,/sort,count=nmatch
-  if nmatch gt 0 then last[ind1] = str0[ind2]
+  if nmatch gt 0 then begin
+    ;; start with the last one
+    temp = last[ind1]
+    struct_assign,str0[ind2],temp,/nozero
+    last[ind1] = temp
+    ;last[ind1] = str0[ind2]
+  endif
   str = last    ;; start with the last one
 endif else begin
   str = replicate(schema,ndirs)
@@ -64,7 +70,8 @@ For i=0,ndirs-1 do begin
     str[i].setupfile = file_test(idir+'photred.setup')
     str[i].exposurefile = file_test(idir+inight+'_exposures.fits')
     str[i].nightsumfile = file_test(idir+inight+'_summary.fits')
-    if str[i].exposurefile eq 1 then str[i].nexp=sxpar(headfits(idir+inight+'_exposures.fits',exten=1),'naxis2')
+    if str[i].exposurefile eq 1 then str[i].nexpall=sxpar(headfits(idir+inight+'_exposures.fits',exten=1),'naxis2')
+    if str[i].nightsumfile eq 1 then str[i].nexp=sxpar(headfits(idir+inight+'_summary.fits',exten=1),'naxis2')
     if str[i].logsdir eq 1 then begin
       for j=0,nstages-1 do begin
         sind = where(tags eq stages[j]+'_SUCCESS',nsind)
@@ -74,7 +81,7 @@ For i=0,ndirs-1 do begin
         str[i].success[j] = str[i].(sind[0])
         str[i].failure[j] = str[i].(find[0])
       endfor
-      if str[i].nexp lt 0 then str[i].nexp = max(str[i].success) / 61
+      ;if str[i].nexp lt 0 then str[i].nexp = max(str[i].success) / 61
     endif
   endif
 
@@ -86,6 +93,7 @@ For i=0,ndirs-1 do begin
     if min(str[i].failure) eq 0 and max(str[i].failure) eq 0 and min(str[i].success) gt 0 and $
        str[i].fieldsfile eq 1 and str[i].setupfile eq 1 and str[i].exposurefile eq 1 and str[i].nightsumfile eq 1 then str[i].done=1
     if str[i].done eq 1 then comment = '       FINISHED'
+    if total(str[i].failure) gt 0 then comment = '       !!!!'
 
     format = '(A-11,I4, I7,A1,I-4, I5,A1,I-4, I5,A1,I-4, I5,A1,I-4, I4,A1,I-4, I4,A1,I-3, I4,A1,I-4, I4,A1,I-4, I3,A1,I-3, I3,A1,I-3, I5,A-15)'
     print,inight,str[i].nexp,str[i].wcs_success,'/',str[i].wcs_failure,str[i].daophot_success,'/',str[i].daophot_failure,$
