@@ -79,7 +79,7 @@ For i=0,ndirs-1 do begin
   endif
 
   if (str[i].logsdir eq 1 and max(str[i].success) gt 0) or keyword_set(all) then begin
-    if ngivesum mod 40 eq 0 then print,'NIGHT      NEXP     WCS     DAOPHOT    MATCH     APCOR   ASTROM   ZEROPT  CALIB   COMBINE  DERED   SAVE  NIGHTSUM    DONE'
+    if ngivesum mod 40 eq 0 then print,'NIGHT      NEXP     WCS     DAOPHOT    MATCH     APCOR   ASTROM    ZEROPT  CALIB   COMBINE  DERED   SAVE  NIGHTSUM    DONE'
 
     comment = ''
     done = 0
@@ -87,7 +87,7 @@ For i=0,ndirs-1 do begin
        str[i].fieldsfile eq 1 and str[i].setupfile eq 1 and str[i].exposurefile eq 1 and str[i].nightsumfile eq 1 then str[i].done=1
     if str[i].done eq 1 then comment = '       FINISHED'
 
-    format = '(A-11,I4, I7,A1,I-4, I5,A1,I-4, I5,A1,I-4, I5,A1,I-4, I4,A1,I-4, I3,A1,I-3, I4,A1,I-4, I4,A1,I-4, I3,A1,I-3, I3,A1,I-3, I5,A-15)'
+    format = '(A-11,I4, I7,A1,I-4, I5,A1,I-4, I5,A1,I-4, I5,A1,I-4, I4,A1,I-4, I4,A1,I-3, I4,A1,I-4, I4,A1,I-4, I3,A1,I-3, I3,A1,I-3, I5,A-15)'
     print,inight,str[i].nexp,str[i].wcs_success,'/',str[i].wcs_failure,str[i].daophot_success,'/',str[i].daophot_failure,$
           str[i].match_success,'/',str[i].match_failure,str[i].apcor_success,'/',str[i].apcor_failure,$
           str[i].astrom_success,'/',str[i].astrom_failure,str[i].zeropoint_success,'/',str[i].zeropoint_failure,$
