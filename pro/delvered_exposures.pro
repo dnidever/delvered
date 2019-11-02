@@ -146,13 +146,36 @@ FOR i=0,nnights-1 do begin
   if READPAR(setup,'DEREDDEN') ne '0' then PHOTRED_DEREDDEN,redo=redo
   if READPAR(setup,'SAVE') ne '0' then PHOTRED_SAVE,redo=redo,/sumquick
 
-  print,'PHOTRED FINISHED'
-  PHOTRED_SUMMARY
+  print,'DELVERED FINISHED'
+  stages = ['WCS','DAOPHOT','MATCH','APCOR','ASTROM','ZEROPOINT','CALIB','COMBINE','DEREDDEN','SAVE']
+  PHOTRED_SUMMARY,outlines=outlines,stages=stages,/quick
 
   ;; Create the nightly summary file
   DELVERED_NIGHTSUMMARY,inight,delvedir=delvedir,redo=redo
 
-  print,'dt = ',strtrim(systime(1)-t0,2),' sec.'
+  dt = systime(1)-t0
+  print,'dt = ',strtrim(dt,2),' sec.'
+
+  ;; Send email that this night is done
+  undefine,elines
+  push,elines,'From: dnidever@noao.edu'
+  push,elines,'To: dnidever@noao.edu'
+  push,elines,'Subject: delvered_exposures night='+inight+' FINISHED on '+hostname
+  push,elines,'Content-Type: text/html'
+  push,elines,'MIME-Version: 1.0'
+  push,elines,'<pre>'
+  push,elines,'delvered_exposures night='+inight+' FINISHED'
+  push,elines,systime(0)
+  push,elines,'HOST='+hostname
+  push,elines,'dt='+strtrim(dt,2)+' sec.'
+  push,elines,''
+  push,elines,outlines
+  push,elines,'</pre>'
+  tempfile = mktemp('mail',/nodot)
+  writeline,tempfile,elines
+  cmd = 'cat '+tempfile+' | sendmail -t'
+  spawn,cmd,out,errout
+  file_delete,tempfile
 
   NIGHTBOMB:
 ENDFOR
@@ -161,7 +184,7 @@ ENDFOR
 ;------------
 JOURNAL
 
-;; Send email that we are done
+;; Send out final email that we are done
 sinput = strtrim(input,2)
 if n_elements(sinput) gt 1 then sinput='['+strjoin(sinput,',')+']'
 body = 'delvered_exposures '+sinput+' FINISHED at '+systime(0)+' on HOST='+hostname
