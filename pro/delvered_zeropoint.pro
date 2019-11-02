@@ -139,6 +139,35 @@ expindex = CREATE_INDEX(expbase)
 nexp = n_elements(expindex.value)
 printlog,logfile,strtrim(nexp,2),' unique exposures to process'
 
+;; Loop for other chips for these exposures that were previously
+;; processed successfully
+if lists.nsuccesslines gt 0 then begin
+  printlog,logfile,'Looking for previous success for these exposures'
+  sallbase = PHOTRED_GETFITSEXT(lists.successlines,/basename)
+  sexpbase = sallbase
+  if thisimager.namps gt 1 then $
+    for i=0,n_elements(sallbase)-1 do sexpbase[i] = first_el(strsplit(sexpbase[i],thisimager.separator,/extract))
+  ;; Loop over the exposures
+  for i=0,nexp-1 do begin
+    MATCH,expindex.value[i],sexpbase,ind1,ind2,/sort,count=nmatch
+    if nmatch gt 0 then begin
+      push,allbase,sallbase[ind2]
+      push,expbase,sexpbase[ind2]
+      push,fitsfiles,lists.successlines[ind2]
+    endif
+  endfor
+  ;; Some added
+  if n_elements(expbase) gt n_elements(expindex.index) then begin
+    ;; Make sure they are unique
+    ui = uniq(allbase,sort(allbase))
+    allbase = allbase[ui]
+    expbase = expbase[ui]
+    fitsfiles = fitsfiles[ui]
+    expindex = CREATE_INDEX(expbase)
+    nexp = n_elements(expindex.value)
+  endif
+endif
+
 ;; Load the apcor.lst file
 apcor = IMPORTASCII('apcor.lst',fieldnames=['name','value'],/noprint)
 add_tag,apcor,'file','',apcor
@@ -163,7 +192,7 @@ FOR i=0,nexp-1 do begin
   expname = expindex.value[i]
   expfiles = fitsfiles[ind]
   field = first_el(strsplit(file_basename(fitsfiles[ind[0]]),'-',/extract))  ; F1
-  hd = headfits(fitsfiles[ind[0]])
+  hd = PHOTRED_READFILE(fitsfiles[ind[0]],/header)
   exptime = PHOTRED_GETEXPTIME(fitsfiles[ind[0]])
   filter = PHOTRED_GETFILTER(fitsfiles[ind[0]])
   printlog,logfile,strtrim(i+1,2)+' '+expname+' '+filter+' '+stringize(exptime,ndec=1)
@@ -355,6 +384,8 @@ gdexp = where(expstr.num gt 0,ngdexp,comp=bdexp,ncomp=nbdexp)
 if ngdexp gt 0 then begin
   printlog,logfile,'Writing transformation equations to >>delve.trans<<'
   undefine,tlines
+  ;; Check if it already exists
+  if file_test('delve.trans') eq 1 and not keyword_set(redo) then READLINE,'delve.trans',tlines
   for i=0,ngdexp-1 do push,tlines,expstr[gdexp[i]].translines
   WRITELINE,'delve.trans',tlines
 endif else begin
@@ -365,12 +396,6 @@ endelse
 ;##########################################
 ;#  UPDATING LIST FILES
 ;##########################################
-;undefine,outlist,successlist,failurelist
-;if ngdexp gt 0 then successlist = expstr[gdexp].name
-;if bdexp gt 0 then failurelist = expstr[bdexp].name
-;lists = {thisprog:'ZEROPOINT',precursor:'DAOPHOT',ninputlines:nexp,inputlines:expstr.name,$
-;         noutputlines:0,nsuccesslines:0,nfailurelines:0}
-
 PHOTRED_UPDATELISTS,lists,outlist=outlist,successlist=successlist,$
                     failurelist=failurelist,setupdir=curdir
 
