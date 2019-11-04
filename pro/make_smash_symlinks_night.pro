@@ -319,7 +319,7 @@ setup = ['##### REQUIRED #####',$
   for k=0,napcor-1 do apcorlines[k]=strmid(apcorlines[k],strpos(apcorlines[k],inight)+9) ;; make relative
   ;; Get chip subdirectories
   chipdirs = strarr(napcor)
-  for k=0,napcor-1 do chipdirs[k]='chip'+strtrim(PHOTRED_GETCHIPNUM(file_basename(apcorlines[k],'.fits'),{namps:62,separator:'_'}),2)
+  for k=0,napcor-1 do chipdirs[k]='chip'+string(strtrim(PHOTRED_GETCHIPNUM(file_basename(apcorlines[k],'.fits'),{namps:62,separator:'_'}),2),format='(i02)')
   apcorlines0 = apcorlines
   apcorlines = file_dirname(apcorlines)+'/'+chipdirs+'/'+file_basename(apcorlines)  ;; F7/chip34/F7-00421651_34.fits
 
@@ -330,6 +330,7 @@ setup = ['##### REQUIRED #####',$
   WRITELINE,delvedir+inight+'/logs/WCS.inlist',wcslines            ;; relative paths, we want to redo WCS with GaiaDR2
   WRITELINE,delvedir+inight+'/logs/DAOPHOT.success',daophotlines   ;; relative paths
   WRITELINE,delvedir+inight+'/logs/MATCH.outlist',matchlines       ;; relative paths
+  WRITELINE,delvedir+inight+'/logs/MATCH.success',repstr(daophotlines,'.fits','.als')  ;; relative paths
   WRITELINE,delvedir+inight+'/logs/APCOR.success',apcorlines       ;; relative paths
 
   ;; Copy the "fields" file
