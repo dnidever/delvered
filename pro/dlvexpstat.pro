@@ -42,7 +42,11 @@ endif else begin
   str = replicate(schema,ndirs)
   str.night = dirs
 endelse
-
+; REDO, start fresh
+if keyword_set(redo) then begin
+  str = replicate(schema,ndirs)
+  str.night = dirs
+endif
 
 stages = ['WCS','DAOPHOT','MATCH','APCOR','ASTROM','ZEROPOINT','CALIB','COMBINE','DEREDDEN','SAVE']
 nstages = n_elements(stages)
@@ -75,9 +79,9 @@ For i=0,ndirs-1 do begin
     if str[i].logsdir eq 1 then begin
       for j=0,nstages-1 do begin
         sind = where(tags eq stages[j]+'_SUCCESS',nsind)
-        if file_test(idir+'/logs/'+stages[j]+'.success') eq 1 then str[i].(sind[0])=file_lines(idir+'/logs/'+stages[j]+'.success')
+        if file_test(idir+'/logs/'+stages[j]+'.success') eq 1 then str[i].(sind[0])=file_lines(idir+'/logs/'+stages[j]+'.success') else str[i].(sind[0])=0
         find = where(tags eq stages[j]+'_FAILURE',nfind)
-        if file_test(idir+'/logs/'+stages[j]+'.failure') eq 1 then str[i].(find[0])=file_lines(idir+'/logs/'+stages[j]+'.failure')
+        if file_test(idir+'/logs/'+stages[j]+'.failure') eq 1 then str[i].(find[0])=file_lines(idir+'/logs/'+stages[j]+'.failure') else str[i].(find[0])=0
         str[i].success[j] = str[i].(sind[0])
         str[i].failure[j] = str[i].(find[0])
       endfor
