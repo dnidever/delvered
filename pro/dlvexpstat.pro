@@ -75,9 +75,9 @@ For i=0,ndirs-1 do begin
     if str[i].logsdir eq 1 then begin
       for j=0,nstages-1 do begin
         sind = where(tags eq stages[j]+'_SUCCESS',nsind)
-        if file_test(idir+'/logs/'+stages[j]+'.success') then str[i].(sind[0])=file_lines(idir+'logs/'+stages[j]+'.success')
+        if file_test(idir+'/logs/'+stages[j]+'.success') eq 1 then str[i].(sind[0])=file_lines(idir+'/logs/'+stages[j]+'.success')
         find = where(tags eq stages[j]+'_FAILURE',nfind)
-        if file_test(idir+'/logs/'+stages[j]+'.failure') then str[i].(find[0])=file_lines(idir+'logs/'+stages[j]+'.failure')
+        if file_test(idir+'/logs/'+stages[j]+'.failure') eq 1 then str[i].(find[0])=file_lines(idir+'/logs/'+stages[j]+'.failure')
         str[i].success[j] = str[i].(sind[0])
         str[i].failure[j] = str[i].(find[0])
       endfor
