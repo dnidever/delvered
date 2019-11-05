@@ -14,7 +14,7 @@ workdir = '/data0/dnidever/delve/'
 modeleqnfile = delvereddir+'params/modelmag_equations.txt'
 
 ;; Redo by default
-if n_elements(redo) eq 0 then redo=1
+if n_elements(redo) eq 0 then redo=0 ;1
 
 ;; The photed.setup file
 setup = ['##### REQUIRED #####',$
@@ -141,6 +141,11 @@ setup = ['##### REQUIRED #####',$
   if nwcsfiles gt 0 then push,fitsfiles,wcsfiles
   READLIST,'logs/DAOPHOT.success',daofiles,setupdir='.',count=ndaofiles,/silent
   if ndaofiles gt 0 then push,fitsfiles,daofiles
+  ;; Remove F10-00380965 exposure from 20141123, bad and not used
+  if inight eq '20141123' then begin
+    bd = where(stregex(fitsfiles,'F10-00380965',/boolean) eq 1,nbd)
+    if nbd gt 0 then REMOVE,bd,fitsfiles
+  endif
   nfitsfiles = n_elements(fitsfiles)
   ;; Convert fits to fits.fz
   allfield = strarr(nfitsfiles)
@@ -196,7 +201,7 @@ setup = ['##### REQUIRED #####',$
     if (file_test(savefile) eq 0 and file_test(savefile+'.gz') eq 0) or keyword_set(redo) then begin
       refcat = DELVERED_GETREFDATA(['c4d-u','c4d-g','c4d-r','c4d-i','c4d-z','c4d-Y','c4d-VR'],cenra,cendec,1.5,savefile=savefile)
       SPAWN,['gzip','-f',savefile],/noshell
-    endif
+    endif else refcat=MRDFITS(savefile+'.gz',1)
 
     ;; Match FITS files with the original CP c4d files
     fbase = PHOTRED_GETFITSEXT(fitsfiles1,/basename)
