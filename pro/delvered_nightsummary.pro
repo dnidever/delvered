@@ -40,7 +40,9 @@ if file_test(expdir+inight) eq 0 then begin
 endif
 ;; Check if output file already exists
 nightsumfile = expdir+inight+'/'+inight+'_summary.fits'
-if file_test(nightsumfile) eq 1 and not keyword_set(redo) then begin
+info = file_info(nightsumfile)
+if info.exists eq 1 then nexp=sxpar(headfits(nightsumfile),'naxis2') else nexp=0
+if (info.exists eq 1 and nexp gt 0) and not keyword_set(redo) then begin
   print,nightsumfile+' EXISTS and /redo NOT set'
   return
 endif
@@ -68,6 +70,9 @@ For j=0,nfields-1 do begin
     PUSH,chipstr,chipstr1
   endif else print,sumfile,' NOT FOUND'
 Endfor
+if n_elements(expstr) eq 0 then begin
+  print,'No exposures for night=',inight
+endif
 print,'Writing nightly summary file to ',nightsumfile
 MWRFITS,expstr,nightsumfile,/create
 MWRFITS,chipstr,nightsumfile,/silent
