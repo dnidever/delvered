@@ -79,9 +79,11 @@ For i=0,ndirs-1 do begin
     if str[i].logsdir eq 1 then begin
       for j=0,nstages-1 do begin
         sind = where(tags eq stages[j]+'_SUCCESS',nsind)
-        if file_test(idir+'/logs/'+stages[j]+'.success') eq 1 then str[i].(sind[0])=file_lines(idir+'/logs/'+stages[j]+'.success') else str[i].(sind[0])=0
+        sinfo = file_info(idir+'/logs/'+stages[j]+'.success')
+        if sinfo.exists eq 1 and sinfo.size gt 0 then str[i].(sind[0])=file_lines(sinfo.name) else str[i].(sind[0])=0
         find = where(tags eq stages[j]+'_FAILURE',nfind)
-        if file_test(idir+'/logs/'+stages[j]+'.failure') eq 1 then str[i].(find[0])=file_lines(idir+'/logs/'+stages[j]+'.failure') else str[i].(find[0])=0
+        finfo = file_info(idir+'/logs/'+stages[j]+'.failure')
+        if finfo.exists eq 1 and finfo.size gt 0 then str[i].(find[0])=file_lines(finfo.name) else str[i].(find[0])=0
         str[i].success[j] = str[i].(sind[0])
         str[i].failure[j] = str[i].(find[0])
       endfor
@@ -100,7 +102,8 @@ For i=0,ndirs-1 do begin
     if total(str[i].failure) gt 0 then comment = '       !!!!'
 
     format = '(A-11,I4, I7,A1,I-4, I5,A1,I-4, I5,A1,I-4, I5,A1,I-4, I4,A1,I-4, I4,A1,I-3, I4,A1,I-4, I4,A1,I-4, I3,A1,I-3, I3,A1,I-3, I5,A-15)'
-    print,inight,str[i].nexp,str[i].wcs_success,'/',str[i].wcs_failure,str[i].daophot_success,'/',str[i].daophot_failure,$
+    if str[i].nexp gt 0 then nexp=str[i].nexp else nexp=str[i].nexpall
+    print,inight,nexp,str[i].wcs_success,'/',str[i].wcs_failure,str[i].daophot_success,'/',str[i].daophot_failure,$
           str[i].match_success,'/',str[i].match_failure,str[i].apcor_success,'/',str[i].apcor_failure,$
           str[i].astrom_success,'/',str[i].astrom_failure,str[i].zeropoint_success,'/',str[i].zeropoint_failure,$
           str[i].calib_success,'/',str[i].calib_failure,str[i].combine_success,'/',str[i].combine_failure,$
