@@ -115,7 +115,7 @@ Endfor
 done = where(str.done eq 1,ndone)
 print,strtrim(ndone,2),'/',strtrim(ndirs,2),' finished'
 if ndone gt 0 then nexpdone = long(total(str[done].nexp)) else nexpdone=0
-print,strtrim(nexpdone,2),'/',strtrim(long(total(str.nexp>0)),2),' exposures finished'
+print,strtrim(nexpdone,2),'/',strtrim(long(total(str.nexpall>0)),2),' exposures finished'
 
 ;; Save summary file
 jd = systime(/julian)
