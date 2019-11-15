@@ -2197,7 +2197,8 @@ if (nastr gt 0) then begin
   ;if (initrms ge 1.0) then begin
   ;if (nmatch lt 10) or (initrms ge 2.0) then begin
   ;if (nmatch lt 5) or (initrms ge 2.0) then begin
-  if (nmatch lt 5) or (initrms ge 1.0) then begin
+  ;if (nmatch lt 5) or (initrms ge 1.0) then begin
+  if (nmatch lt 5) or (initrms ge 1.5) then begin
 
     print,'Initial RMS bad or not enough matches.  Trying cross-correlation.'
 
@@ -2228,7 +2229,8 @@ if (nastr gt 0) then begin
 
   ; Use the intial WCS
   ;if (initrms lt 2.0) then begin
-  if (initrms lt 1.0) then begin
+  ;if (initrms lt 1.0) then begin
+  if (initrms lt 1.5) then begin
 
     print,'Using the intial WCS'
     refcat1b.x = xref
