@@ -3,7 +3,7 @@ pro dlvexpstat,delvedir=delvedir,redo=redo,all=all
 ;; DELVERED exposure status
 
 ;; Defaults
-if n_elements(delvedir) gt 0 then delvedir=trailingslash(delvedir) else delvedir = '/dl1/users/dnidever/delve/'
+if n_elements(delvedir) gt 0 then delvedir=trailingslash(delvedir) else delvedir = '/net/dl1/users/dnidever/delve/'
 ;; Exposures directory
 expdir = trailingslash(delvedir)+'exposures/'
 

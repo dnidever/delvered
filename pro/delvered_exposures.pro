@@ -22,7 +22,7 @@
 pro delvered_exposures,input,delvedir=delvedir,redo=redo,stp=stp
 
 ;; Defaults
-if n_elements(delvedir) gt 0 then delvedir=trailingslash(delvedir) else delvedir = '/dl1/users/dnidever/delve/'
+if n_elements(delvedir) gt 0 then delvedir=trailingslash(delvedir) else delvedir = '/net/dl1/users/dnidever/delve/'
 ;; Exposures directory
 expdir = trailingslash(delvedir)+'exposures/'
 ;; Logs directory

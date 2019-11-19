@@ -4,7 +4,7 @@ pro make_exposures_list,version
 ;; using the NSC master decam list
 
 if n_elements(version) eq 0 then version = 'v3'
-nscdir = '/dl1/users/dnidever/nsc/instcal/'+version+'/lists/'
+nscdir = '/net/dl1/users/dnidever/nsc/instcal/'+version+'/lists/'
 if n_elements(delvereddir) gt 0 then delvereddir=trailingslash(delvereddir) else delvereddir = '/home/dnidever/projects/delvered/'
 str = mrdfits(nscdir+'decam_instcal_list.fits.gz',1)
 nstr = n_elements(str)

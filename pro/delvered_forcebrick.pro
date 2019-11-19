@@ -25,7 +25,7 @@ if n_elements(brick) eq 0 then begin
 endif
 
 ;; Defaults
-if n_elements(delvedir) gt 0 then delvedir=trailingslash(delvedir) else delvedir = '/dl1/users/dnidever/delve/'
+if n_elements(delvedir) gt 0 then delvedir=trailingslash(delvedir) else delvedir = '/net/dl1/users/dnidever/delve/'
 if FILE_TEST(delvedir,/directory) eq 0 then FILE_MKDIR,delvedir
 if n_elements(delvereddir) gt 0 then delvereddir=trailingslash(delvereddir) else delvereddir = '/home/dnidever/projects/delvered/'
 ;expfile = '/home/dnidever/projects/delvered/data/decam_mcs_20181009.fits.gz'
@@ -202,7 +202,7 @@ endif
 chstr = MRDFITS(tmpfile,1,/silent)
 file_delete,tmpfile,/allow
 nchstr = n_elements(chstr)
-chstr.file = repstr(chstr.file,'/net/dl1/','/dl1/')   ;; fix /net/dl1 to /dl1
+;chstr.file = repstr(chstr.file,'/net/dl1/','/dl1/')   ;; fix /net/dl1 to /dl1
 printlog,logfile,'Found ',strtrim(nchstr,2),' overlapping chips within 0.5 deg of brick center'
 
 ;; Do more rigorous overlap checking

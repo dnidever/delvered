@@ -4,7 +4,7 @@ pro delvered_prep,delvedir,scriptsdir=scriptsdirs,irafdir=irafdir,workdir=workdi
 ;; from the NOAO mass store to be processed with PHOTRED.
 
 ;; Defaults
-if n_elements(delvedir) gt 0 then delvedir=trailingslash(delvedir) else delvedir = '/dl1/users/dnidever/delve/'
+if n_elements(delvedir) gt 0 then delvedir=trailingslash(delvedir) else delvedir = '/net/dl1/users/dnidever/delve/'
 if FILE_TEST(delvedir,/directory) eq 0 then FILE_MKDIR,delvedir
 if n_elements(delvereddir) gt 0 then delvereddir=trailingslash(delvereddir) else delvereddir = '/home/dnidever/projects/delvered/'
 ;expfile = '/home/dnidever/projects/delvered/data/decam_mcs_20181009.fits.gz'
@@ -144,7 +144,7 @@ nnights = n_elements(night_index.value)
 print,strtrim(nnights,2),' unique nights of data'
 
 ;; SMASH directories
-smashnights = file_search('/dl1/users/dnidever/smash/cp/red/photred/20??????/',/test_directory,count=nsmashnights)
+smashnights = file_search('/net/dl1/users/dnidever/smash/cp/red/photred/20??????/',/test_directory,count=nsmashnights)
 smashnights = file_basename(smashnights)
 
 ;; Loop over the nights

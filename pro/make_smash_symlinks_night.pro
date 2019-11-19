@@ -3,8 +3,8 @@ pro make_smash_symlinks_night,inight,redo=redo
 ;; Make symlinks to the SMASH data that has already been processedd
 ;; For a SINGLE NIGHT
 
-delvedir = '/dl1/users/dnidever/delve/exposures/'
-smashdir = '/dl1/users/dnidever/smash/cp/red/photred/'
+delvedir = '/net/dl1/users/dnidever/delve/exposures/'
+smashdir = '/net/dl1/users/dnidever/smash/cp/red/photred/'
 if n_elements(delvereddir) gt 0 then delvereddir=trailingslash(delvereddir) else delvereddir = '/home/dnidever/projects/delvered/'
 CD,current=origdir
 
@@ -78,7 +78,7 @@ setup = ['##### REQUIRED #####',$
 
   ;; Load the list of DECam images
   ;expstr = mrdfits('/dl1/users/dnidever/nsc/instcal/v3/lists/decam_instcal_list.fits.gz',1)
-  expstr = mrdfits('/dl1/users/dnidever/nsc/instcal/v3/lists/decam_instcal_list_full.fits.gz',1)
+  expstr = mrdfits('/net/dl1/users/dnidever/nsc/instcal/v3/lists/decam_instcal_list_full.fits.gz',1)
   expstr.expnum = strtrim(expstr.expnum,2)
   expstr.plver = strtrim(expstr.plver,2)
   expstr.fluxfile = strtrim(expstr.fluxfile,2)

@@ -26,7 +26,7 @@ pro delvered_bricks,input,nmulti=nmulti,redo=redo,stp=stp
 t0 = systime(1)
   
 ;; Defaults
-if n_elements(delvedir) gt 0 then delvedir=trailingslash(delvedir) else delvedir = '/dl1/users/dnidever/delve/'
+if n_elements(delvedir) gt 0 then delvedir=trailingslash(delvedir) else delvedir = '/net/dl1/users/dnidever/delve/'
 if n_elements(delvereddir) gt 0 then delvereddir=trailingslash(delvereddir) else delvereddir = '/home/dnidever/projects/delvered/'
 ;; Exposures directory
 expdir = trailingslash(delvedir)+'exposures/'
@@ -146,7 +146,7 @@ endif
 
 ;; Check if we need to update the exposures database
 print,'Checking if exposures database needs to be updated'
-dbfile = '/dl1/users/dnidever/delve/bricks/db/delvered_summary.db'
+dbfile = '/net/dl1/users/dnidever/delve/bricks/db/delvered_summary.db'
 dbinfo = file_info(dbfile)
 nightdirs = file_search(delvedir+'exposures/201?????',count=nnightdirs)
 sumfiles = nightdirs+'/'+file_basename(nightdirs)+'_summary.fits'

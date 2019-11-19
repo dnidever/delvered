@@ -4,7 +4,7 @@ pro delvered_prep_night,expfile,delvedir=delvedir,scriptsdir=scriptsdirs,irafdir
 ;; from the NOAO mass store to be processed with PHOTRED.
 
 ;; Defaults
-if n_elements(delvedir) gt 0 then delvedir=trailingslash(delvedir) else delvedir = '/dl1/users/dnidever/delve/'
+if n_elements(delvedir) gt 0 then delvedir=trailingslash(delvedir) else delvedir = '/net/dl1/users/dnidever/delve/'
 if FILE_TEST(delvedir,/directory) eq 0 then FILE_MKDIR,delvedir
 if n_elements(delvereddir) gt 0 then delvereddir=trailingslash(delvereddir) else delvereddir = '/home/dnidever/projects/delvered/'
 if n_elements(scriptsdir) gt 0 then scriptsdir=trailingslash(scriptsdir) else scriptsdir = '/home/dnidever/projects/PHOTRED/scripts/'

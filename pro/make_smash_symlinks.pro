@@ -2,8 +2,8 @@ pro make_smash_symlinks,redo=redo
 
 ;; Make symlinks to the SMASH data that has already been processedd
 
-delvedir = '/dl1/users/dnidever/delve/exposures/'
-smashdir = '/dl1/users/dnidever/smash/cp/red/photred/'
+delvedir = '/net/dl1/users/dnidever/delve/exposures/'
+smashdir = '/net/dl1/users/dnidever/smash/cp/red/photred/'
 nmulti = 3 ;5
 
 nights = FILE_SEARCH(smashdir+'20??????',/test_directory,count=nnights)

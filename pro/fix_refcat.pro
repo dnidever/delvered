@@ -3,7 +3,7 @@ pro fix_refcat
 ;; Fix reference catalogs near the RA=0/360 rollover
 
 ;; Defaults
-if n_elements(delvedir) gt 0 then delvedir=trailingslash(delvedir) else delvedir = '/dl1/users/dnidever/delve/'
+if n_elements(delvedir) gt 0 then delvedir=trailingslash(delvedir) else delvedir = '/net/dl1/users/dnidever/delve/'
 if n_elements(delvereddir) gt 0 then delvereddir=trailingslash(delvereddir) else delvereddir = '/home/dnidever/projects/delvered/'
 
 nights = file_search(delvedir+'exposures/201?????',/test_directory,count=nnights)
@@ -11,6 +11,7 @@ nights = file_basename(nights)
 
 ;; Night loop
 For n=0,nnights-1 do begin
+;For n=251,710 do begin
   inight = nights[n]
   print,strtrim(n+1,2),' ',inight
 
@@ -94,7 +95,6 @@ For n=0,nnights-1 do begin
 
     BOMB:
   Endfor ; field loop
-
   NIGHTBOMB:
 Endfor  ; night loop
 
