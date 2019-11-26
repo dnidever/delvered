@@ -180,7 +180,6 @@ if keyword_set(usecolor) then goodmask AND= (color ge eqnstr1.colorlim[0] and co
 gd = where(goodmask eq 1,ngd)
 if ngd eq 0 then begin
   print,'No good sources left'
-stop
   return,-999999.
 endif
 
