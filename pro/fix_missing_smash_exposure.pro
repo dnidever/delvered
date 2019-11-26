@@ -1,4 +1,4 @@
-pro make_smash_symlinks_night,inight,redo=redo
+pro fix_missing_smash_exposure,inight,redo=redo
 
 ;; Make symlinks to the SMASH data that has already been processedd
 ;; For a SINGLE NIGHT
@@ -13,68 +13,11 @@ irafdir = '/home/dnidever/iraf/'
 workdir = '/data0/dnidever/delve/'
 modeleqnfile = delvereddir+'params/modelmag_equations.txt'
 
+inight = '20150318'
+
 ;; Redo by default
 if n_elements(redo) eq 0 then redo=0 ;1
 
-;; The photed.setup file
-setup = ['##### REQUIRED #####',$
-         'scriptsdir  '+scriptsdir,$
-         'irafdir     '+irafdir,$
-         'telescope   Blanco',$
-         'instrument  DECAM',$
-         'observatory CTIO',$
-         'nmulti      10',$
-         'nmulti_wcs       20',$
-         'nmulti_daophot   20',$
-         'nmulti_allframe  10',$
-         'filtref     g,i,r,z,u',$
-         'modeleqnfile '+modeleqnfile,$
-         'trans       delve.trans',$
-         '##### OPTIONAL #####',$
-         'sepfielddir  1',$
-         'sepchipdir   1',$
-         'keepmef      0',$
-         'catformat    FITS',$
-         'workdir      '+workdir,$
-         'clean        1',$
-         'skipcheck    1',$
-         'redo         0',$
-         'wcsrefname   GAIADR2',$
-         'searchdist   20',$
-         '#wcsrmslim   1.0',$
-         'hyperthread   1',$
-         'daopsfva      1',$
-         'daofitradfwhm 1.0',$
-         'psfcomsrc     0',$
-         'psfcomglobal  0',$
-         'psfcomgauss   0',$
-         '#mchmaxshift  50.0',$
-         'finditer      2',$
-         'alfdetprog  sextractor',$
-         '#alfnocmbimscale 0',$
-         'alftrimcomb   0',$
-         '#ddo51radoffset  1',$
-         'cmbforce      1',$
-         'keepinstr     1',$
-         'avgmag        1',$
-         'avgonlymag    0',$
-         'todered       u,g,r,i,z,g-i',$
-         'sumquick      1',$
-         '##### STAGES #####',$
-         '#rename',$
-         '#split',$
-         ' wcs',$
-         ' daophot',$
-         ' match',$
-         '#allframe',$
-         ' apcor',$
-         ' astrom',$
-         ' zeropoint',$
-         ' calib',$
-         ' combine',$
-         ' deredden',$
-         ' save',$
-         '#html']
 
   ;; Load the list of DECam images
   ;expstr = mrdfits('/dl1/users/dnidever/nsc/instcal/v3/lists/decam_instcal_list.fits.gz',1)
@@ -129,9 +72,6 @@ setup = ['##### REQUIRED #####',$
   print,'Making SMASH symlinks for night ',inight
   print,'-----------------------------------------'
 
-  ;; Make sure the DELVE night directory exists
-  if FILE_TEST(delvedir+inight,/directory) eq 0 then FILE_MKDIR,delvedir+inight
-
   ;; Load the fields file
   fieldstr = IMPORTASCII(nightdir+'fields',fieldname=['shname','name'],fieldtypes=[7,7],/silent)
 
@@ -145,9 +85,9 @@ setup = ['##### REQUIRED #####',$
   if inight eq '20141123' then begin
     bd = where(stregex(fitsfiles,'F10-00380965',/boolean) eq 1,nbd)
     if nbd gt 0 then REMOVE,bd,fitsfiles
- endif
+  endif
   ;; KLUDGE!! Add missing F5-00423440
-  if inight eq '20150318' then push,fitsfiles,'F5/F5-00423440_'+string([1,lindgen(58)+3,62],format='(i02)')+'.fits.fz'
+  push,fitsfiles,'F5/F5-00423440_'+string([1,lindgen(58)+3,62],format='(i02)')+'.fits.fz'
   nfitsfiles = n_elements(fitsfiles)
   ;; Convert fits to fits.fz
   allfield = strarr(nfitsfiles)
@@ -175,7 +115,8 @@ setup = ['##### REQUIRED #####',$
   wcslines = strarr(nfitsfiles)
   daophotlines = strarr(nfitsfiles)
   count = 0LL
-  For f=0,nfields-1 do begin
+  ;For f=0,nfields-1 do begin
+    f = 4   ; F5
     ind = field_index.index[field_index.lo[f]:field_index.hi[f]]
     nind = n_elements(ind)
     ifield = field_index.value[f]
@@ -187,8 +128,8 @@ setup = ['##### REQUIRED #####',$
     endif
     fieldname = fieldstr[fieldind].name   ;; long field name
 
-    ;; Make sure the DELVE night+field directory exists
-    if FILE_TEST(delvedir+inight+'/'+ifield,/directory) eq 0 then FILE_MKDIR,delvedir+inight+'/'+ifield
+    ;;; Make sure the DELVE night+field directory exists
+    ;if FILE_TEST(delvedir+inight+'/'+ifield,/directory) eq 0 then FILE_MKDIR,delvedir+inight+'/'+ifield
 
     ;; Gentral position of field
     sumfile = nightdir+fieldname+'_summary.fits'
@@ -198,12 +139,13 @@ setup = ['##### REQUIRED #####',$
     cendec = median([sumstr.dec])
 
     ;; Get Gaia DR2 and other reference data for this field
-    if FILE_TEST(delvedir+inight+'/refcat/',/directory) eq 0 then FILE_MKDIR,delvedir+inight+'/refcat/'
+    ;if FILE_TEST(delvedir+inight+'/refcat/',/directory) eq 0 then FILE_MKDIR,delvedir+inight+'/refcat/'
     savefile = delvedir+inight+'/refcat/'+ifield+'_refcat.fits'
-    if (file_test(savefile) eq 0 and file_test(savefile+'.gz') eq 0) or keyword_set(redo) then begin
-      refcat = DELVERED_GETREFDATA(['c4d-u','c4d-g','c4d-r','c4d-i','c4d-z','c4d-Y','c4d-VR'],cenra,cendec,1.5,savefile=savefile)
-      SPAWN,['gzip','-f',savefile],/noshell
-    endif else refcat=MRDFITS(savefile+'.gz',1)
+    refcat = MRDFITS(savefile+'.gz',1)
+    ;if (file_test(savefile) eq 0 and file_test(savefile+'.gz') eq 0) or keyword_set(redo) then begin
+    ;  refcat = DELVERED_GETREFDATA(['c4d-u','c4d-g','c4d-r','c4d-i','c4d-z','c4d-Y','c4d-VR'],cenra,cendec,1.5,savefile=savefile)
+    ;  SPAWN,['gzip','-f',savefile],/noshell
+    ;endif else refcat=MRDFITS(savefile+'.gz',1)
 
     ;; Match FITS files with the original CP c4d files
     fbase = PHOTRED_GETFITSEXT(fitsfiles1,/basename)
@@ -223,7 +165,8 @@ setup = ['##### REQUIRED #####',$
     print,strtrim(f+1,2),'/',strtrim(nfields,2),' ',ifield,' ',fieldname,' ',strtrim(nexpnum,2),' exposures'
 
     ;; Loop over exposures for this field
-    For e=0,nexpnum-1 do begin
+    ;For e=0,nexpnum-1 do begin
+      e = 10
       fexpnum1 = fexpnum[e]
       print,'  ',strtrim(e+1,2),' ',fexpnum1
       fluxfile = repstr(expstr1[e].fluxfile,'/net/mss1/','/mss1/')
@@ -283,16 +226,14 @@ setup = ['##### REQUIRED #####',$
           SPAWN,['gzip','-f',refcatfile],/noshell
 
           ;; Update the lists, RELATIVE paths
-          wcslines[count] = ifield+'/chip'+string(chipnum1,format='(i02)')+'/'+chbase1+'.fits'
-          daophotlines[count] = ifield+'/chip'+string(chipnum1,format='(i02)')+'/'+chbase1+'.fits'
-          ;wcslines[count] = chipdir1+'/'+chbase1+'.fits'
-          ;daophotlines[count] = chipdir1+'/'+chbase1+'.fits'
+          ;wcslines[count] = ifield+'/chip'+string(chipnum1,format='(i02)')+'/'+chbase1+'.fits'
+          ;daophotlines[count] = ifield+'/chip'+string(chipnum1,format='(i02)')+'/'+chbase1+'.fits'
           count++
         endif else print,chbase+' NOT FOUND'
       Endfor  ; chip loop
       ;; Delete the temporary file link
       FILE_DELETE,tmpfluxfile
-    Endfor  ; exposure loop
+    ;Endfor  ; exposure loop
 
     ;; MATCH files, mch, raw
     mchfiles = FILE_SEARCH(nightdir+ifield+'/'+ifield+'-????????_??.mch',count=nmchfiles)
@@ -310,42 +251,45 @@ setup = ['##### REQUIRED #####',$
       FILE_LINK,tfrfiles,delvedir+inight+'/'+ifield+'/'+chipdirs+'/'+file_basename(tfrfiles)
 
       ;; Update the list, relative paths
-      PUSH,matchlines,ifield+'/'+chipdirs+'/'+file_basename(mchfiles)
+      ;PUSH,matchlines,ifield+'/'+chipdirs+'/'+file_basename(mchfiles)
     endif
 
 
     FIELDBOMB:
-  Endfor  ; field loop
+  ;Endfor  ; field loop
 
-  ;; Copy apcor.lst and APCOR.success
-  FILE_COPY,nightdir+'apcor.lst',delvedir+inight,/over
-  FILE_CHMOD,delvedir+inight+'/apcor.lst',/a_write
-  READLINE,nightdir+'logs/APCOR.success',apcorlines,count=napcor
-  ;bd = where(stregex(apcorlines,'.fits.fz',/boolean) eq 0,nbd)
-  ;if nbd gt 0 then apcorlines[bd]+='.fz'
-  for k=0,napcor-1 do apcorlines[k]=strmid(apcorlines[k],strpos(apcorlines[k],inight)+9) ;; make relative
-  ;; Get chip subdirectories
-  chipdirs = strarr(napcor)
-  for k=0,napcor-1 do chipdirs[k]='chip'+string(strtrim(PHOTRED_GETCHIPNUM(file_basename(apcorlines[k],'.fits'),{namps:62,separator:'_'}),2),format='(i02)')
-  apcorlines0 = apcorlines
-  apcorlines = file_dirname(apcorlines)+'/'+chipdirs+'/'+file_basename(apcorlines)  ;; F7/chip34/F7-00421651_34.fits
+  ;; I WILL NEED TO UPDATE DAOPHOT.success, MATCH.success and
+  ;; APCOR.success myself !!!!!!
 
-  ;; Copy over the WCS.success, DAOPHOT.success and
-  ;; MATCH.success/outlist files
-  if FILE_TEST(delvedir+inight+'/logs',/directory) eq 0 then FILE_MKDIR,delvedir+inight+'/logs'
-  ;;WRITELINE,delvedir+inight+'/logs/WCS.success',wcslines
-  WRITELINE,delvedir+inight+'/logs/WCS.inlist',wcslines            ;; relative paths, we want to redo WCS with GaiaDR2
-  WRITELINE,delvedir+inight+'/logs/DAOPHOT.success',daophotlines   ;; relative paths
-  WRITELINE,delvedir+inight+'/logs/MATCH.outlist',matchlines       ;; relative paths
-  WRITELINE,delvedir+inight+'/logs/MATCH.success',repstr(daophotlines,'.fits','.als')  ;; relative paths
-  WRITELINE,delvedir+inight+'/logs/APCOR.success',apcorlines       ;; relative paths
+  ;;; Copy apcor.lst and APCOR.success
+  ;FILE_COPY,nightdir+'apcor.lst',delvedir+inight,/over
+  ;FILE_CHMOD,delvedir+inight+'/apcor.lst',/a_write
+  ;READLINE,nightdir+'logs/APCOR.success',apcorlines,count=napcor
+  ;;bd = where(stregex(apcorlines,'.fits.fz',/boolean) eq 0,nbd)
+  ;;if nbd gt 0 then apcorlines[bd]+='.fz'
+  ;for k=0,napcor-1 do apcorlines[k]=strmid(apcorlines[k],strpos(apcorlines[k],inight)+9) ;; make relative
+  ;;; Get chip subdirectories
+  ;chipdirs = strarr(napcor)
+  ;for k=0,napcor-1 do chipdirs[k]='chip'+string(strtrim(PHOTRED_GETCHIPNUM(file_basename(apcorlines[k],'.fits'),{namps:62,separator:'_'}),2),format='(i02)')
+  ;apcorlines0 = apcorlines
+  ;apcorlines = file_dirname(apcorlines)+'/'+chipdirs+'/'+file_basename(apcorlines)  ;; F7/chip34/F7-00421651_34.fits
 
-  ;; Copy the "fields" file
-  FILE_COPY,nightdir+'fields',delvedir+inight,/over,/allow
-  FILE_CHMOD,delvedir+inight+'/fields',/a_write  
+  ;;; Copy over the WCS.success, DAOPHOT.success and
+  ;;; MATCH.success/outlist files
+  ;if FILE_TEST(delvedir+inight+'/logs',/directory) eq 0 then FILE_MKDIR,delvedir+inight+'/logs'
+  ;;;WRITELINE,delvedir+inight+'/logs/WCS.success',wcslines
+  ;WRITELINE,delvedir+inight+'/logs/WCS.inlist',wcslines            ;; relative paths, we want to redo WCS with GaiaDR2
+  ;WRITELINE,delvedir+inight+'/logs/DAOPHOT.success',daophotlines   ;; relative paths
+  ;WRITELINE,delvedir+inight+'/logs/MATCH.outlist',matchlines       ;; relative paths
+  ;WRITELINE,delvedir+inight+'/logs/MATCH.success',repstr(daophotlines,'.fits','.als')  ;; relative paths
+  ;WRITELINE,delvedir+inight+'/logs/APCOR.success',apcorlines       ;; relative paths
 
-  ;; Make the setup file
-  WRITELINE,delvedir+inight+'/photred.setup',setup
+  ;;; Copy the "fields" file
+  ;FILE_COPY,nightdir+'fields',delvedir+inight,/over,/allow
+  ;FILE_CHMOD,delvedir+inight+'/fields',/a_write  
+
+  ;;; Make the setup file
+  ;WRITELINE,delvedir+inight+'/photred.setup',setup
 
 ;stop
 
