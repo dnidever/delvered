@@ -13,7 +13,8 @@ irafdir = '/home/dnidever/iraf/'
 workdir = '/data0/dnidever/delve/'
 modeleqnfile = delvereddir+'params/modelmag_equations.txt'
 
-inight = '20150318'
+;inight = '20150318'
+inight = '20150330'
 
 ;; Redo by default
 if n_elements(redo) eq 0 then redo=0 ;1
@@ -86,8 +87,10 @@ if n_elements(redo) eq 0 then redo=0 ;1
     bd = where(stregex(fitsfiles,'F10-00380965',/boolean) eq 1,nbd)
     if nbd gt 0 then REMOVE,bd,fitsfiles
   endif
-  ;; KLUDGE!! Add missing F5-00423440
-  push,fitsfiles,'F5/F5-00423440_'+string([1,lindgen(58)+3,62],format='(i02)')+'.fits.fz'
+  ;; KLUDGE!! Add missing F5-00423440 for 20150318
+  ;push,fitsfiles,'F5/F5-00423440_'+string([1,lindgen(58)+3,62],format='(i02)')+'.fits.fz'
+  ;; KLUDGE!! Add missing F7-00426607 for 20150330
+  push,fitsfiles,'F7/F7-00426607_'+string([1,lindgen(58)+3,62],format='(i02)')+'.fits.fz'
   nfitsfiles = n_elements(fitsfiles)
   ;; Convert fits to fits.fz
   allfield = strarr(nfitsfiles)
@@ -116,7 +119,8 @@ if n_elements(redo) eq 0 then redo=0 ;1
   daophotlines = strarr(nfitsfiles)
   count = 0LL
   ;For f=0,nfields-1 do begin
-    f = 4   ; F5
+    ;f = 4   ; F5
+    f = 0  ; F7
     ind = field_index.index[field_index.lo[f]:field_index.hi[f]]
     nind = n_elements(ind)
     ifield = field_index.value[f]
@@ -166,7 +170,8 @@ if n_elements(redo) eq 0 then redo=0 ;1
 
     ;; Loop over exposures for this field
     ;For e=0,nexpnum-1 do begin
-      e = 10
+      e = 3
+      ;e = 10
       fexpnum1 = fexpnum[e]
       print,'  ',strtrim(e+1,2),' ',fexpnum1
       fluxfile = repstr(expstr1[e].fluxfile,'/net/mss1/','/mss1/')
