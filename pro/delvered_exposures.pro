@@ -28,6 +28,7 @@ expdir = trailingslash(delvedir)+'exposures/'
 ;; Logs directory
 logsdir = expdir+'logs/'
 if file_test(logsdir,/directory) eq 0 then file_mkdir,logsdir
+workdir = '/data0/dnidever/delve/'  ;; temporary work directory
 
 COMMON photred,setup
 
@@ -134,6 +135,19 @@ FOR i=0,nnights-1 do begin
     goto,nightbomb
   endif
 
+  ;; Copy everything to the work directory
+  if file_test(workdir+inight) eq 0 then FILE_MKDIR,workdir+inight
+  print,''
+  print,'Copying all files to temporary directory >>'+workdir+inight+'<<'
+  SPAWN,['rsync','-av',expdir+inight+'/',workdir+inight+'/'],out,errout,/noshell
+  if n_elements(errout) gt 1 or errout[0] ne '' then begin
+    print,'There was a problem with the rsync '
+    printline,errout
+    return
+  endif
+  print,strtrim(n_elements(out)-4,2)+' files/directories copied'
+  ;; Go to the temporary directory
+  CD,workdir+inight
 
   if READPAR(setup,'WCS') ne '0' then DELVERED_WCS,redo=redo
   if READPAR(setup,'DAOPHOT') ne '0' then PHOTRED_DAOPHOT,redo=redo
@@ -152,6 +166,27 @@ FOR i=0,nnights-1 do begin
 
   ;; Create the nightly summary file
   DELVERED_NIGHTSUMMARY,inight,delvedir=delvedir,redo=redo
+
+  ;; Copy everything back to permanent directory
+  print,''
+  print,'Copying all files back to permanent directory >>'+expdir+inight+'<<'
+  print,''
+  SPAWN,['rsync','-av',workdir+inight+'/',expdir+inight+'/'],out,errout,/noshell
+  if n_elements(errout) gt 1 or errout[0] ne '' then begin
+    print,'There was a problem with the rsync.'
+    printline,errout
+    return
+  endif
+
+;; SHOULD I CHECK HERE THAT EVERYTHING WAS COPIED CORRECTLY???
+
+  CD,origdir
+
+  ;; Delete temporary directory
+  print,''
+  print,'Deleting temporary directory >>'+workdir+inight+'<<'
+  print,''
+  SPAWN,['rm','-R',workdir+inight],/noshell
 
   dt = systime(1)-t0
   print,'dt = ',strtrim(dt,2),' sec.'
