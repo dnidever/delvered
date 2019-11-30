@@ -139,13 +139,14 @@ FOR i=0,nnights-1 do begin
   if file_test(workdir+inight) eq 0 then FILE_MKDIR,workdir+inight
   print,''
   print,'Copying all files to temporary directory >>'+workdir+inight+'<<'
-  SPAWN,['rsync','-av',expdir+inight+'/',workdir+inight+'/'],out,errout,/noshell
-  if n_elements(errout) gt 1 or errout[0] ne '' then begin
+  SPAWN,['rsync','-av',expdir+inight+'/',workdir+inight+'/'],out1,errout1,/noshell
+  if n_elements(errout1) gt 1 or errout1[0] ne '' then begin
     print,'There was a problem with the rsync '
-    printline,errout
+    printline,errout1
     return
   endif
-  print,strtrim(n_elements(out)-4,2)+' files/directories copied'
+  print,strtrim(n_elements(out1)-4,2)+' files/directories copied'
+  printline,out1
   ;; Go to the temporary directory
   CD,workdir+inight
 
@@ -171,12 +172,13 @@ FOR i=0,nnights-1 do begin
   print,''
   print,'Copying all files back to permanent directory >>'+expdir+inight+'<<'
   print,''
-  SPAWN,['rsync','-av',workdir+inight+'/',expdir+inight+'/'],out,errout,/noshell
-  if n_elements(errout) gt 1 or errout[0] ne '' then begin
+  SPAWN,['rsync','-av',workdir+inight+'/',expdir+inight+'/'],out2,errout2,/noshell
+  if n_elements(errout2) gt 1 or errout2[0] ne '' then begin
     print,'There was a problem with the rsync.'
-    printline,errout
+    printline,errout2
     return
   endif
+  printline,out2
 
 ;; SHOULD I CHECK HERE THAT EVERYTHING WAS COPIED CORRECTLY???
 
