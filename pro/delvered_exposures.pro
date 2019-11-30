@@ -190,6 +190,18 @@ FOR i=0,nnights-1 do begin
   print,''
   SPAWN,['rm','-R',workdir+inight],/noshell
 
+  ;; Fix the absolute paths in the summary files
+  print,'Fixing absolute paths in summary files'
+  sumfiles = file_search(expdir+inight+'/*_summary.fits',count=nsumfiles)
+  for j=0,nsumfiles-1 do begin
+    print,strtrim(j+1,2),' ',sumfiles[i]
+    expstr = mrdfits(sumfiles[i],1,/silent)
+    chstr = mrdfits(sumfiles[i],2,/silent)
+    chstr.file = repstr(chstr.file,workdir,expdir)
+    MWRFITS,expstr,sumfiles[i],/create
+    MWRFITS,chstr,sumfiles[i]
+  endfor
+
   dt = systime(1)-t0
   print,'dt = ',strtrim(dt,2),' sec.'
 
