@@ -150,6 +150,13 @@ FOR i=0,nnights-1 do begin
   ;; Go to the temporary directory
   CD,workdir+inight
 
+  ;; Make sure the WCS.inlist files are relative
+  READLINE,'logs/WCS.inlist',wcslist,count=nwcslist
+  if nwcslist gt 0 then begin
+    wcslist = repstr(wcslist,expdir+inight+'/','')
+    WRITELINE,'logs/WCS.inlist',wcslist
+  endif
+
   if READPAR(setup,'WCS') ne '0' then DELVERED_WCS,redo=redo
   if READPAR(setup,'DAOPHOT') ne '0' then PHOTRED_DAOPHOT,redo=redo
   if READPAR(setup,'MATCH') ne '0' then DELVERED_MATCH,redo=redo
