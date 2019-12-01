@@ -172,9 +172,6 @@ FOR i=0,nnights-1 do begin
   stages = ['WCS','DAOPHOT','MATCH','APCOR','ASTROM','ZEROPOINT','CALIB','COMBINE','DEREDDEN','SAVE']
   PHOTRED_SUMMARY,outlines=outlines,stages=stages,/quick
 
-  ;; Create the nightly summary file
-  DELVERED_NIGHTSUMMARY,inight,delvedir=delvedir,redo=redo
-
   ;; Copy everything back to permanent directory
   print,''
   print,'Copying all files back to permanent directory >>'+expdir+inight+'<<'
@@ -201,13 +198,16 @@ FOR i=0,nnights-1 do begin
   print,'Fixing absolute paths in summary files'
   sumfiles = file_search(expdir+inight+'/*_summary.fits',count=nsumfiles)
   for j=0,nsumfiles-1 do begin
-    print,strtrim(j+1,2),' ',sumfiles[i]
-    expstr = mrdfits(sumfiles[i],1,/silent)
-    chstr = mrdfits(sumfiles[i],2,/silent)
+    print,strtrim(j+1,2),' ',sumfiles[j]
+    expstr = mrdfits(sumfiles[j],1,/silent)
+    chstr = mrdfits(sumfiles[j],2,/silent)
     chstr.file = repstr(chstr.file,workdir,expdir)
-    MWRFITS,expstr,sumfiles[i],/create
-    MWRFITS,chstr,sumfiles[i]
+    MWRFITS,expstr,sumfiles[j],/create
+    MWRFITS,chstr,sumfiles[j],/silent
   endfor
+
+  ;; Create the nightly summary file
+  DELVERED_NIGHTSUMMARY,inight,delvedir=delvedir,redo=redo
 
   dt = systime(1)-t0
   print,'dt = ',strtrim(dt,2),' sec.'
