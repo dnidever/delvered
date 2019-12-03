@@ -6,8 +6,9 @@
 ; single-image level catalogs and PSFs.
 ;
 ; INPUTS:
-;  input    What nights to run PHOTRED on.  Either an array or
-;            a range such as 20160101-20160506.
+;  input      What nights to run PHOTRED on.  Either an array or
+;               a range such as 20160101-20160506.
+;  /uselocal  Do all processing in a local drive.  Off by default.
 ;
 ; OUTPUTS:
 ;  PHOTRED will be run on each night and a final summary file
@@ -19,7 +20,7 @@
 ; By D. Nidever  Feb 2019
 ;-
 
-pro delvered_exposures,input,delvedir=delvedir,redo=redo,stp=stp
+pro delvered_exposures,input,delvedir=delvedir,redo=redo,uselocal=uselocal,stp=stp
 
 ;; Defaults
 if n_elements(delvedir) gt 0 then delvedir=trailingslash(delvedir) else delvedir = '/net/dl1/users/dnidever/delve/'
@@ -136,19 +137,21 @@ FOR i=0,nnights-1 do begin
   endif
 
   ;; Copy everything to the work directory
-  if file_test(workdir+inight) eq 0 then FILE_MKDIR,workdir+inight
-  print,''
-  print,'Copying all files to temporary directory >>'+workdir+inight+'<<'
-  SPAWN,['rsync','-av',expdir+inight+'/',workdir+inight+'/'],out1,errout1,/noshell
-  if n_elements(errout1) gt 1 or errout1[0] ne '' then begin
-    print,'There was a problem with the rsync '
-    printline,errout1
-    return
+  if keyword_set(uselocal) then begin
+    if file_test(workdir+inight) eq 0 then FILE_MKDIR,workdir+inight
+    print,''
+    print,'Copying all files to temporary directory >>'+workdir+inight+'<<'
+    SPAWN,['rsync','-av',expdir+inight+'/',workdir+inight+'/'],out1,errout1,/noshell
+    if n_elements(errout1) gt 1 or errout1[0] ne '' then begin
+      print,'There was a problem with the rsync '
+      printline,errout1
+      return
+    endif
+    print,strtrim(n_elements(out1)-4,2)+' files/directories copied'
+    printline,out1
+    ;; Go to the temporary directory
+    CD,workdir+inight
   endif
-  print,strtrim(n_elements(out1)-4,2)+' files/directories copied'
-  printline,out1
-  ;; Go to the temporary directory
-  CD,workdir+inight
 
   ;; Make sure the WCS.inlist files are relative
   READLINE,'logs/WCS.inlist',wcslist,count=nwcslist
@@ -173,38 +176,40 @@ FOR i=0,nnights-1 do begin
   PHOTRED_SUMMARY,outlines=outlines,stages=stages,/quick
 
   ;; Copy everything back to permanent directory
-  print,''
-  print,'Copying all files back to permanent directory >>'+expdir+inight+'<<'
-  print,''
-  SPAWN,['rsync','-av',workdir+inight+'/',expdir+inight+'/'],out2,errout2,/noshell
-  if n_elements(errout2) gt 1 or errout2[0] ne '' then begin
-    print,'There was a problem with the rsync.'
-    printline,errout2
-    return
-  endif
-  printline,out2
+  if keyword_set(uselocal) then begin
+    print,''
+    print,'Copying all files back to permanent directory >>'+expdir+inight+'<<'
+    print,''
+    SPAWN,['rsync','-av',workdir+inight+'/',expdir+inight+'/'],out2,errout2,/noshell
+    if n_elements(errout2) gt 1 or errout2[0] ne '' then begin
+      print,'There was a problem with the rsync.'
+      printline,errout2
+      return
+    endif
+    printline,out2
 
-;; SHOULD I CHECK HERE THAT EVERYTHING WAS COPIED CORRECTLY???
+    ;; SHOULD I CHECK HERE THAT EVERYTHING WAS COPIED CORRECTLY???
 
-  CD,origdir
+    CD,origdir
 
-  ;; Delete temporary directory
-  print,''
-  print,'Deleting temporary directory >>'+workdir+inight+'<<'
-  print,''
-  SPAWN,['rm','-R',workdir+inight],/noshell
+    ;; Delete temporary directory
+    print,''
+    print,'Deleting temporary directory >>'+workdir+inight+'<<'
+    print,''
+    SPAWN,['rm','-R',workdir+inight],/noshell
 
-  ;; Fix the absolute paths in the summary files
-  print,'Fixing absolute paths in summary files'
-  sumfiles = file_search(expdir+inight+'/*_summary.fits',count=nsumfiles)
-  for j=0,nsumfiles-1 do begin
-    print,strtrim(j+1,2),' ',sumfiles[j]
-    expstr = mrdfits(sumfiles[j],1,/silent)
-    chstr = mrdfits(sumfiles[j],2,/silent)
-    chstr.file = repstr(chstr.file,workdir,expdir)
-    MWRFITS,expstr,sumfiles[j],/create
-    MWRFITS,chstr,sumfiles[j],/silent
-  endfor
+    ;; Fix the absolute paths in the summary files
+    print,'Fixing absolute paths in summary files'
+    sumfiles = file_search(expdir+inight+'/*_summary.fits',count=nsumfiles)
+    for j=0,nsumfiles-1 do begin
+      print,strtrim(j+1,2),' ',sumfiles[j]
+      expstr = mrdfits(sumfiles[j],1,/silent)
+      chstr = mrdfits(sumfiles[j],2,/silent)
+      chstr.file = repstr(chstr.file,workdir,expdir)
+      MWRFITS,expstr,sumfiles[j],/create
+      MWRFITS,chstr,sumfiles[j],/silent
+    endfor
+  endif  ; /uselocal
 
   ;; Create the nightly summary file
   DELVERED_NIGHTSUMMARY,inight,delvedir=delvedir,redo=redo
