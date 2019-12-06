@@ -84,6 +84,14 @@ if nnights eq 0 then begin
   return
 endif
 
+;; Which email program is available
+mailprog = ''
+spawn,'which sendmail',out,errout
+if file_test(out[0]) eq 1 then mailprog='sendmail'
+if mailprog eq '' then begin
+  spawn,'which mail',out,errout
+  if file_test(out[0]) eq 1 then mailprog='mail'
+endif
 
 ; Print info
 ;-----------
@@ -218,25 +226,43 @@ FOR i=0,nnights-1 do begin
   print,'dt = ',strtrim(dt,2),' sec.'
 
   ;; Send email that this night is done
-  undefine,elines
-  push,elines,'From: dnidever@noao.edu'
-  push,elines,'To: dnidever@noao.edu'
-  push,elines,'Subject: delvered_exposures night='+inight+' FINISHED on '+hostname
-  push,elines,'Content-Type: text/html'
-  push,elines,'MIME-Version: 1.0'
-  push,elines,'<pre>'
-  push,elines,'delvered_exposures night='+inight+' FINISHED'
-  push,elines,systime(0)
-  push,elines,'HOST='+hostname
-  push,elines,'dt='+strtrim(dt,2)+' sec.'
-  push,elines,''
-  push,elines,outlines
-  push,elines,'</pre>'
-  tempfile = mktemp('mail',/nodot)
-  writeline,tempfile,elines
-  cmd = 'cat '+tempfile+' | sendmail -t'
-  spawn,cmd,out,errout
-  file_delete,tempfile
+  CASE mailprog of
+  'sendmail': begin
+    undefine,elines
+    push,elines,'From: dnidever@noao.edu'
+    push,elines,'To: dnidever@noao.edu'
+    push,elines,'Subject: delvered_exposures night='+inight+' FINISHED on '+hostname
+    push,elines,'Content-Type: text/html'
+    push,elines,'MIME-Version: 1.0'
+    push,elines,'<pre>'
+    push,elines,'delvered_exposures night='+inight+' FINISHED'
+    push,elines,systime(0)
+    push,elines,'HOST='+hostname
+    push,elines,'dt='+strtrim(dt,2)+' sec.'
+    push,elines,''
+    push,elines,outlines
+    push,elines,'</pre>'
+    tempfile = mktemp('mail',/nodot)
+    writeline,tempfile,elines
+    cmd = 'cat '+tempfile+' | sendmail -t'
+    spawn,cmd,out,errout
+    file_delete,tempfile
+  end
+  'mail': begin
+    push,elines,'delvered_exposures night='+inight+' FINISHED'
+    push,elines,systime(0)
+    push,elines,'HOST='+hostname
+    push,elines,'dt='+strtrim(dt,2)+' sec.'
+    push,elines,''
+    push,elines,outlines
+    tempfile = mktemp('mail',/nodot)
+    writeline,tempfile,elines
+    cmd = 'cat '+tempfile+' | mail  -s "delvered_exposures night='+inight+' FINISHED on '+hostname+'" dnidever@noao.edu'
+    spawn,cmd,out,errout
+    file_delete,tempfile
+  end
+  else: print,'No mail program available'
+  ENDCASE
 
   NIGHTBOMB:
 ENDFOR
