@@ -289,8 +289,9 @@ setup = ['##### REQUIRED #####',$
 
       ;; Get the CCDNUM for the extensions
       MATCH,decam.name,fcb.extname,ind1,ind2,/sort,count=nmatch
-      extnum = ind2
+      ;extnum = ind2
       ccdnum = decam[ind1].ccdnum
+      extname = fcb.extname[ind2]
       ;; Loop over the extensions and create the resource files
       For c=0,fcb.nextend-1 do begin
         schip = string(ccdnum[c],format='(i02)')
@@ -300,15 +301,18 @@ setup = ['##### REQUIRED #####',$
         outfile1 = chipdir+ifield+'-'+fexptoadd[e].expnum+'_'+schip+'.fits'
         WRITELINE,outfile1,''
         routfile1 = chipdir+'.'+ifield+'-'+fexptoadd[e].expnum+'_'+schip+'.fits'
-        rlines = ['fluxfile = '+strtrim(fexptoadd[e].fluxfile,2)+'['+strtrim(extnum[c],2)+']',$
-                  'wtfile = '+strtrim(fexptoadd[e].wtfile,2)+'['+strtrim(extnum[c],2)+']',$
-                  'maskfile = '+strtrim(fexptoadd[e].maskfile,2)+'['+strtrim(extnum[c],2)+']']
+        rlines = ['fluxfile = '+strtrim(fexptoadd[e].fluxfile,2)+'['+strtrim(extname[c],2)+']',$
+                  'wtfile = '+strtrim(fexptoadd[e].wtfile,2)+'['+strtrim(extname[c],2)+']',$
+                  'maskfile = '+strtrim(fexptoadd[e].maskfile,2)+'['+strtrim(extname[c],2)+']']
+        ;rlines = ['fluxfile = '+strtrim(fexptoadd[e].fluxfile,2)+'['+strtrim(extnum[c],2)+']',$
+        ;          'wtfile = '+strtrim(fexptoadd[e].wtfile,2)+'['+strtrim(extnum[c],2)+']',$
+        ;          'maskfile = '+strtrim(fexptoadd[e].maskfile,2)+'['+strtrim(extnum[c],2)+']']
         WRITELINE,routfile1,rlines
         outfiles[ocount] = ifield+'/chip'+schip+'/'+ifield+'-'+fexptoadd[e].expnum+'_'+schip+'.fits'  ; relative path
         ocount++
 
         ;; Save the reference catalog for this chip
-        hd = HEADFITS(tmpfile,exten=extnum[c],/silent)
+        hd = HEADFITS(tmpfile,exten=extname[c],/silent)
         ;; Temporarily fix NAXIS1/2 values
         sxaddpar,hd,'NAXIS1',sxpar(hd,'ZNAXIS1')
         sxaddpar,hd,'NAXIS2',sxpar(hd,'ZNAXIS2')
