@@ -238,14 +238,16 @@ setup = ['##### REQUIRED #####',$
 
       ;; Get the CCDNUM for the extensions
       MATCH,decam.name,fcb.extname,ind1,ind2,/sort,count=nmatch
-      extnum = ind2
+      ;extnum = ind2
       ccdnum = decam[ind1].ccdnum
       nccdnum = nmatch
+      extname = fcb.extname[ind2]
 
       ;; Chip loop
       For c=0,nccdnum-1 do begin
         chipnum1 = ccdnum[c]
-        extnum1 = extnum[c]  ; extension for the CP files
+        ;extnum1 = extnum[c]  ; extension for the CP files
+        extname1 = extname[c]  ; extension name for the CP files
         chbase1 = ifield+'-'+fexpnum1+'_'+string(chipnum1,format='(i02)')
         ;; _cat.dat, _refcat.dat
         ;; als, ap, coo, plst, fits/fits.fz, psf
@@ -261,13 +263,13 @@ setup = ['##### REQUIRED #####',$
           outfile1 = chipdir1+chbase1+'.fits'
           WRITELINE,outfile1,''
           routfile1 = chipdir1+'.'+chbase1+'.fits'
-          rlines = ['fluxfile = '+strtrim(fluxfile,2)+'['+strtrim(extnum1,2)+']',$
-                    'wtfile = '+strtrim(wtfile,2)+'['+strtrim(extnum1,2)+']',$
-                    'maskfile = '+strtrim(maskfile,2)+'['+strtrim(extnum1,2)+']']
+          rlines = ['fluxfile = '+strtrim(fluxfile,2)+'['+strtrim(extname1,2)+']',$
+                    'wtfile = '+strtrim(wtfile,2)+'['+strtrim(extname1,2)+']',$
+                    'maskfile = '+strtrim(maskfile,2)+'['+strtrim(extname1,2)+']']
           WRITELINE,routfile1,rlines
           
           ;; Save the reference catalog for this chip
-          hd = HEADFITS(tmpfluxfile,exten=extnum1,/silent)
+          hd = HEADFITS(tmpfluxfile,exten=extname1,/silent)
           ;; Temporarily fix NAXIS1/2 values
           sxaddpar,hd,'NAXIS1',sxpar(hd,'ZNAXIS1')
           sxaddpar,hd,'NAXIS2',sxpar(hd,'ZNAXIS2')

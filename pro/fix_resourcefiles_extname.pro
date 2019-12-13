@@ -104,7 +104,7 @@ For n=0,nnights-1 do begin
           rlines[tind] = rline1
         endfor
         ;print,'  Fixing ',rfile
-        ; WRITELINE,rfile,rlines
+        WRITELINE,rfile,rlines
 
         CHIPBOMB:
       Endfor  ; chip loop
