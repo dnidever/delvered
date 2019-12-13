@@ -43,6 +43,7 @@ endif
 print,strtrim(ngd,2),' good stars found'
 
 ;; Write the output file
+print,'Writing initial list of PSF stars to ',dir+'/'+base+'.cmn.lst'
 WRITECOL,dir+'/'+base+'.cmn.lst',indgen(ngd)+1,xref[gd],yref[gd],refcat[gd].gmag,fltarr(ngd),fltarr(ngd),fmt='(I7,5f9.3)'
 head =  ['NL    NX    NY  LOWBAD HIGHBAD  THRESH     AP1  PH/ADU  RNOISE    FRAD',$
          ' 3  '+strtrim(nx,2)+'  '+strtrim(ny,2)+'   361.3 180395.   92.43    3.00    1.03    5.96    3.89','']
