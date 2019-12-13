@@ -169,7 +169,7 @@ FOR i=0,nnights-1 do begin
   endif
 
   if READPAR(setup,'WCS') ne '0' then DELVERED_WCS,redo=redo
-  if READPAR(setup,'DAOPHOT') ne '0' then PHOTRED_DAOPHOT,redo=redo
+  if READPAR(setup,'DAOPHOT') ne '0' then DELVERED_DAOPHOT,redo=redo
   if READPAR(setup,'MATCH') ne '0' then DELVERED_MATCH,redo=redo
   if READPAR(setup,'APCOR') ne '0' then PHOTRED_APCOR,redo=redo
   if READPAR(setup,'ASTROM') ne '0' then PHOTRED_ASTROM,redo=redo
