@@ -64,6 +64,7 @@ setup = ['##### REQUIRED #####',$
          'hyperthread   1',$
          'daopsfva      1',$
          'daofitradfwhm 1.0',$
+         'psfstars      1',$
          'psfcomsrc     0',$
          'psfcomglobal  0',$
          'psfcomgauss   0',$
