@@ -102,21 +102,14 @@ endif
 telescope = READPAR(setup,'TELESCOPE',count=ntelescope)
 instrument = READPAR(setup,'INSTRUMENT',count=ninstrument)
 
-; Are we running PSFSTARS?
-psfcomsrc = READPAR(setup,'PSFCOMSRC',count=npsfcomsrc)
-if npsfcomsrc gt 0 and psfcomsrc ne '0' and psfcomsrc ne '' and psfcomsrc ne '-1' then psfcomsrc=1
-if npsfcomsrc gt 0 and strtrim(psfcomsrc,2) eq '0' then psfcomsrc=0
-if npsfcomsrc eq 0 then psfcomsrc=1  ; use by default
+; Are we creating initial PSF stars
+psfstars = READPAR(setup,'PSFSTARS',count=npsfstars)
+if npsfstars gt 0 and psfstars ne '0' and psfstars ne '' and psfstars ne '-1' then psfstars=1
+if npsfstars gt 0 and strtrim(psfstars,2) eq '0' then psfstars=0
+if npsfstars eq 0 then psfstars=1  ; use by default
+if psfstars ne '0' and psfstars ne '' and psfstars ne '-1' then psfstars=1
+if strtrim(psfstars,2) eq '0' then psfstars=0
 
-if psfcomsrc ne '0' and psfcomsrc ne '' and psfcomsrc ne '-1' then psfcomsrc=1
-if strtrim(psfcomsrc,2) eq '0' then psfcomsrc=0
-if n_elements(psfcomsrc) eq 0 then psfcomsrc=1
-
-; Global Common PSF stars?
-psfcomglobal = READPAR(setup,'PSFCOMGLOBAL',count=npsfcomglobal)
-if npsfcomglobal gt 0 and psfcomglobal ne '0' and psfcomglobal ne '' and psfcomglobal ne '-1' then psfcomglobal=1
-if npsfcomglobal gt 0 and strtrim(psfcomglobal,2) eq '0' then psfcomglobal=0
-if npsfcomglobal eq 0 then psfcomglobal=1  ; use it by default
 
 ; Hyperthread?
 hyperthread = READPAR(setup,'hyperthread',count=nhyperthread)
