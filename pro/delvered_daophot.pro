@@ -522,7 +522,7 @@ if (psfstars eq 1) then begin
   cmddirs = file_dirname(inputlines)
 
   ; Submit the jobs to the daemon
-  PBS_DAEMON,cmd,cmndirs,nmulti=nmulti,prefix='initpsf',hyperthread=hyperthread,$
+  PBS_DAEMON,cmd,cmddirs,nmulti=nmulti,prefix='initpsf',hyperthread=hyperthread,$
              /idle,waittime=1,/cdtodir,scriptsdir=scriptsdir
 endif
 
