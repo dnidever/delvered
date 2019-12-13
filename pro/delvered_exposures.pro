@@ -249,6 +249,7 @@ FOR i=0,nnights-1 do begin
     file_delete,tempfile
   end
   'mail': begin
+    undefine,elines
     push,elines,'delvered_exposures night='+inight+' FINISHED'
     push,elines,systime(0)
     push,elines,'HOST='+hostname
