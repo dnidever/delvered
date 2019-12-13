@@ -20,7 +20,7 @@ if file_test(file) eq 0 then begin
   return
 endif
 ;; Load the header
-head = headfits(file)
+head = PHOTRED_READFILE(file,/header)
 nx = sxpar(head,'naxis1')
 ny = sxpar(head,'naxis2')
 
