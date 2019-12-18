@@ -9,6 +9,8 @@
 ;  input      What nights to run PHOTRED on.  Either an array or
 ;               a range such as 20160101-20160506.
 ;  /uselocal  Do all processing in a local drive.  Off by default.
+;  /startfresh  Start completely fresh.  Remove old files and start
+;                 from the very beginning.
 ;
 ; OUTPUTS:
 ;  PHOTRED will be run on each night and a final summary file
@@ -20,7 +22,7 @@
 ; By D. Nidever  Feb 2019
 ;-
 
-pro delvered_exposures,input,delvedir=delvedir,redo=redo,uselocal=uselocal,stp=stp
+pro delvered_exposures,input,delvedir=delvedir,redo=redo,uselocal=uselocal,startfresh=startfresh,stp=stp
 
 ;; Defaults
 if n_elements(delvedir) gt 0 then delvedir=trailingslash(delvedir) else delvedir = '/net/dl1/users/dnidever/delve/'
@@ -144,6 +146,92 @@ FOR i=0,nnights-1 do begin
     goto,nightbomb
   endif
 
+  ;; Starting fresh
+  ;;-----------------
+  if keyword_set(startfresh) then begin
+    print,'Starting fresh.  Deleting old files'
+    ;; Delete old files
+    ;;--------------------
+    ;; zero-out fits files
+    fitsfiles = file_search('F*/chip*/F*_??.fits',count=nfitsfiles)
+    if nfitsfiles gt 0 then begin
+      print,'Deleting image-level files'
+      touchzero,fitsfiles
+      base = repstr(fitsfiles,'.fits','')
+      ext = ['_cat.dat','.fits.head','.opt','.als.opt','.coo','.ap','.grp','.lst','.cmn.lst','.psfini.ap','.lst1','.lst1.chi',$
+             '.lst2','.lst2.chi','.plst','.psf','.psf.log','.als','.als.inp','.log','.nei','.nst',$
+             'a.ap','a.als','a.als.inp','a.log','s.fits.fz','.mch','.tfr','.raw','.ast','.input','.phot','.ast']
+      for j=0,n_elements(ext)-1 do file_delete,base+ext[j],/allow
+      ;; remove HEADER from resource files
+      print,'Updating resource files'
+      for j=0,nfitsfiles-1 do begin
+        dir1 = file_dirname(fitsfiles[j])
+        base1 = file_basename(fitsfiles[j])
+        rfile1 = dir1+'/.'+base1
+        if file_test(rfile1) eq 1 then begin
+          READLINE,rfile1,rlines
+          bd = where(stregex(rlines,'HEADER',/boolean) eq 1,nbd)
+          if nbd gt 0 then begin
+            REMOVE,bd,rlines
+            WRITELINE,rfile1,rlines
+          endif
+        endif
+      endfor
+
+      ;; chip directory-level files
+      print,'Deleting chip directory-level files'
+      fitsdirs = file_dirname(fitsfiles)
+      udirs = fitsdirs[uniq(fitsdirs,sort(fitsdirs))]
+      ;; scripts: daophot.sh, lstfilter.py, srcfilter.pro, goodpsf.pro, apcor.opt
+      for j=0,n_elements(udirs)-1 do file_delete,udirs[j]+'/'+['daophot.sh','lstfilter.py','srcfilter.pro','goodpsf.pro','photo.opt','apcor.opt'],/allow
+      ;; batch files, wfit, dopt, dao, initpsf, match,
+      for j=0,n_elements(udirs)-1 do begin
+        bfiles = file_search(udirs[j]+'/'+['wfit*.batch*','dopt*.batch*','dao*.sh*','initpsf*batch*','match*batch*'],count=nbfiles)
+        if nbfiles gt 0 then file_delete,bfiles,/allow
+      endfor
+      ;; filters
+      file_delete,udirs+'/filters',/allow
+      ;; dangling rsrcXXXXXX/ directories
+      for j=0,n_elements(udirs)-1 do begin
+        rdirs = file_search(udirs[j]+'/rsrc*',/test_directory,count=nrdirs)
+        if nrdirs gt 0 then begin
+          rfiles = file_search(rdirs+'/*',count=nrfiles)
+          if nrfiles gt 0 then file_delete,rfiles,/allow
+          file_delete,rdirs,/allow
+        endif
+      endfor
+
+      ;; field-level files: cmb, dered, final
+      fdirs = file_dirname(udirs)  ; field directories
+      fdirs = fdirs[uniq(fdirs,sort(fdirs))]
+      for j=0,n_elements(fdirs)-1 do begin
+        ffiles = file_search(fdirs[j]+'/'+['*.cmb','*.dered','*.final','*.dat','*.fits.gz','*_summary.fits','filters'],count=nffiles)
+        if nffiles gt 0 then file_delete,ffiles,/allow
+      endfor
+    endif
+
+    ;; daogrow files
+    dfiles = file_search('daogrow*/*',count=ndfiles)
+    if ndfiles gt 0 then begin
+      print,'Deleting daogrow files'
+      file_delete,dfiles,/allow
+      ddirs = file_dirname(dfiles)
+      ddirs = ddirs[uniq(ddirs,sort(ddirs))]
+      file_delete,ddirs,/allow
+    endif
+
+    ;; summary files, delvered night summary file
+    sfiles = file_search(['apcor*','delve.trans','*.dat','*.final','*.fits.gz','*_summary.fits','extinction','filters','idlbatch','runbatch'],count=nsfiles)
+    if nsfiles gt 0 then file_delete,sfiles,/allow
+
+    ;; zero-out lists and log files
+    lfiles = file_search('logs/*',count=nlfiles)
+    if nlfiles gt 0 then file_delete,lfiles,/allow
+    ;; Put all fits files in WCS.inlist
+    WRITELINE,'logs/WCS.inlist',fitsfiles
+  endif
+
+
   ;; Copy everything to the work directory
   if keyword_set(uselocal) then begin
     if file_test(workdir+inight) eq 0 then FILE_MKDIR,workdir+inight
@@ -160,6 +248,7 @@ FOR i=0,nnights-1 do begin
     ;; Go to the temporary directory
     CD,workdir+inight
   endif
+
 
   ;; Make sure the WCS.inlist files are relative
   READLINE,'logs/WCS.inlist',wcslist,count=nwcslist
