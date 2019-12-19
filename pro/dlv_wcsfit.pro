@@ -189,9 +189,17 @@ endif
 ; Find the background
 skymode = -999999.
 skysig = -999999.
-SKY,im,skymode,skysig,/silent,highbad=max(im)-5000
-if skysig lt 0.0 then skysig = mad(im)
-if skymode lt 0.0 then skymode = median(im)
+if n_elements(head) gt 0 then begin
+  saturate = sxpar(head,'saturate',count=nsaturate)
+  if nsaturate eq 0 then undefine,saturate
+endif
+if n_elements(saturate) eq 0 then saturate=max(im)
+PHOTRED_SKY,im,skymode,skysig,highbad=saturate*0.95,/silent
+if skymode lt 0.0 or skysig lt 0.0 then begin
+  gpix = where(im lt saturate*0.95)
+  skysig = mad(im[gpix])
+  skymode = median(im[gpix])
+endif
 
 ; MASK OUT BAD PIXELS AND COLUMNS!!!!
 ;skymask = float(abs(im-skymode) lt 3.0*skysig)
@@ -266,6 +274,7 @@ gd = where(cat.mag lt 50.,ngd)
 if (ngd eq 0) then begin
   print,'NO good stars found'
   error = 'NO good stars found'
+stop
   undefine,cat
   return
 endif
