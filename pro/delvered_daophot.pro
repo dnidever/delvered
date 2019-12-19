@@ -425,6 +425,63 @@ if ntomakeoptlist gt 0 then begin
              /idle,waittime=1,/cdtodir,scriptsdir=scriptsdir
 endif
 
+
+;; Fix OPT files with bad FWHM
+fdirs = file_dirname(fitsdirlist)       ;; strip off the chip directory
+fdirs = fdirs[uniq(fdirs,sort(fdirs))]  ;; should be unique field directories
+for i=0,n_elements(fdirs)-1 do begin
+  optfiles = file_search(fdirs[i]+'/chip??/F*_??.opt',count=noptfiles)
+  optstr = replicate({field:'',optfile:'',expnum:'',chip:0L,fwhm:0.0},noptfiles)
+  for j=0,noptfiles-1 do begin
+    base1 = file_basename(optfiles[i],'.opt')
+    dum = strsplit(base1,'-',/extract)
+    field1 = dum[0]
+    dum2 = strsplit(dum[1],thisimager.separator,/extract)
+    expnum1 = dum2[0]
+    chip1 = dum2[1]
+    optstr[j].field = field1 
+    optstr[j].optfile = optfiles[j]
+    optstr[j].expnum = expnum1
+    optstr[j].chip = chip1
+    READLINE,optfiles[j],olines
+    g = where(stregex(olines,'^FW = ',/boolean) eq 1,ng)
+    dum3 = strsplit(olines[g[0]],'=',/extract)
+    fwhm1 = float(dum3[1])
+    optstr[j].fwhm = fwhm1
+  endfor
+
+  ;; Group by expnum, and check
+  ui = uniq(optstr.expnum,sort(optstr.expnum))
+  uexpnum = optstr[ui].expnum
+  undefine,cmd,cmddir
+  for j=0,n_elements(uexpnum)-1 do begin
+    ind = where(optstr.expnum eq uexpnum[j],nind)
+    eoptstr = optstr[ind]
+    medfwhm = median(eoptstr.fwhm)
+    sigfwhm = mad(eoptstr.fwhm)
+    bd = where(abs(medfwhm-eoptstr.fwhm) gt 3*sigfwhm,nbd)
+    ;; Rerun photred_mkopt on these
+    if nbd gt 0 then begin
+      printlog,logfile,'Fixing '+strtrim(nbd,2)+' opt files for '+uexpnum[j]
+      ;; Make commands
+      cmd1 = "PHOTRED_MKOPT,'"+file_basename(eoptstr[bd].optfile,'.opt')+".fits',inp_fwhm="+stringize(medfwhm,ndec=2)
+      if n_elements(daopsfva) gt 0 then cmd1+=',va='+strtrim(daopsfva,2)
+      if n_elements(daofitradfwhm) gt 0 then cmd1+=',fitradius_fwhm='+strtrim(daofitradfwhm,2)
+      push,cmd,cmd1
+      push,cmddir,file_dirname(eoptstr[bd].optfile)
+    endif
+  endfor  ;; exposure loop
+
+  ;; Rerun photred_mkopt of the bad ones
+  if n_elements(cmd) gt 0 then begin
+     printlog,logfile,' Remaking OPT files for '+strtrim(n_elements(cmd),2)+' files with bad FWHM'
+      ;; Submit the jobs to the daemon
+      PBS_DAEMON,cmd,cmddir,nmulti=nmulti,prefix='dopt',hyperthread=hyperthread,$
+                 /idle,waittime=1,/cdtodir,scriptsdir=scriptsdir
+  endif
+endfor  ;; field directory loop
+
+
 ; Check all OPT files
 ;---------------------
 for i=0,nfitsbaselist-1 do begin
