@@ -1885,7 +1885,7 @@ if n_elements(inprefcat0) gt 0 then begin
 endif
 
 ; NO reference catalog input, check if there is a previously saved catalog
-if n_elements(refcat) eq 0 and not keyword_set(redo) then begin
+if n_elements(refcat) eq 0 then begin
       
   ; Check if there is already a reference file for this file
   refcatfile = filebase+'_refcat.dat'
