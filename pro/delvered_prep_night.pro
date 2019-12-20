@@ -321,10 +321,13 @@ setup = ['##### REQUIRED #####',$
         ny = sxpar(hd,'naxis2')
         HEAD_XYAD,hd,[0,nx-1,nx-1,0],[0,0,ny-1,ny-1],vra,vdec,/degree
         ROTSPHCEN,vra,vdec,cenra,cendec,vlon,vlat,/gnomic
-        ;gdrefcat = where(refcat.ra ge min(vra)-0.02 and refcat.ra le max(vra)+0.02 and $
-        ;                 refcat.dec ge min(vdec)-0.02 and refcat.dec le max(vdec)+0.02,ngdrefcat)
-        gdrefcat = where(reflon ge min(vlon)-0.02 and reflon le max(vlon)+0.02 and $
-                         reflat ge min(vlat)-0.02 and reflat le max(vlat)+0.02,ngdrefcat)
+        offset = 0.02
+        if abs(cendec) gt 70 then offset=0.2
+        if abs(cendec) gt 80 then offset=0.4
+        ;gdrefcat = where(refcat.ra ge min(vra)-offset and refcat.ra le max(vra)+offset and $
+        ;                 refcat.dec ge min(vdec)-offset and refcat.dec le max(vdec)+offset,ngdrefcat)
+        gdrefcat = where(reflon ge min(vlon)-offset and reflon le max(vlon)+offset and $
+                         reflat ge min(vlat)-offset and reflat le max(vlat)+offset,ngdrefcat)
         refcat1 = refcat[gdrefcat]
         refcatfile = chipdir+ifield+'-'+fexptoadd[e].expnum+'_'+string(ccdnum[c],format='(i02)')+'_refcat.fits'
         MWRFITS,refcat1,refcatfile,/create
