@@ -2241,11 +2241,10 @@ if (nastr gt 0) then begin
     endif ; good XCORR match
   endif ; no match
 
-
   ; Use the intial WCS
   ;if (initrms lt 2.0) then begin
   ;if (initrms lt 1.0) then begin
-  if (initrms lt 1.5) then begin
+  if (initrms lt 1.5*rmslim) then begin
 
     print,'Using the intial WCS'
     refcat1b.x = xref
