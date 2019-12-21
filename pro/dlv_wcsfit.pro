@@ -41,7 +41,7 @@
 ;                for which reference stars (USNO-B1) will be acquired.
 ;                The default is the greater of Xsize, Ysize and 10 arcmin.
 ;  =rmslim    The maximum RMS to allow before the fit is "bad" and
-;                rejected.  The default is rmslim=1.0 arcsec
+;                rejected.  The default is rmslim=0.2 arcsec
 ;  =nmatchlim  The minimum NMATCH to allow before the fit is "bad" and
 ;                rejected.  The default is nmatchlim=20 stars.
 ;  =inpfwhm   Use this input FWHM for this image.  The default is to
@@ -1430,7 +1430,7 @@ endelse
 
 ; Defaults
 if n_elements(noupdate) eq 0 then noupdate=0       ; updating the header?
-if n_elements(rmslim) eq 0 then rmslim=0.1         ; maximum RMS to allow in arcsec
+if n_elements(rmslim) eq 0 then rmslim=0.2         ; maximum RMS to allow in arcsec
 if n_elements(nmatchlim) eq 0 then nmatchlim=20    ; minimum NMATCH to allow
 
 
