@@ -44,10 +44,16 @@ for e=0,nexp-1 do begin
       dum = strsplit(hdr[indrms[0]],' ',/extract)
       rms = float((strsplit(dum[2],'=',/extract))[1])
     endif else rms = 9999.99
-    print,files[i],sxpar(hdr,'crval1'),sxpar(hdr,'crval2'),rms
+    indnmatch = where(stregex(hdr,'HISTORY WCSFIT: NMATCH',/boolean) eq 1,nindnmatch)
+    if nindnmatch gt 0 then begin
+      indnmatch = first_el(indnmatch,/last)
+      dum = strsplit(hdr[indnmatch],' ',/extract)
+      nmatch = float((strsplit(dum[2],'=',/extract))[1])
+    endif else nmatch = 9999.99
+    print,files[i],sxpar(hdr,'crval1'),sxpar(hdr,'crval2'),rms,nmatch
 
 
-    if (i eq 0) then plot,[0],[0],/nodata,xr=[-1.2,1.2],yr=[-1.2,1.2],xsty=1,ysty=1,tit=files[i]
+    if (i eq 0) then plot,[0],[0],/nodata,xr=[-1.2,1.2],yr=[-1.2,1.2],xsty=1,ysty=1,tit=expnum[e]
     oplot,lon,lat
     xyouts,mean(lon),mean(lat),chip
     ;if (i eq 0) then plot,[ra00,ra10,ra11,ra01,ra00]-ra0,[dec00,dec10,dec11,dec01,dec00]-dec0,xr=[-1.2,1.2]/cos(dec0*!pi/180),yr=[-1.2,1.2],xsty=1,ysty=1,tit=files[i] else $
