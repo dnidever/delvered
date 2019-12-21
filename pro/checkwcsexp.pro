@@ -48,8 +48,8 @@ for e=0,nexp-1 do begin
     if nindnmatch gt 0 then begin
       indnmatch = first_el(indnmatch,/last)
       dum = strsplit(hdr[indnmatch],' ',/extract)
-      nmatch = float((strsplit(dum[2],'=',/extract))[1])
-    endif else nmatch = 9999.99
+      nmatch = long((strsplit(dum[2],'=',/extract))[1])
+    endif else nmatch = 9999L
     print,files[i],sxpar(hdr,'crval1'),sxpar(hdr,'crval2'),rms,nmatch
 
 
