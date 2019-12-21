@@ -42,6 +42,8 @@
 ;                The default is the greater of Xsize, Ysize and 10 arcmin.
 ;  =rmslim    The maximum RMS to allow before the fit is "bad" and
 ;                rejected.  The default is rmslim=1.0 arcsec
+;  =nmatchlim  The minimum NMATCH to allow before the fit is "bad" and
+;                rejected.  The default is nmatchlim=20 stars.
 ;  =inpfwhm   Use this input FWHM for this image.  The default is to
 ;                derive it with IMFWHM.PRO.
 ;  /stp       Stop at the end of the program.
@@ -1358,7 +1360,8 @@ end
 pro dlv_wcsfit,input,up=up0,left=left0,pixscale=pixscale0,cenra=cenra0,cendec=cendec0,outcat=cat,outrefcat=refcat,$
                inpcat=inpcat0,inprefcat=inprefcat0,stp=stp,error=error,projection=projection,noupdate=noupdate,$
                redo=redo,searchdist=searchdist,rmslim=rmslim,refname=refname,maxshift=maxshift,$
-               refmaglim=refmaglim,catmaglim=catmaglim,caterrlim=caterrlim,inpfwhm=inpfwhm,head=head
+               refmaglim=refmaglim,catmaglim=catmaglim,caterrlim=caterrlim,inpfwhm=inpfwhm,head=head,$
+               nmatchlim=nmatchlim
 
 t0 = systime(1)
 undefine,error
@@ -1370,7 +1373,7 @@ if ninput eq 0 then begin
   print,'                    inpcat=inpcat,inprefcat=inprefcat,stp=stp,error=error,projection=projection,'
   print,'                    noupdate=noupdate,redo=redo,searchdist=searchdist,rmslim=rmslim,'
   print,'                    refname=refname,refmaglim=refmaglim,catmaglim=catmaglim,caterrlim=caterrlim,'
-  print,'                    inpfwhm=inpfwhm,outcat=outcat,outrefcat=outrefcat'
+  print,'                    inpfwhm=inpfwhm,outcat=outcat,outrefcat=outrefcat,nmatchlim=nmatchlim'
   error = 'Not enough inputs'
   return
 endif
@@ -1399,7 +1402,8 @@ if nfiles gt 1 then begin
   DLV_WCSFIT,files[i],up=up0,left=left0,pixscale=pixscale0,cenra=cenra0,cendec=cendec0,$
              inpcat=inpcat0,inprefcat=inprefcat0,stp=stp,projection=projection,noupdate=noupdate,$
              redo=redo,searchdist=searchdist,rmslim=rmslim,refname=refname,maxshift=maxshift,$
-             refmaglim=refmaglim,catmaglim=catmaglim,caterrlim=caterrlim,inpfwhm=inpfwhm
+             refmaglim=refmaglim,catmaglim=catmaglim,caterrlim=caterrlim,inpfwhm=inpfwhm,$
+             nmatchlim=nmatchlim
   return
 endif
 
@@ -1426,7 +1430,8 @@ endelse
 
 ; Defaults
 if n_elements(noupdate) eq 0 then noupdate=0       ; updating the header?
-if n_elements(rmslim) eq 0 then rmslim=1.0         ; maximum RMS to allow in arcsec
+if n_elements(rmslim) eq 0 then rmslim=0.1         ; maximum RMS to allow in arcsec
+if n_elements(nmatchlim) eq 0 then nmatchlim=20    ; minimum NMATCH to allow
 
 
 print,''
@@ -2158,7 +2163,7 @@ if (nastr gt 0) then begin
   ;if nmatch lt 10 then SRCMATCH,xref,yref,cat.x,cat.y,4*dcr,ind1,ind2,count=nmatch
 
   ; Enough matches
-  if (nmatch gt 5) then begin
+  if (nmatch gt nmatchlim) then begin
     print,strtrim(nmatch,2),' MATCHES'
 
     xdiff = xref[ind1]-cat1[ind2].x
@@ -2207,7 +2212,8 @@ if (nastr gt 0) then begin
   ;if (nmatch lt 10) or (initrms ge 2.0) then begin
   ;if (nmatch lt 5) or (initrms ge 2.0) then begin
   ;if (nmatch lt 5) or (initrms ge 1.0) then begin
-  if (nmatch lt 5) or (initrms ge 1.5) then begin
+  ;if (nmatch lt 5) or (initrms ge 1.5) then begin
+  if (nmatch lt nmatchlim) or (initrms ge 0.5) then begin
 
     print,'Initial RMS bad or not enough matches.  Trying cross-correlation.'
 
@@ -2223,7 +2229,7 @@ if (nastr gt 0) then begin
       dcr = ceil(2.0/pixscale)
       SRCMATCH,xref2,yref2,cat1.x,cat1.y,dcr,ind1,ind2,count=nmatch
 
-      if (nmatch gt 10) then begin
+      if (nmatch gt nmatchlim) then begin
         xdiff = xref[ind1]-cat1[ind2].x
         ydiff = yref[ind1]-cat1[ind2].y
         xmed = median(xdiff,/even)
@@ -2284,7 +2290,8 @@ print,''
 ; Using just the BRIGHT reference stars
 ;--------------------------------------
 ;if (nmatch lt 3 or matchrms*pixscale gt 1.5*rmslim) and $
-if (nmatch lt 3 or initrms gt 1.5*rmslim) and (refdensity gt imdensity) then begin
+;if (nmatch lt 3 or initrms gt 1.5*rmslim) and (refdensity gt imdensity) then begin
+if (nmatch lt nmatchlim or initrms gt 1.5*rmslim) and (refdensity gt imdensity) then begin
 
   ; Sorting by magnitude
   if TAG_EXIST(refcat1b,'JMAG') then begin
@@ -2315,7 +2322,7 @@ if (nmatch lt 3 or initrms gt 1.5*rmslim) and (refdensity gt imdensity) then beg
              rms=matchrms,maxshift=maxshift
 
   ; We successed
-  if (nmatch ge 3 and matchrms*pixscale lt 1.5*rmslim) then begin
+  if (nmatch ge nmatchlim and matchrms*pixscale lt 1.5*rmslim) then begin
 
     ind1a = ind1
     ind2a = ind2
@@ -2335,7 +2342,7 @@ endif  ; use bright stars
 
 ; Match the stars with MATCHSTARS
 ;--------------------------------
-if (nmatch lt 3 or matchrms*pixscale gt 1.5*rmslim) then begin
+if (nmatch lt nmatchlim or matchrms*pixscale gt 1.5*rmslim) then begin
 
   print,''
   print,'-- Matching Stars.  Using ALL reference stars --'
@@ -2349,7 +2356,7 @@ endif
 
 ; NO MATCHES, If header WCS used, try WCSFIT_ORIENT X/Y
 ;------------------------------------------------------
-if ((nmatch lt 3 or matchrms*pixscale gt 1.5*rmslim) and usedheadxy eq 1) then begin
+if ((nmatch lt nmatchlim or matchrms*pixscale gt 1.5*rmslim) and usedheadxy eq 1) then begin
 
   print,''
   print,'Header WCS initial X/Y coordinates gave BAD results.'
@@ -2370,7 +2377,7 @@ endif
 
 ; NO MATCHES, Try using DAOMATCH
 ;------------------------------------------------------
-if (nmatch lt 3 or matchrms*pixscale gt 1.5*rmslim) then begin
+if (nmatch lt nmatchlim or matchrms*pixscale gt 1.5*rmslim) then begin
 
   print,''
   print,'-- Trying DAOMATCH --'
@@ -2383,7 +2390,7 @@ endif
 
 
 ; NO matches
-if nmatch lt 3 then begin
+if nmatch lt nmatchlim then begin
   error = 'TOO FEW MATCHES'
   print,'TOO FEW MATCHES'
   return
