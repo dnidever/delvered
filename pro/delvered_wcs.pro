@@ -373,6 +373,63 @@ if ncmd gt 0 then begin
   PBS_DAEMON,cmd,cmddir,nmulti=nmulti,prefix='wfit',hyperthread=hyperthread,/idle,waittime=1,scriptsdir=scriptsdir
 endif
 
+;; Try to fix ones that failed using the ones that succeeded
+wcsinfo = PHOTRED_GETWCSRMS(cmdlongfile)
+;; If some failed then try fix it
+bdrms = where(wcsinfo.rms gt 0.2 or wcsinfo.nmatch lt 20,nbdrms)
+if nbdrms gt 0 then begin
+  printlog,logfile,'Trying to fix '+strtrim(nbdrms,2)+' files failed'
+  undefine,cmd2,cmddir2
+
+  base = photred_getfitsext(cmdlongfile,/basename)
+  expnum = reform((strsplitter(base,'_',/extract))[0,*])
+  expindex = create_index(expnum)
+  ;; exposures with failures
+  expnum_fail = expnum[bdrms]
+  expnum_fail = expnum_fail[uniq(expnum_fail,sort(expnum_fail))]
+  nexpnum_fail = n_elements(expnum_fail)
+  ;; Loop over exposures with failures
+  for j=0,nexpnum_fail-1 do begin
+    expnum1 = expnum_fail[j]
+    field1 = first_el(strsplit(expnum1,'-',/extract))
+    MATCH,expindex.value,expnum1,ind1,ind2
+    indx = expindex.index[expindex.lo[ind1]:expindex.hi[ind1]]
+    gdrms = where(wcsinfo[indx].rms lt 0.2 and wcsinfo[indx].nmatch ge 20,ngdrms)
+    ;; Need to find other good WCS files for this exposure
+    undefine,goodfiles
+    if ngdrms eq 0 then begin
+      files1 = file_search(field1+'/chip??/'+expnum1+'_??.fits',count=nfiles1)
+      if nfiles1 gt 0 then begin
+        wcsinfo1 = PHOTRED_GETWCSRMS(files1)
+        gdrms1 = where(wcsinfo1.rms le 0.2 and wcsinfo1.nmatch ge 20,ngdrms1)
+        if ngdrms1 gt 0 then goodfiles=files1[gdrms1] else undefine,goodfiles
+      endif
+    endif else goodfiles = cmdlongfile[indx[gdrms]]  ;; good files already in hand
+
+    ;; We have some good WCS files for this exposures
+    if n_elements(goodfiles) gt 0 then begin
+      MATCH,expnum[bdrms],expnum1,ind3,ind4
+      bdfiles = cmdlongfile[bdrms[ind3]]
+      for k=0,n_elements(bdfiles)-1 do WCSCOPY,goodfiles[0],bdfiles[k],/keepcrpix      
+      PUSH,cmd2,cmd[bdrms[ind3]]
+      PUSH,cmddir2,cmddir[bdrms[ind3]]
+
+    ;; No good files for this exposure
+    endif else begin
+      printlog,logfile,'No good files for exposure '+expnum1
+    endelse
+  endfor ;; loop over exposures with failures
+
+  ;; Rerun dlv_wcsfit
+  if n_elements(cmd2) gt 0 then begin
+    printlog,logfile,'Rerunning WCSFIT on '+strtrim(n_elements(cmd2),2)+' files'
+    PBS_DAEMON,cmd2,cmddir2,nmulti=nmulti,prefix='wfit',hyperthread=hyperthread,/idle,$
+               waittime=1,scriptsdir=scriptsdir
+  endif
+
+endif
+
+
 ; Check for success/failures
 for i=0,ncmd-1 do begin
   ; Successful
