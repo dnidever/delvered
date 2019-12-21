@@ -378,7 +378,7 @@ wcsinfo = PHOTRED_GETWCSRMS(cmdlongfile)
 ;; If some failed then try fix it
 bdrms = where(wcsinfo.rms gt 0.2 or wcsinfo.nmatch lt 20,nbdrms)
 if nbdrms gt 0 then begin
-  printlog,logfile,'Trying to fix '+strtrim(nbdrms,2)+' files failed'
+  printlog,logfile,'Trying to fix '+strtrim(nbdrms,2)+' files that failed'
   undefine,cmd2,cmddir2
 
   base = photred_getfitsext(cmdlongfile,/basename)
