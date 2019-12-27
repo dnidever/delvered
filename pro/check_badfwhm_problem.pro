@@ -23,6 +23,12 @@ For n=0,nnights-1 do begin
   inight = nights[n]
   print,strtrim(n+1,2),' ',inight
 
+  outfile = delvedir+'exposures/'+inight+'/'+inight+'_badfwhm.fits'
+  if file_test(outfile) eq 1 and not keyword_set(redo) then begin
+    print,outfile,' already EXISTS and /redo NOT set'
+    goto,NIGHTBOMB
+  endif
+
   fdir = file_search(delvedir+'exposures/'+inight+'/F*',/test_directory,count=nfdir)
 
   undefine,expstr,chstr
@@ -86,13 +92,34 @@ For n=0,nnights-1 do begin
     BOMB:
   Endfor ; field loop
 
+
   if n_elements(expstr) eq 0 then begin
     print,'No exposures'
     goto,NIGHTBOMB
   endif
 
+  ;; Add these to the lists
+  bdfwhm = where(chstr.bad eq 1,nbdfwhm)
+  if nbdfwhm gt 0 then begin
+    print,'Adding ',strtrim(nbdfwhm,2),' files to DAOPHOT.inlist and removing from DAOPHOT.success'
+    ;; Add to DAOPHOT.inlist
+    WRITELINE,delvedir+'exposures/'+inight+'/logs/DAOPHOT.inlist',chstr[bdfwhm].file,/append
+    ;; Remove from DAOPHOT.success
+    READLINE,delvedir+'exposures/'+inight+'/logs/DAOPHOT.success',slines,count=nslines
+    if nslines gt 0 then begin
+      MATCH,file_basename(slines),file_basename(chstr[bdfwhm].file),ind1,ind2,count=nmatch
+      if nmatch gt 0 then begin
+        if nmatch lt nslines then begin
+          REMOVE,ind1,slines
+          WRITELINE,delvedir+'exposures/'+inight+'/logs/DAOPHOT.success',slines
+        endif else begin
+          TOUCHZERO,delvedir+'exposures/'+inight+'/logs/DAOPHOT.success'
+        endelse
+      endif
+    endif
+  endif
+
   ;; Write out the summary information
-  outfile = delvedir+'exposures/'+inight+'/'+inight+'_badfwhm.fits'
   print,'Writing summary information to ',outfile
   MWRFITS,expstr,outfile,/create
   MWRFITS,chstr,outfile,/silent
