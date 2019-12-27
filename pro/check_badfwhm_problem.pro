@@ -103,11 +103,14 @@ For n=0,nnights-1 do begin
   if nbdfwhm gt 0 then begin
     print,'Adding ',strtrim(nbdfwhm,2),' files to DAOPHOT.inlist and removing from DAOPHOT.success'
     ;; Add to DAOPHOT.inlist
-    WRITELINE,delvedir+'exposures/'+inight+'/logs/DAOPHOT.inlist',chstr[bdfwhm].file,/append
+    badfiles = chstr[bdfwhm].file
+    len = strlen(delvedir+'exposures/'+inight+'/')
+    badfiles = strmid(badfiles,len)
+    WRITELINE,delvedir+'exposures/'+inight+'/logs/DAOPHOT.inlist',badfiles,/append
     ;; Remove from DAOPHOT.success
     READLINE,delvedir+'exposures/'+inight+'/logs/DAOPHOT.success',slines,count=nslines
     if nslines gt 0 then begin
-      MATCH,file_basename(slines),file_basename(chstr[bdfwhm].file),ind1,ind2,count=nmatch
+      MATCH,file_basename(slines),file_basename(badfiles),ind1,ind2,count=nmatch
       if nmatch gt 0 then begin
         if nmatch lt nslines then begin
           REMOVE,ind1,slines
