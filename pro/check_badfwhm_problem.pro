@@ -16,8 +16,6 @@ if nnights eq 0 then begin
   nights = file_basename(nights)
 endif
 
-;goto,summary
-
 undefine,sumstr
 
 ;; Night loop
@@ -99,12 +97,8 @@ For n=0,nnights-1 do begin
   MWRFITS,expstr,outfile,/create
   MWRFITS,chstr,outfile,/silent
 
-stop
-
   NIGHTBOMB:
 Endfor  ; night loop
-
-stop
 
 ;stop
 
