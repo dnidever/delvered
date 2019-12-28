@@ -120,6 +120,8 @@ For n=0,nnights-1 do begin
         endelse
       endif
     endif
+    ;; Remove the bad opt files
+    FILE_DELETE,chstr[bdfwhm].file,/allow
   endif
 
   ;; Write out the summary information
