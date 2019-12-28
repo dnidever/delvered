@@ -14,7 +14,7 @@
 ; By D.Nidever  Feb 2008
 ;-
 
-pro delvered_wcs,redo=redo,stp=stp,testing=testing,std=std
+pro delvered_wcs,redo=redo,nmulti=nmulti,stp=stp,testing=testing,std=std
 
 COMMON photred,setup
 
@@ -135,13 +135,14 @@ if strtrim(hyperthread,2) eq '0' then hyperthread=0
 if n_elements(hyperthread) eq 0 then hyperthread=0
 
 ; Getting NMULTI
-nmulti = READPAR(setup,'NMULTI')
-nmulti = long(nmulti)
-
-; Use NMULTI_WCS if set
-nmultiwcs = READPAR(setup,'NMULTI_WCS')
-if nmultiwcs ne '0' and nmultiwcs ne '' and nmultiwcs ne '-1' then nmulti=long(nmultiwcs)
-nmulti = nmulti > 1  ; must be >=1
+if n_elements(nmulti) eq 0 then begin
+  nmulti = READPAR(setup,'NMULTI')
+  nmulti = long(nmulti) > 1
+  ;; Use NMULTI_WCS if set
+  nmultiwcs = READPAR(setup,'NMULTI_WCS')
+  if nmultiwcs ne '0' and nmultiwcs ne '' and nmultiwcs ne '-1' then nmulti=long(nmultiwcs)
+  nmulti = nmulti > 1  ; must be >=1
+endif
 
 ; SKIPCHECK, skip all of the detailed file checking
 skipcheck = READPAR(setup,'SKIPCHECK',count=nskipcheck)

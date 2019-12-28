@@ -16,7 +16,7 @@
 ; By D.Nidever  Feb 2008
 ;-
 
-pro delvered_match,redo=redo,fake=fake,stp=stp
+pro delvered_match,redo=redo,fake=fake,nmulti=nmulti,stp=stp
 
 COMMON photred,setup
 
@@ -92,6 +92,16 @@ endif
 ; REDO
 doredo = READPAR(setup,'REDO')
 if keyword_set(redo) or (doredo ne '-1' and doredo ne '0') then redo=1
+; NMULTI
+if n_elements(nmulti) eq 0 then begin
+  nmulti = READPAR(setup,'NMULTI')
+  nmulti = long(nmulti) > 1
+
+  ; Use NMULTI_MATCH if set
+  nmultimatch = READPAR(setup,'NMULTI_MATCH')
+  if nmultimatch ne '0' and nmultimatch ne '' and nmultimatch ne '-1' then nmulti=long(nmultimatch)
+  nmulti = nmulti > 1  ; must be >=1
+endif
 ; Hyperthread?
 hyperthread = READPAR(setup,'hyperthread')
 if hyperthread ne '0' and hyperthread ne '' and hyperthread ne '-1' then hyperthread=1

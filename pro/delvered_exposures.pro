@@ -23,7 +23,8 @@
 ; By D. Nidever  Feb 2019
 ;-
 
-pro delvered_exposures,input,delvedir=delvedir,redo=redo,dozeropoint=dozeropoint,uselocal=uselocal,startfresh=startfresh,stp=stp
+pro delvered_exposures,input,delvedir=delvedir,redo=redo,dozeropoint=dozeropoint,uselocal=uselocal,$
+                       startfresh=startfresh,stp=stp,nmulti=nmulti
 
 ;; Defaults
 if n_elements(delvedir) gt 0 then delvedir=trailingslash(delvedir) else delvedir = '/net/dl1/users/dnidever/delve/'
@@ -258,9 +259,9 @@ FOR i=0,nnights-1 do begin
     WRITELINE,'logs/WCS.inlist',wcslist
   endif
 
-  if READPAR(setup,'WCS') ne '0' then DELVERED_WCS,redo=redo
-  if READPAR(setup,'DAOPHOT') ne '0' then DELVERED_DAOPHOT,redo=redo
-  if READPAR(setup,'MATCH') ne '0' then DELVERED_MATCH,redo=redo
+  if READPAR(setup,'WCS') ne '0' then DELVERED_WCS,redo=redo,nmulti=nmulti
+  if READPAR(setup,'DAOPHOT') ne '0' then DELVERED_DAOPHOT,redo=redo,nmulti=nmulti
+  if READPAR(setup,'MATCH') ne '0' then DELVERED_MATCH,redo=redo,nmulti=nmulti
   if READPAR(setup,'APCOR') ne '0' then PHOTRED_APCOR,redo=redo
   if READPAR(setup,'ASTROM') ne '0' then PHOTRED_ASTROM,redo=redo
 
