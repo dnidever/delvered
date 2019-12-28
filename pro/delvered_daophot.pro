@@ -433,7 +433,7 @@ for i=0,n_elements(fdirs)-1 do begin
   optfiles = file_search(fdirs[i]+'/chip??/F*_??.opt',count=noptfiles)
   optstr = replicate({field:'',optfile:'',expnum:'',chip:0L,fwhm:0.0},noptfiles)
   for j=0,noptfiles-1 do begin
-    base1 = file_basename(optfiles[i],'.opt')
+    base1 = file_basename(optfiles[j],'.opt')
     dum = strsplit(base1,'-',/extract)
     field1 = dum[0]
     dum2 = strsplit(dum[1],thisimager.separator,/extract)
