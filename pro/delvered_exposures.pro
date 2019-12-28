@@ -11,6 +11,7 @@
 ;  /uselocal  Do all processing in a local drive.  Off by default.
 ;  /startfresh  Start completely fresh.  Remove old files and start
 ;                 from the very beginning.
+;  =dozeropoint  Control whether ZEROPOINT is run.
 ;
 ; OUTPUTS:
 ;  PHOTRED will be run on each night and a final summary file
@@ -22,7 +23,7 @@
 ; By D. Nidever  Feb 2019
 ;-
 
-pro delvered_exposures,input,delvedir=delvedir,redo=redo,uselocal=uselocal,startfresh=startfresh,stp=stp
+pro delvered_exposures,input,delvedir=delvedir,redo=redo,dozeropoint=dozeropoint,uselocal=uselocal,startfresh=startfresh,stp=stp
 
 ;; Defaults
 if n_elements(delvedir) gt 0 then delvedir=trailingslash(delvedir) else delvedir = '/net/dl1/users/dnidever/delve/'
@@ -262,7 +263,11 @@ FOR i=0,nnights-1 do begin
   if READPAR(setup,'MATCH') ne '0' then DELVERED_MATCH,redo=redo
   if READPAR(setup,'APCOR') ne '0' then PHOTRED_APCOR,redo=redo
   if READPAR(setup,'ASTROM') ne '0' then PHOTRED_ASTROM,redo=redo
-  if READPAR(setup,'ZEROPOINT') ne '0' then DELVERED_ZEROPOINT,redo=redo
+
+  if n_elements(dozeropoint) eq 1 then begin
+    if keyword_set(dozeropoint) then DELVERED_ZEROPOINT,redo=redo
+  endif else if READPAR(setup,'ZEROPOINT') ne '0' then DELVERED_ZEROPOINT,redo=redo
+
   if READPAR(setup,'CALIB') ne '0' then PHOTRED_CALIB,redo=redo
   if READPAR(setup,'COMBINE') ne '0' then PHOTRED_COMBINE,redo=redo
   if READPAR(setup,'DEREDDEN') ne '0' then PHOTRED_DEREDDEN,redo=redo
