@@ -307,7 +307,7 @@ undefine,zpterm,zptermerr
 zpterm = dln_poly_fit(x[gd],diff[gd],0,measure_errors=err[gd],sigma=zptermerr,yerror=yerror,status=status,yfit=yfit1,/bootstrap)
 zpterm = zpterm[0]
 zptermerr = zptermerr[0]
-printlog,logfile,'  ZPTERM = '+stringize(zpterm,ndec=4)+' +/- '+stringize(zptermerr,ndec=4)
+printlog,logfile,'ZPTERM = '+stringize(zpterm,ndec=4)+' +/- '+stringize(zptermerr,ndec=4)
 
 ;; Add to the exposure structure
 expstr.num = ngd

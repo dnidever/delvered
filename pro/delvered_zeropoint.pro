@@ -204,7 +204,6 @@ cmd = "delvered_zeropoint_exposure,'"+expindex.value+"',modeleqnfile='"+modeleqn
 if keyword_set(redo) then cmd+=',/redo'
 field = reform((strsplitter(expindex.value,'-',/extract))[0,*])
 cmddir = field
-stop
 PBS_DAEMON,cmd,cmddir,jobs=jobs,/idle,/hyperthread,prefix='zpt',nmulti=nmulti,wait=1,scriptsdir=scriptsdir
 
 
