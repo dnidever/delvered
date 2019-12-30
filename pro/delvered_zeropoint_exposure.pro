@@ -10,7 +10,7 @@
 ; By D. Nidever  Dec 2019
 ;-
 
-pro delvered_zeropoint_zeropoint,expname,redo=redo,modeleqnfile=modeleqnfile
+pro delvered_zeropoint_exposure,expname,redo=redo,modeleqnfile=modeleqnfile
 
 ;; Not enough inputs
 if n_elements(expname) eq 0 then begin
@@ -23,6 +23,7 @@ COMMON photred,setup
 CD,current=curdir
 
 logfile = -1
+t0 = systime(1)
 
 ; LOAD THE SETUP FILE if not passed
 ;-----------------------------------
@@ -100,20 +101,11 @@ if nind_imager eq 0 then begin
   return
 endif
 thisimager = imagers[ind_imager[0]]
-; print out imager info
-printlog,logfile,''
-printlog,logfile,'USING IMAGER:'
-printlog,logfile,'Telescope = '+thisimager.telescope
-printlog,logfile,'Instrument = '+thisimager.instrument
-printlog,logfile,'Namps = '+strtrim(thisimager.namps,2)
-printlog,logfile,"Separator = '"+thisimager.separator+"'"
-printlog,logfile,''
-
 
 ;; Output file, are we redoing
 field = first_el(strsplit(file_basename(expname),'-',/extract))  ; F1
 outfile = field+'/'+expname+'_zeropoint.fits'
-if file_exist(outfile) eq 1 and not keyword_set(redo) then begin
+if file_test(outfile) eq 1 and not keyword_set(redo) then begin
   printlog,logfile,outfile+' EXISTS and /redo NOT SET'
   return
 endif
@@ -121,7 +113,7 @@ endif
 
 
 ;; Get all of the files from DAOPHOT.success
-lists = PHOTRED_GETINPUT('ZEROPOINT','DAOPHOT.success',redo=redo,ext=['fits','fits.fz'])
+lists = PHOTRED_GETINPUT('ZEROPOINT','DAOPHOT.success',redo=redo,ext=['fits','fits.fz'],/silent)
 if lists.ninputlines eq 0 then begin
   printlog,logfile,'NO FILES TO PROCESS'
   return
@@ -148,7 +140,6 @@ expbase = expbase[gdbase]
 ;; Look for other chips for this exposure that were previously
 ;; processed successfully
 if lists.nsuccesslines gt 0 then begin
-  printlog,logfile,'Looking for previous success for these exposures'
   sallbase = PHOTRED_GETFITSEXT(lists.successlines,/basename)
   sexpbase = sallbase
   if thisimager.namps gt 1 then $
@@ -179,7 +170,7 @@ expfiles = fitsfiles
 hd = PHOTRED_READFILE(fitsfiles[0],/header)
 exptime = PHOTRED_GETEXPTIME(fitsfiles[0])
 filter = PHOTRED_GETFILTER(fitsfiles[0])
-printlog,logfile,expname+' '+filter+' '+stringize(exptime,ndec=1)
+printlog,logfile,expname+' '+filter+' '+stringize(exptime,ndec=1)+' '+strtrim(nfitsfiles,2)
 expstr.name = expname
 expstr.field = field
 expstr.filter = filter
@@ -192,9 +183,9 @@ expstr.exptime = exptime
 
 ;; Load all of the ALS files and add coordinates
 undefine,cat
-For j=0,nind-1 do begin
-  dir1 = FILE_DIRNAME(fitsfiles[ind[j]])
-  base1 = allbase[ind[j]]
+For j=0,nfitsfiles-1 do begin
+  dir1 = FILE_DIRNAME(fitsfiles[j])
+  base1 = allbase[j]
   alsfile1 = dir1+'/'+base1+'.als'
   ccdnum = PHOTRED_GETCHIPNUM(base1,thisimager)
   ifield = first_el(strsplit(base1,'-',/extract))
@@ -204,8 +195,8 @@ For j=0,nind-1 do begin
   als = REPLICATE(schema,nals)
   STRUCT_ASSIGN,als0,als,/nozero
   ;; Get the coordinates
-  if strpos(fitsfiles[ind[j]],'.fits.fz') ne -1 then exten=1 else exten=0
-  head1 = PHOTRED_READFILE(fitsfiles[ind[j]],exten=exten,/header)
+  if strpos(fitsfiles[j],'.fits.fz') ne -1 then exten=1 else exten=0
+  head1 = PHOTRED_READFILE(fitsfiles[j],exten=exten,/header)
   ;; Converting to IDL X/Y convention, starting at (0,0)
   ;; DAOPHOT has X/Y start at (1,1)
   HEAD_XYAD,head1,als.x-1.0,als.y-1.0,ra,dec,/degree
@@ -333,6 +324,8 @@ expstr.translines = [expname+'  '+filter+'  '+filter+'-'+filter+'  '+string(-zpt
 ;; Write out the exposure structure
 printlog,logfile,'Wrting exposure structure to '+outfile
 MWRFITS,expstr,outfile,/create
+
+printlog,logfile,'dt = '+strtrim(systime(1)-t0,2)+' sec.'
 
 BOMB:
 
