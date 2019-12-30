@@ -213,12 +213,18 @@ undefine,outlist,successlist,failurelist
 FOR i=0,nexp-1 do begin
   expname = expindex.value[i]
   field = first_el(strsplit(file_basename(expname),'-',/extract))  ; F1   
+  ind = expindex.index[expindex.lo[i]:expindex.hi[i]]
+  nind = n_elements(ind)
+  expfiles = fitsfiles[ind]
   outfile = field+'/'+expname+'_zeropoint.fits'
   if file_test(outfile) eq 1 then begin
     expstr1 = MRDFITS(outfile,1,/silent)
-    expstr[i] = expst1 
+    expstr[i] = expstr1 
+    push,outlist,expstr1.name
+    push,successlist,expfiles
   endif else begin
     printlog,logfile,outfile+' NOT FOUND'
+    push,failurelist,expfiles
   endelse
 ENDFOR
 
