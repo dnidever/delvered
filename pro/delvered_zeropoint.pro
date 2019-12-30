@@ -8,7 +8,7 @@
 ; By D. Nidever  Feb 2019
 ;-
 
-pro delvered_zeropoint,redo=redo,modeleqnfile=modeleqnfile
+pro delvered_zeropoint,redo=redo,nmulti=nmulti,modeleqnfile=modeleqnfile
 
 COMMON photred,setup
 
@@ -51,20 +51,36 @@ if scriptsdir eq '' then begin
   return
 endif
 
-; TELESCOPE
+;; TELESCOPE
 telescope = READPAR(setup,'TELESCOPE')
 telescope = strupcase(strtrim(telescope,2))
 if (telescope eq '0' or telescope eq '' or telescope eq '-1') then begin
   printlog,logfile,'NO TELESCOPE FOUND.  Please add to >>photred.setup<< file'
   return
 endif
-; INSTRUMENT
+;; INSTRUMENT
 instrument = READPAR(setup,'INSTRUMENT')
 instrument = strupcase(strtrim(instrument,2))
 if (instrument eq '0' or instrument eq '' or instrument eq '-1') then begin
   printlog,logfile,'NO INSTRUMENT FOUND.  Please add to >>photred.setup<< file'
   return
 endif
+;; NMULTI
+if n_elements(nmulti) eq 0 then begin
+  nmulti_setup = READPAR(setup,'NMULTI')
+  if nmulti_setup ne '0' and nmulti_setup ne '' and nmulti_setup ne '-1' then nmulti=long(nmulti_setup)   
+  ;; Use NMULTI_ZEROPOINT if set
+  nmultizp = READPAR(setup,'NMULTI_ZEROPOINT')
+  if nmultizp ne '0' and nmultizp ne '' and nmultizp ne '-1' then nmulti=long(nmultizp)
+  ;; Default is 5
+  if n_elements(nmulti) eq 0 then nmulti=5
+  nmulti = nmulti > 1       ; must be >=1
+endif
+;; Hyperthread
+hyperthread = READPAR(setup,'hyperthread')
+if hyperthread ne '0' and hyperthread ne '' and hyperthread ne '-1' then hyperthread=1
+if strtrim(hyperthread,2) eq '0' then hyperthread=0
+if n_elements(hyperthread) eq 0 then hyperthread=1   ;; default is to use /hyperthread
 
 ; LOAD THE "imagers" FILE
 ;----------------------------
@@ -183,172 +199,28 @@ printlog,logfile,'-----------------------'
 printlog,logfile,''
 printlog,logfile,systime(0)
 
-;; Exposure loop
+;; Run DELVERED_ZEROPOINT_EXPOSURE.PRO
+cmd = "delvered_zeropoint_exposure,'"+expindex.value+"',modeleqnfile='"+modeleqnfile+"'"
+if keyword_set(redo) then cmd+=',/redo'
+field = reform((strsplitter(expindex.value,'-',/extract))[0,*])
+cmddir = field
+stop
+PBS_DAEMON,cmd,cmddir,jobs=jobs,/idle,/hyperthread,prefix='zpt',nmulti=nmulti,wait=1,scriptsdir=scriptsdir
+
+
+;; Load the outputs, exposure loop
 expstr = replicate({name:'',field:'',filter:'',exptime:0.0,ncat:0L,nref:0L,num:0L,zpterm:99.99,zptermerr:9.99,translines:strarr(3)},nexp)
 undefine,outlist,successlist,failurelist
 FOR i=0,nexp-1 do begin
-  ind = expindex.index[expindex.lo[i]:expindex.hi[i]]
-  nind = n_elements(ind)
   expname = expindex.value[i]
-  expfiles = fitsfiles[ind]
-  field = first_el(strsplit(file_basename(fitsfiles[ind[0]]),'-',/extract))  ; F1
-  hd = PHOTRED_READFILE(fitsfiles[ind[0]],/header)
-  exptime = PHOTRED_GETEXPTIME(fitsfiles[ind[0]])
-  filter = PHOTRED_GETFILTER(fitsfiles[ind[0]])
-  printlog,logfile,strtrim(i+1,2)+' '+expname+' '+filter+' '+stringize(exptime,ndec=1)
-  expstr[i].name = expname
-  expstr[i].field = field
-  expstr[i].filter = filter
-  expstr[i].exptime = exptime
-
-  ;if filter eq 'u' then begin
-  ;  print,'Skipping all u-band exposures'
-  ;  goto,EXPBOMB
-  ;endif
-
-  ;; Load all of the ALS files and add coordinates
-  undefine,cat
-  For j=0,nind-1 do begin
-    dir1 = FILE_DIRNAME(fitsfiles[ind[j]])
-    base1 = allbase[ind[j]]
-    alsfile1 = dir1+'/'+base1+'.als'
-    ccdnum = PHOTRED_GETCHIPNUM(base1,thisimager)
-    ifield = first_el(strsplit(base1,'-',/extract))
-    als0 = PHOTRED_READFILE(alsfile1,count=nals)
-    ;; Change ID to a string
-    schema = {id:'',x:0.0,y:0.0,ra:0.0d0,dec:0.0d0,mag:0.0,err:0.0,sky:0.0,iter:0.0,chi:0.0,sharp:0.0,cmag:0.0}
-    als = REPLICATE(schema,nals)
-    STRUCT_ASSIGN,als0,als,/nozero
-    ;; Get the coordinates
-    if strpos(fitsfiles[ind[j]],'.fits.fz') ne -1 then exten=1 else exten=0
-    head1 = PHOTRED_READFILE(fitsfiles[ind[j]],exten=exten,/header)
-    ;; Converting to IDL X/Y convention, starting at (0,0)
-    ;; DAOPHOT has X/Y start at (1,1)
-    HEAD_XYAD,head1,als.x-1.0,als.y-1.0,ra,dec,/degree
-    als.ra = ra
-    als.dec = dec
-    ;; Modify the IDs
-    if thisimager.namps gt 1 then begin
-      ; FIELD_EXT.IDNUMBER, i.e. 190L182a_5.17366
-      ;---------------------------------------------
-      id2 = ifield+'_'+strtrim(ccdnum,2)+'.'+strtrim(als.id,2)
-      als.id = id2
-    endif else begin
-      ;; Updating the IDs
-      ;; FIELD.IDNUMBER, i.e. 190L182a.17366
-      ;;---------------------------------------------
-      id2 = ifield+'.'+strtrim(als.id,2)
-      als.id = id2
-    endelse
-    ;; Get calibrated magnitude, take exptime and aperture correction
-    ;; into acount
-    MATCH,apcor.file,base1,ind1,ind2,/sort,count=nmatch
-    if nmatch gt 0 then begin
-      apcor1 = apcor[ind1].value
-    endif else begin
-      print,'No aperture correction for ',base1
-      apcor1 = 0.0
-    endelse
-    ;; aperture correction is SUBTRACTIVE, makes it brighter
-    als.cmag = als.mag + 2.5*alog10(exptime) - apcor1
-    PUSH,cat,als
-  Endfor
-  ncat = n_elements(cat)
-  expstr[i].ncat = ncat
-  ;; Get central RA and DEC
-  if range(cat.ra) gt 100 then begin
-    ra = cat.ra
-    bd = where(ra gt 180,nbd)
-    if nbd gt 0 then ra[bd]-=360
-    cenra = mean(minmax(ra))
-    if cenra lt 0 then cenra+=360
-  endif else cenra=mean(minmax(cat.ra))
-  cendec = mean(minmax(cat.dec))
-
-  ;; Load the reference data for this field
-  reffile = 'refcat/'+field+'_refcat.fits.gz'
-  if file_test(reffile) eq 0 then begin
-    print,reffile,' REFERENCE FILE NOT FOUND'
-    push,failurelist,expfiles
-    goto,EXPBOMB
-  endif
-  ref = MRDFITS(reffile,1,/silent)  
-  nref = n_elements(ref)
-  reftags = tag_names(ref)
-  expstr[i].nref = nref
-
-  ;; Crossmatch
-  dcr = 1.0
-  SRCMATCH,ref.ra,ref.dec,cat.ra,cat.dec,dcr,ind1,ind2,/sph,count=nmatch
-  printlog,logfile,strtrim(nmatch,2),' matches to reference catalog'
-  if nmatch eq 0 then begin
-    printlog,logfile,'No matches to reference catalog'
-    push,failurelist,expfiles
-    goto,EXPBOMB
-  endif
-  ; Matched catalogs
-  cat1 = cat[ind2]
-  ref1 = ref[ind1]
-  
-  ;; Get the model magnitudes
-  instfilt = 'c4d-'+filter
-  mmags = DELVERED_GETMODELMAG(ref1,instfilt,cendec,modeleqnfile)
-  if n_elements(mmags) eq 1 and mmags[0] lt -1000 then begin
-    printlog,logfile,'No good model mags'
-    push,failurelist,expfiles
-    goto,EXPBOMB
-  endif
-  ;; Get good stars
-  gdcat = where(cat1.mag lt 50 and cat1.err lt 0.05 and abs(cat1.sharp) lt 1 and cat.chi lt 3 and $
-                mmags[*,0] lt 50 and mmags[*,1] lt 5,ngdcat)
-  if ngdcat lt 10 then $
-    gdcat = where(cat1.mag lt 50 and cat1.err lt 0.08 and abs(cat1.sharp) lt 1 and cat.chi lt 3 and $
-                  mmags[*,0] lt 50 and mmags[*,1] lt 5,ngdcat)
-  if ngdcat eq 0 then begin
-    printlog,logfile,'No stars that pass all of the quality/error cuts'
-    push,failurelist,expfiles
-    goto,EXPBOMB
-  endif
-  ref2 = ref1[gdcat]
-  mmags2 = mmags[gdcat,*]
-  cat2 = cat1[gdcat]
-
-  ;; Matched structure
-  ;mag2 = cat2.mag_auto + 2.5*alog10(exptime) ; correct for the exposure time
-  ;mstr = {col:float(mmags2[*,2]),mag:float(mag2),model:float(mmags2[*,0]),err:float(mmags2[*,1]),ccdnum:long(cat2.ccdnum)}
-  ;; Measure the zero-point
-  ;NSC_INSTCAL_CALIBRATE_FITZPTERM,mstr,expstr,chstr
-  ;expstr.zptype = 1
-
-  ;; Calculate the zeropoint
-  diff = mmags2[*,0] - cat2.cmag
-  err = sqrt(mmags2[*,1]^2 + cat2.err^2)
-  ; Make a sigma cut
-  med = median([diff])
-  sig = mad([diff])
-  gd = where(abs(diff-med) lt 3*sig,ngd)
-  x = fltarr(ngdcat)
-  undefine,zpterm,zptermerr
-  zpterm = dln_poly_fit(x[gd],diff[gd],0,measure_errors=err[gd],sigma=zptermerr,yerror=yerror,status=status,yfit=yfit1,/bootstrap)
-  zpterm = zpterm[0]
-  zptermerr = zptermerr[0]
-  printlog,logfile,'  ZPTERM = '+stringize(zpterm,ndec=4)+' +/- '+stringize(zptermerr,ndec=4)
-
-  ;; Add to the exposure structure
-  expstr[i].num = ngd
-  expstr[i].zpterm = zpterm
-  expstr[i].zptermerr = zptermerr
-  ;; Lines for PHOTRED trans file
-  ;;  ZPTERM is a SUBTRACTIVE constant offset
-  expstr[i].translines = [expname+'  '+filter+'  '+filter+'-'+filter+'  '+string(-zpterm,format='(f7.4)')+'    0.0000    0.0000   0.0000   0.0000',$
-                          '                     '+string(zptermerr,format='(f7.4)')+'    0.0000    0.0000   0.0000   0.0000','']
-  ;  F5-00517150_43  G  G-R  -0.4089    0.1713   -0.1193   0.0000   0.0000
-  ;                           0.0040   -0.0000    0.0001   0.0000   0.0000
-
-  push,outlist,expstr[i].name
-  push,successlist,expfiles
-
-  EXPBOMB:
+  field = first_el(strsplit(file_basename(expname),'-',/extract))  ; F1   
+  outfile = field+'/'+expname+'_zeropoint.fits'
+  if file_test(outfile) eq 1 then begin
+    expstr1 = MRDFITS(outfile,1,/silent)
+    expstr[i] = expst1 
+  endif else begin
+    printlog,logfile,outfile+' NOT FOUND'
+  endelse
 ENDFOR
 
 ;; Check for any exposures that failed
