@@ -220,6 +220,10 @@ For j=0,nfitsfiles-1 do begin
   MATCH,apcor.file,base1,ind1,ind2,/sort,count=nmatch
   if nmatch gt 0 then begin
     apcor1 = apcor[ind1].value
+    if finite(apcor1) eq 0 then begin
+      print,'NaN aperture correction.  Using 0.0 instead'
+      apcor1 = 0.0
+    endif
   endif else begin
     print,'No aperture correction for ',base1
     apcor1 = 0.0
