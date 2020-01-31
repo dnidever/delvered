@@ -457,7 +457,7 @@ for i=0,n_elements(fdirs)-1 do begin
   for j=0,n_elements(uexpnum)-1 do begin
     ind = where(optstr.expnum eq uexpnum[j],nind)
     eoptstr = optstr[ind]
-    medfwhm = median(eoptstr.fwhm)
+    medfwhm = median([eoptstr.fwhm])
     sigfwhm = mad(eoptstr.fwhm)
     bd = where(abs(medfwhm-eoptstr.fwhm) gt (4*sigfwhm>0.5),nbd)
     ;; Rerun photred_mkopt on these
