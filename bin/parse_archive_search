@@ -25,6 +25,12 @@ def parse_archive_file(filename):
         if rawbase[-8:]=='.fits.fz': rawbase=rawbase[:-8]  # trim .fits.fz                                                                                                            
         expnum[i] = rawbase[6:]
 
+    # Fix blank plver
+    bd, = np.where((archive['plver']=='') | (archive['plver']=='N/A'))
+    nbd = len(bd)
+    if nbd>0:
+        archive['plver'][bd] = 'V1.0.0'
+
     # Get only images
     gdim, = np.where((archive['proctype'] == 'InstCal') & (archive['prodtype'] == 'image'))
     ngdim = len(gdim)
@@ -33,13 +39,12 @@ def parse_archive_file(filename):
     # Initialize the final output catalog
     dt = np.dtype([('instrument',np.str,10),('base',np.str,100),('expnum',np.str,20),('rawname',np.str,100),('date_obs',np.str,50),('mjd_obs',np.float64),
                    ('filter',np.str,50),('prop_id',np.str,50),('ra',np.float64),('dec',np.float64),('exposure',float),('release_date',np.str,50),
-                   ('obstype',np.str,50),('plver',np.str,20),('proctype',np.str,20),('prodtype',np.str,20),('filename',np.str,200),('pldname',np.str,100),
-                   ('fluxfile',np.str,200),('maskfile',np.str,200),('wtfile',np.str,200)])
+                   ('plver',np.str,20),('proctype',np.str,20),('fluxfile',np.str,200),('maskfile',np.str,200),('wtfile',np.str,200)])
     cat = np.zeros(ngdim,dtype=dt)
     cat['instrument'] = 'c4d'
     cat['fluxfile'] = imstr['uri']
     # Copy over most of the columns
-    cols = ['date_obs','mjd_obs','filter','prop_id','ra','dec','exposure','release_date','obstype','plver','proctype','prodtype','filename','pldname']
+    cols = ['date_obs','mjd_obs','filter','prop_id','ra','dec','exposure','release_date','plver','proctype']
     for c in cols: cat[c] = imstr[c].copy()
 
     # rawname and expnum
