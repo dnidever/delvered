@@ -54,18 +54,23 @@ def parse_archive_file(filename):
 
     # match to mask and wt files
 
+
     # mask file
     mind, = np.where((archive['proctype'] == 'InstCal') & (archive['prodtype']=='dqmask'))
     marchive = archive[mind]
     mexpnum = expnum[mind].copy()
-    ind1,ind2 = dln.match(mexpnum,cat['expnum'])
+    id = dln.strjoin(cat['expnum'],cat['plver'])
+    mid = dln.strjoin(mexpnum,marchive['plver'])
+    ind1,ind2 = dln.match(mid,id)
     if len(ind1)>0:
         cat['maskfile'][ind2] = marchive['uri'][ind1].copy()
     # wt file
     wind, = np.where((archive['proctype'] == 'InstCal') & (archive['prodtype']=='wtmap'))
     warchive = archive[wind]
     wexpnum = expnum[wind].copy()
-    ind1,ind2 = dln.match(wexpnum,cat['expnum'])
+    id = dln.strjoin(cat['expnum'],cat['plver'])
+    wid = dln.strjoin(wexpnum,warchive['plver'])
+    ind1,ind2 = dln.match(wid,id)
     if len(ind1)>0:
         cat['wtfile'][ind2] = warchive['uri'][ind1].copy()
 
@@ -79,7 +84,19 @@ def parse_archive_file(filename):
     nu = len(np.unique(cat['date_obs']))
     ndup = len(cat)-nu
     if ndup>0:
-        print('There are '+str(ndup)+' duplicates')
+        print('Dealing with '+str(ndup)+' duplicates')
+        indx = dln.create_index(cat['date_obs'])
+        bd, = np.where(indx['num']>1)
+        nbd = len(bd)
+        torem = np.zeros(np.sum(indx['num'][bd]-1),int)-1
+        cnt = 0
+        for i in range(nbd):
+            ind = indx['index'][indx['lo'][bd[i]]:indx['hi'][bd[i]]+1]
+            plver = cat['plver'][ind].copy()
+            bestind = np.flip(np.argsort(plver),axis=0)[0]
+            torem[cnt:cnt+len(ind)-1] = np.delete(ind,bestind)
+            cnt += len(ind)-1
+        cat = np.delete(cat,torem)
     else:
         print('There are no duplicates')
 
