@@ -18,6 +18,12 @@ def parse_archive_file(filename):
         uri = archive['uri'][i]
         uri = uri.replace('irods:///noao-tuc-z1/', '/net/mss1/archive/')
         archive['uri'][i] = uri
+    # expnum for all archive rows
+    expnum = archive['uri'].copy()
+    for i in range(len(archive)):
+        rawbase = os.path.basename(archive['dtacqnam'][i])
+        if rawbase[-8:]=='.fits.fz': rawbase=rawbase[:-8]  # trim .fits.fz                                                                                                            
+        expnum[i] = rawbase[6:]
 
     # Get only images
     gdim, = np.where((archive['proctype'] == 'InstCal') & (archive['prodtype'] == 'image'))
@@ -47,25 +53,21 @@ def parse_archive_file(filename):
         cat['base'][i] = base
 
     # match to mask and wt files
-    allbase = archive['uri'].copy()
-    for i in range(len(allbase)):
-        b = os.path.basename(allbase[i])
-        if b[-8:]=='.fits.fz': b=b[:-8]  # trim .fits.fz
-        allbase[i] = b
+
     # mask file
-    mbase = cat['base'].copy()
-    for i in range(len(mbase)):
-        mbase[i] = mbase[i].replace('_ooi_','_ood_')
-    ind1,ind2 = dln.match(allbase,mbase)
+    mind, = np.where((archive['proctype'] == 'InstCal') & (archive['prodtype']=='dqmask'))
+    marchive = archive[mind]
+    mexpnum = expnum[mind].copy()
+    ind1,ind2 = dln.match(mexpnum,cat['expnum'])
     if len(ind1)>0:
-        cat['maskfile'][ind2] = archive['uri'][ind1].copy()
-    # wtmap file
-    wbase = cat['base'].copy()
-    for i in range(len(mbase)):
-        wbase[i] = wbase[i].replace('_ooi_','_oow_')
-    ind1,ind2 = dln.match(allbase,wbase)
+        cat['maskfile'][ind2] = marchive['uri'][ind1].copy()
+    # wt file
+    wind, = np.where((archive['proctype'] == 'InstCal') & (archive['prodtype']=='wtmap'))
+    warchive = archive[wind]
+    wexpnum = expnum[wind].copy()
+    ind1,ind2 = dln.match(wexpnum,cat['expnum'])
     if len(ind1)>0:
-        cat['wtfile'][ind2] = archive['uri'][ind1].copy()
+        cat['wtfile'][ind2] = warchive['uri'][ind1].copy()
 
     # Only keep images with flux, mask and wt files
     gd, = np.where((cat['fluxfile'] != '') & (cat['maskfile'] != '') & (cat['wtfile'] != ''))
@@ -74,6 +76,12 @@ def parse_archive_file(filename):
     cat = cat[gd]
 
     # Deal with duplicates??
+    nu = len(np.unique(cat['date_obs']))
+    ndup = len(cat)-nu
+    if ndup>0:
+        print('There are '+str(ndup)+' duplicates')
+    else:
+        print('There are no duplicates')
 
     return cat
 
