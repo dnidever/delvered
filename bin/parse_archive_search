@@ -1,0 +1,86 @@
+#!/usr/bin/env python
+
+# Parse the archive search output and output a catalog
+
+import os
+import sys
+import numpy as np
+from astropy.io import fits
+from astropy.table import Table
+from dlnpyutils import utils as dln
+
+def parse_archive_file(filename):
+    archive = fits.getdata(filename,1)
+    n = len(archive)
+
+    # Fix URI
+    for i in range(n):
+        uri = archive['uri'][i]
+        uri = uri.replace('irods:///noao-tuc-z1/', '/net/mss1/archive/')
+        archive['uri'][i] = uri
+
+    # Get only images
+    gdim, = np.where((archive['proctype'] == 'InstCal') & (archive['prodtype'] == 'image'))
+    ngdim = len(gdim)
+    imstr = archive[gdim]
+
+    # Initialize the final output catalog
+    dt = np.dtype([('instrument',np.str,10),('base',np.str,100),('expnum',np.str,20),('rawname',np.str,100),('date_obs',np.str,50),('mjd_obs',np.float64),
+                   ('filter',np.str,50),('prop_id',np.str,50),('ra',np.float64),('dec',np.float64),('exposure',float),('release_date',np.str,50),
+                   ('obstype',np.str,50),('plver',np.str,20),('proctype',np.str,20),('prodtype',np.str,20),('filename',np.str,200),('pldname',np.str,100),
+                   ('fluxfile',np.str,200),('maskfile',np.str,200),('wtfile',np.str,200)])
+    cat = np.zeros(ngdim,dtype=dt)
+    cat['instrument'] = 'c4d'
+    cat['fluxfile'] = imstr['uri']
+    # Copy over most of the columns
+    cols = ['date_obs','mjd_obs','filter','prop_id','ra','dec','exposure','release_date','obstype','plver','proctype','prodtype','filename','pldname']
+    for c in cols: cat[c] = imstr[c]
+
+    # rawname and expnum
+    for i in range(ngdim):
+        rawbase = os.path.basename(imstr['dtacqnam'][i])
+        if rawbase[-8:]=='.fits.fz': rawbase=rawbase[:-8]  # trim .fits.fz
+        cat['rawname'][i] = rawbase
+        cat['expnum'][i] = rawbase[6:]
+        base = os.path.basename(cat['fluxfile'][i])
+        if base[-8:]=='.fits.fz': base=base[:-8]  # trim .fits.fz
+        cat['base'][i] = base
+
+    # match to mask and wt files
+    allbase = archive['uri']
+    for i in range(len(allbase)):
+        b = os.path.basename(allbase[i])
+        if b[-8:]=='.fits.fz': b=b[:-8]  # trim .fits.fz
+        allbase[i] = b
+    # mask file
+    mbase = cat['base']
+    for i in range(len(mbase)):
+        mbase[i] = mbase[i].replace('_ooi_','_ood_')
+    ind1,ind2 = dln.match(allbase,mbase)
+    if len(ind1)>0:
+        cat['maskfile'][ind2] = archive['uri'][ind1]
+    # wtmap file
+    wbase = cat['base']
+    for i in range(len(mbase)):
+        wbase[i] = mbase[i].replace('_ooi_','_oow_')
+    ind1,ind2 = dln.match(allbase,wbase)
+    if len(ind1)>0:
+        cat['wtfile'][ind2] = archive['uri'][ind1]
+
+    # Only keep images with flux, mask and wt files
+    gd, = np.where((cat['fluxfile'] != '') & (cat['maskfile'] != '') & (cat['wtfile'] != ''))
+    ngd = len(gd)
+    print(str(ngd)+' exposures out of '+str(len(cat))+' have flux/mask/wt files')
+    cat = cat[gd]
+
+    # Deal with duplicates??
+
+    return cat
+
+if __name__ == "__main__":
+    filename = sys.argv[1]
+    outfile = sys.argv[2]
+    cat = parse_archive_file(filename)
+    if os.path.exists(outfile): os.remove(outfile)
+    print('Writing catalog to '+outfile)
+    Table(cat,copy=False).write(outfile)
