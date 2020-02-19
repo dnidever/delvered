@@ -34,7 +34,7 @@ def parse_archive_file(filename):
     cat['fluxfile'] = imstr['uri']
     # Copy over most of the columns
     cols = ['date_obs','mjd_obs','filter','prop_id','ra','dec','exposure','release_date','obstype','plver','proctype','prodtype','filename','pldname']
-    for c in cols: cat[c] = imstr[c]
+    for c in cols: cat[c] = imstr[c].copy()
 
     # rawname and expnum
     for i in range(ngdim):
@@ -47,25 +47,25 @@ def parse_archive_file(filename):
         cat['base'][i] = base
 
     # match to mask and wt files
-    allbase = archive['uri']
+    allbase = archive['uri'].copy()
     for i in range(len(allbase)):
         b = os.path.basename(allbase[i])
         if b[-8:]=='.fits.fz': b=b[:-8]  # trim .fits.fz
         allbase[i] = b
     # mask file
-    mbase = cat['base']
+    mbase = cat['base'].copy()
     for i in range(len(mbase)):
         mbase[i] = mbase[i].replace('_ooi_','_ood_')
     ind1,ind2 = dln.match(allbase,mbase)
     if len(ind1)>0:
-        cat['maskfile'][ind2] = archive['uri'][ind1]
+        cat['maskfile'][ind2] = archive['uri'][ind1].copy()
     # wtmap file
-    wbase = cat['base']
+    wbase = cat['base'].copy()
     for i in range(len(mbase)):
-        wbase[i] = mbase[i].replace('_ooi_','_oow_')
+        wbase[i] = wbase[i].replace('_ooi_','_oow_')
     ind1,ind2 = dln.match(allbase,wbase)
     if len(ind1)>0:
-        cat['wtfile'][ind2] = archive['uri'][ind1]
+        cat['wtfile'][ind2] = archive['uri'][ind1].copy()
 
     # Only keep images with flux, mask and wt files
     gd, = np.where((cat['fluxfile'] != '') & (cat['maskfile'] != '') & (cat['wtfile'] != ''))
