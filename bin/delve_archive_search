@@ -47,11 +47,10 @@ else
 fi
 if [ -s ${FILE}.txt ]; then
   python -c "from astropy.table import Table; dat=Table.read('${FILE}.txt',format='ascii',delimiter='|'); dat.write('${FILE}_all.fits')"
-  gzip ${FILE}_all.fits
-  parse_archive_search ${FILE}_all.fits.gz ${FILE}.fits
+  parse_archive_search ${FILE}_all.fits ${FILE}.fits
   gzip ${FILE}.fits
   \rm ${FILE}.txt
-  \rm ${FILE}_all.fits.gz
+  \rm ${FILE}_all.fits
 else
   echo "No ${FILE}.txt file"
 fi
