@@ -121,7 +121,7 @@ For n=0,nnights-1 do begin
       endif
     endif
     ;; Remove the bad opt files
-    FILE_DELETE,chstr[bdfwhm].file,/allow
+    FILE_DELETE,repstr(chstr[bdfwhm].file,'.fits','.opt'),/allow
   endif
 
   ;; Write out the summary information
