@@ -1,10 +1,11 @@
-pro delvered_prep,delvedir,scriptsdir=scriptsdirs,irafdir=irafdir,workdir=workdir,redo=redo,nmulti=nmulti
+pro delvered_prep,delvedir,scriptsdir=scriptsdirs,irafdir=irafdir,workdir=workdir,redo=redo,nmulti=nmulti,nightmin=nightmin
 
 ;; This pre-processing script gets DELVE and community MC data ready
 ;; from the NOAO mass store to be processed with PHOTRED.
 
 ;; Defaults
-if n_elements(delvedir) gt 0 then delvedir=trailingslash(delvedir) else delvedir = '/net/dl1/users/dnidever/delve/'
+;if n_elements(delvedir) gt 0 then delvedir=trailingslash(delvedir) else delvedir = '/net/dl1/users/dnidever/delve/'
+if n_elements(delvedir) gt 0 then delvedir=trailingslash(delvedir) else delvedir = '/net/dl2/dnidever/delve/'
 if FILE_TEST(delvedir,/directory) eq 0 then FILE_MKDIR,delvedir
 if n_elements(delvereddir) gt 0 then delvereddir=trailingslash(delvereddir) else delvereddir = '/home/dnidever/projects/delvered/'
 ;expfile = '/home/dnidever/projects/delvered/data/decam_mcs_20181009.fits.gz'
@@ -99,7 +100,8 @@ setup = ['##### REQUIRED #####',$
 ;;  Pick the most recent file
 ;; make_exposures_list.pro makes this file
 ;expfile = delvereddir+'data/decam_mcs_20181009.fits.gz'
-expfile = delvereddir+'data/decam_mcs_20191017.fits.gz'
+;expfile = delvereddir+'data/decam_mcs_20191017.fits.gz'
+expfile = delvereddir+'data/decam_mcs_20200218.fits.gz'
 print,'' & print,'Loading ',expfile
 allexpstr = MRDFITS(expfile,1,/silent)
 nallexp = n_elements(allexpstr)
@@ -138,6 +140,16 @@ for i=0,ngdexp-1 do begin
   night1 = string(year,format='(i04)')+string(month,format='(i02)')+string(day,format='(i02)')
   night[i] = night1
 endfor
+;; Night minimum cut
+if n_elements(nightmin) gt 0 then begin
+  gd = where(long(night) ge long(nightmin),ngd)
+  print,'Keeping '+strtrim(ngd,2)+' exposures with night >= '+strtrim(nightmin,2)
+  expstr0 = expstr
+  night0 = night
+  expstr = expstr[gd]
+  night = night[gd]
+endif
+
 ;; Get unique nights
 night_index = CREATE_INDEX(night)
 nnights = n_elements(night_index.value)
@@ -167,7 +179,7 @@ For n=0,nnights-1 do begin
   if file_test(nightdir,/directory) eq 0 then FILE_MKDIR,nightdir
   ;; Has this one already been done before
   expfile = nightdir+inight+'_exposures.fits'
-if inight eq '20130319' then stop
+  ;if inight eq '20130319' then stop
   if (file_test(expfile) eq 0 or file_test(nightdir+'photred.setup') eq 0) or keyword_set(redo) then begin
     MWRFITS,expstr1,expfile,/create
     print,'Saving exposure structure to ',expfile
