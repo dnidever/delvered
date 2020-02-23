@@ -212,6 +212,7 @@ olap = intarr(nchstr)
 vxarr = fltarr(nchstr,4)
 vyarr = fltarr(nchstr,4)
 for i=0,nchstr-1 do begin
+  if (i mod 100 eq 0) and (i gt 0) then print,i
   hd1 = PHOTRED_READFILE(chstr[i].file,/header)
   nx = sxpar(hd1,'naxis1')
   ny = sxpar(hd1,'naxis2')
@@ -299,7 +300,8 @@ DAOMATCH_TILE,chstr.base+'.als',tilestr,groupstr
 ;;----------------------
 printlog,logfile,'Step 3: Run ALLFRAME'
 ;; DO I NEED TO HAVE IT TRIM THE COMBINED IMAGE???
-mchfile = bdir+chstr[0].base+'.mch'  ;; allframe needs absolute path
+mchbase = bdir+chstr[0].base
+mchfile = mchbase+'.mch'  ;; allframe needs absolute path
 ALLFRAME,mchfile,tile=tilestr,setupdir=bdir,scriptsdir=scriptsdir,irafdir=irafdir,$
          logfile=logfile,catformat='FITS',imager=thisimager,workdir=workdir
 magfile = chstr[0].base+'.mag'
@@ -398,7 +400,7 @@ for i=0,nufilt-1 do begin
   endif
 endfor
 ;; Create final catalog schema
-newschema = {id:'',x:0.0,y:0.0,ra:0.0d0,dec:0.0d0}
+newschema = {objid:'',x:0.0,y:0.0,ra:0.0d0,dec:0.0d0}
 ;; Add columns for calibrated single-epoch photometry columns
 cmagnames = strarr(nchstr)
 cerrnames = strarr(nchstr)
@@ -420,6 +422,8 @@ newschema = create_struct(newschema,'brickuniq',0B)
 phot = replicate(newschema,ninstphot)
 struct_assign,instphot,phot,/nozero
 phtags = tag_names(phot)
+;; object IDs
+phot.objid = brick+'.'+strtrim(instphot.id,2)
 ;; Stuff in the coordinates calculated above
 phot.ra = ra
 phot.dec = dec
@@ -465,16 +469,103 @@ for i=0,nchstr-1 do begin
   if file_test(alffile) eq 1 then chstr[i].alf_nsources=file_lines(alffile)
 endfor
 
+
+;; Make the exposure-level forced photometry catalog
+;;--------------------------------------------------
+;; Load the individual ALF files to get chi, sharp
+;; Load TFR file to conver ALF IDs to final object ID
+tfrfile = mchbase+'_comb.tfr'
+LOADTFR,tfrfile,alffiles,tfrstr
+schema = {id:'',objid:'',exposure:'',ccdnum:0,filter:'',mjd:0.0d0,x:0.0,y:0.0,ra:0.0d0,dec:0.0d0,$
+          imag:0.0,ierr:0.0,mag:0.0,err:0.0,sky:0.0,chi:0.0,sharp:0.0}
+expcat = replicate(schema,long(total(cmag lt 50))+10000L)
+cnt = 0LL
+for i=0,nchstr-1 do begin
+  base1 = chstr[i].base
+  fitsfile = base1+'.fits'
+  if file_test(alffiles[i]) eq 1 and file_test(fitsfile) eq 1 then begin
+    LOADALS,alffiles[i],alf
+    nalf = n_elements(alf)
+    head = photred_readfile(fitsfile,/header)
+
+    ;; Calibrate the photometry
+    ;; exptime, aperture correction, zero-point
+    ;; aperture correction is SUBTRACTIVE, makes it brighter
+    ;; ZPTERM is a SUBTRACTIVE constant offset
+    cmag1 = alf.mag + 2.5*alog10(chstr[i].exptime) - chstr[i].apcor - chstr[i].calib_zpterm
+    ;; Add zero-point error in quadrature
+    cerr1 = sqrt(alf.err^2+chstr[i].calib_zptermsig^2)
+
+    ;; Coordinates
+    HEAD_XYAD,head,alf.x-1,alf.y-1,ra1,dec1,/deg
+
+    ;; MATCH up ALF IDs to TFR INDEX
+    ;; One row per unique object
+    ;; the INDEX values are 1-based indices into the ALF files
+    MATCH,tfrstr.index[i],lindgen(nalf)+1,ind1,ind2,/sort,count=nmatch
+    objid = brick+'.'+strtrim(tfrstr[ind1].id,2)
+
+    ;; Create the new catalog
+    newcat = replicate(schema,nalf)
+    newcat.objid = objid
+    newcat.id = chstr[i].expnum+'_'+strtrim(chstr[i].chip,2)+'.'+strtrim(alf.id,2)
+    newcat.exposure = chstr[i].base
+    newcat.ccdnum = chstr[i].chip
+    newcat.filter = chstr[i].filter
+    newcat.mjd = date2jd(chstr[i].utdate+'T'+chstr[i].uttime,/mjd)
+    newcat.x = alf.x
+    newcat.y = alf.y
+    newcat.ra = ra1
+    newcat.dec = dec1
+    newcat.imag = alf.mag
+    newcat.ierr = alf.err
+    newcat.mag = cmag1
+    newcat.err = cerr1
+    newcat.sky = alf.sky
+    newcat.chi = alf.chi
+    newcat.sharp = alf.sharp
+
+    ;; Add to global catalog
+    expcat[cnt:cnt+nalf-1] = newcat
+    cnt += nalf
+
+  endif else print,alffile+' NOT FOUND'
+endfor
+expcat = expcat[0:cnt-1]  ; this should not be needed
+
+;; Object catalog
+;;---------------
+lo = first_el(where(phtags eq 'DEC',nlo))
+hi = first_el(where(strupcase(phtags) eq strupcase(ufilt[0])+'MAG',nhi))
+obj_schema = create_struct(phtags[0],fix('',type=size(phot.(0),/type)))
+for i=1,lo do obj_schema = create_struct(obj_schema,phtags[i],fix('',type=size(phot.(i),/type)))
+for i=hi,n_elements(phtags)-2 do obj_schema = create_struct(obj_schema,phtags[i],fix('',type=size(phot.(i),/type)))
+obj_schema = create_struct(obj_schema,'brickuniq',0B)
+obj = replicate(obj_schema,ninstphot)
+STRUCT_ASSIGN,phot,obj,/nozero
+
 ;; Saving final catalog
 photfile = bdir+brick+'.fits'
 printlog,logfile,'Writing photometry to '+photfile+'.gz'
 MWRFITS,phot,photfile,/create
 spawn,['gzip','-f',photfile],/noshell
 
+;; Saving object photometry catalog
+objfile = bdir+brick+'_object.fits'
+MWRFITS,obj,objfile,/create
+spawn,['gzip','-f',objfile],/noshell
+
+;; Saving exposure-level forced photometry catalog
+expfile = bdir+brick+'_expforced.fits'
+MWRFITS,expcat,expfile,/create
+spawn,['gzip','-f',expfile],/noshell
+
 ;; Save metadata
 metafile = bdir+brick+'_meta.fits'
 printlog,logfile,'Writing meta-data to '+metafile
 MWRFITS,chstr,metafile,/create
+
+; SAVE A FILE WITH JUST THE OBJECT INFORMATION!!!
 
 ;; Clean up
 ;;----------
