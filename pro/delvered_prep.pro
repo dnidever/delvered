@@ -1,4 +1,5 @@
-pro delvered_prep,delvedir,scriptsdir=scriptsdirs,irafdir=irafdir,workdir=workdir,redo=redo,nmulti=nmulti,nightmin=nightmin
+pro delvered_prep,delvedir,scriptsdir=scriptsdirs,irafdir=irafdir,workdir=workdir,redo=redo,$
+                  nmulti=nmulti,nightmin=nightmin,newonly=newonly
 
 ;; This pre-processing script gets DELVE and community MC data ready
 ;; from the NOAO mass store to be processed with PHOTRED.
@@ -158,6 +159,42 @@ print,strtrim(nnights,2),' unique nights of data'
 ;; SMASH directories
 smashnights = file_search('/net/dl1/users/dnidever/smash/cp/red/photred/20??????/',/test_directory,count=nsmashnights)
 smashnights = file_basename(smashnights)
+
+;; Only keep NEW nights
+if keyword_set(newonly) then begin
+  print,'Only keeping NEW nights'
+  dirs = file_search(delvedir+'exposures/20??????',/test_dir,count=ndirs)
+  MATCH,night_index.value,file_basename(dirs),ind1,ind2,count=nmatch,/sort
+  if nmatch eq nnights then begin
+    print,'No nights left to process'
+    return
+  endif
+  if nmatch gt 0 then begin
+    left = lindgen(nnights)
+    REMOVE,ind1,left
+    oldnight = night
+    oldexpstr = expstr
+    nnew = long(total(night_index.num[left]))
+    print,'Keeping ',strtrim(nnew,2),' exposures'
+    night = strarr(nnew)
+    schema = expstr[0]
+    struct_assign,{dum:''},schema
+    expstr = replicate(schema,nnew)
+    cnt = 0LL
+    for i=0L,n_elements(left)-1 do begin
+      ind1 = night_index.index[night_index.lo[left[i]]:night_index.hi[left[i]]]
+      nind1 = n_elements(ind1)
+      night[cnt:cnt+nind1-1] = oldnight[ind1]
+      expstr[cnt:cnt+nind1-1] = oldexpstr[ind1]
+      cnt += nind1
+    endfor
+  endif
+  oldnight_index = night_index
+  ;; Get unique nights
+  night_index = CREATE_INDEX(night)
+  nnights = n_elements(night_index.value)
+  print,strtrim(nnights,2),' unique nights of data'
+endif
 
 ;; Loop over the nights
 ;;---------------------------
