@@ -8,7 +8,8 @@ nscdir = '/net/dl2/users/dnidever/nsc/instcal/'+version+'/lists/'
 if n_elements(delvereddir) gt 0 then delvereddir=trailingslash(delvereddir) else delvereddir = '/home/dnidever/projects/delvered/'
 
 ;str = mrdfits(nscdir+'decam_instcal_list.fits.gz',1)
-str = mrdfits('/net/dl2/dnidever/delve/lists/delvemc_info_20121022_20200216.fits.gz',1)
+;str = mrdfits('/net/dl2/dnidever/delve/lists/delvemc_info_20121022_20200216.fits.gz',1)
+str = mrdfits('/net/dl2/dnidever/delve/lists/delvemc_info_20121022_20200301.fits.gz',1)
 nstr = n_elements(str)
 
 ;; Make sure they are public or are DELVE
