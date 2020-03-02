@@ -10,6 +10,7 @@ if n_elements(delvereddir) gt 0 then delvereddir=trailingslash(delvereddir) else
 ;str = mrdfits(nscdir+'decam_instcal_list.fits.gz',1)
 ;str = mrdfits('/net/dl2/dnidever/delve/lists/delvemc_info_20121022_20200216.fits.gz',1)
 str = mrdfits('/net/dl2/dnidever/delve/lists/delvemc_info_20121022_20200301.fits.gz',1)
+str.prop_id = strtrim(str.prop_id,2)
 nstr = n_elements(str)
 
 ;; Make sure they are public or are DELVE
@@ -23,10 +24,11 @@ release_mjd = JULDAY(release_month,release_day,release_year)-2400000.5d0
 caldat,systime(/julian,/utc),month,day,year
 release_cutoff = [year, month, day]
 release_cutoff_mjd = JULDAY(release_cutoff[1],release_cutoff[2],release_cutoff[0])-2400000.5d0
-gd = where(release_mjd le release_cutoff_mjd or str.prop_id eq '2019A-0305',ngd)
+;; public or DELVE or MagLiteS
+gd = where(release_mjd le release_cutoff_mjd or str.prop_id eq '2019A-0305' or str.prop_id eq '2018A-0242',ngd)
 str = str[gd]
 nstr = ngd
-print,strtrim(nstr,2),' total public DECam or DELVE exposures'
+print,strtrim(nstr,2),' total public DECam or DELVE/MagLiteS exposures'
 
 ;; Cutting on coordinates
 glactc,str.ra,str.dec,2000.0,glon,glat,1,/deg
