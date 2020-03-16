@@ -158,7 +158,6 @@ nightdirs = file_search(delvedir+'exposures/201?????',count=nnightdirs)
 sumfiles = nightdirs+'/'+file_basename(nightdirs)+'_summary.fits'
 suminfo = file_info(sumfiles)  
 gsum = where(suminfo.exists eq 1 and suminfo.size gt 0,ngsum)
-stop
 if ngsum gt 0 then begin
   if max(suminfo[gsum].mtime) gt dbinfo.mtime then begin
     print,'Need to update the database'
