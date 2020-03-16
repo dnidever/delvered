@@ -26,7 +26,7 @@ pro delvered_bricks,input,nmulti=nmulti,redo=redo,stp=stp
 t0 = systime(1)
   
 ;; Defaults
-if n_elements(delvedir) gt 0 then delvedir=trailingslash(delvedir) else delvedir = '/net/dl1/users/dnidever/delve/'
+if n_elements(delvedir) gt 0 then delvedir=trailingslash(delvedir) else delvedir = '/net/dl2/dnidever/delve/'
 if n_elements(delvereddir) gt 0 then delvereddir=trailingslash(delvereddir) else delvereddir = '/home/dnidever/projects/delvered/'
 ;; Exposures directory
 expdir = trailingslash(delvedir)+'exposures/'
@@ -145,17 +145,26 @@ if not keyword_set(redo) then begin
 endif
 
 ;; Check if we need to update the exposures database
+dbfile = '/net/dl2/dnidever/delve/bricks/db/delvered_summary.db'
+lockfile = dbfile+'.lock'
 print,'Checking if exposures database needs to be updated'
-dbfile = '/net/dl1/users/dnidever/delve/bricks/db/delvered_summary.db'
+;; Check for lockfile
+while (file_test(lockfile) eq 1) do begin
+  print,'Lock file found. Waiting 60 seconds.'
+  wait,60
+endwhile
 dbinfo = file_info(dbfile)
 nightdirs = file_search(delvedir+'exposures/201?????',count=nnightdirs)
 sumfiles = nightdirs+'/'+file_basename(nightdirs)+'_summary.fits'
 suminfo = file_info(sumfiles)  
 gsum = where(suminfo.exists eq 1 and suminfo.size gt 0,ngsum)
+stop
 if ngsum gt 0 then begin
   if max(suminfo[gsum].mtime) gt dbinfo.mtime then begin
     print,'Need to update the database'
+    touchzero,lockfile 
     SPAWN,delvereddir+'bin/make_delvered_summary_table',/noshell
+    file_delete,lockfile,/allow
   endif
 endif
 
