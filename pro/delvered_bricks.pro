@@ -162,6 +162,9 @@ if ngsum gt 0 then begin
   if max(suminfo[gsum].mtime) gt dbinfo.mtime then begin
     print,'Need to update the database'
     touchzero,lockfile 
+    print,'Waiting 10 sec to let current queries finish'
+    wait,10
+    ;; This takes about 2.5 min to run
     SPAWN,delvereddir+'bin/make_delvered_summary_table',/noshell
     file_delete,lockfile,/allow
   endif

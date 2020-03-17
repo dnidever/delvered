@@ -25,7 +25,7 @@ if n_elements(brick) eq 0 then begin
 endif
 
 ;; Defaults
-if n_elements(delvedir) gt 0 then delvedir=trailingslash(delvedir) else delvedir = '/net/dl1/users/dnidever/delve/'
+if n_elements(delvedir) gt 0 then delvedir=trailingslash(delvedir) else delvedir = '/net/dl2/dnidever/delve/'
 if FILE_TEST(delvedir,/directory) eq 0 then FILE_MKDIR,delvedir
 if n_elements(delvereddir) gt 0 then delvereddir=trailingslash(delvereddir) else delvereddir = '/home/dnidever/projects/delvered/'
 ;expfile = '/home/dnidever/projects/delvered/data/decam_mcs_20181009.fits.gz'
@@ -74,7 +74,7 @@ JOURNAL,journalfile
 decam = IMPORTASCII(delvereddir+'data/decam.txt',/header,/silent)
 
 ;; Load the brick information
-brickstr = MRDFITS(delvereddir+'data/delvemc_bricks_0.25deg.fits.gz',1)
+brickstr = MRDFITS(delvereddir+'data/delvemc_bricks_0.25deg.fits.gz',1,/silent)
 
 ;; Get the brick information
 bind = where(brickstr.brickname eq brick,nbind)
@@ -207,6 +207,7 @@ printlog,logfile,'Found ',strtrim(nchstr,2),' overlapping chips within 0.5 deg o
 
 ;; Do more rigorous overlap checking
 ;;  the brick region with overlap
+print,'Performing more rigorous overlap checking'
 HEAD_XYAD,tilestr.head,[0,tilestr.nx-1,tilestr.nx-1,0],[0,0,tilestr.ny-1,tilestr.ny-1],bvra,bvdec,/deg
 olap = intarr(nchstr)
 vxarr = fltarr(nchstr,4)
@@ -234,11 +235,37 @@ nchstr = ng
 
 ;; APPLY cuts on the exposures
 ;;-----------------------------
-printlog,logfile,'Applying quality, filter and exptime cuts'
+printlog,logfile,'Applying quality, zero-point, filter and exptime cuts'
+
+; Zero-point structure, from NSC
+zpstr = replicate({instrument:'',filter:'',amcoef:fltarr(2),thresh:0.5},7)
+zpstr.instrument = 'c4d'
+zpstr.filter = ['u','g','r','i','z','Y','VR']
+zpstr[0].amcoef = [-1.60273, -0.375253]   ; c4d-u
+zpstr[1].amcoef = [0.277124, -0.198037]   ; c4d-g
+zpstr[2].amcoef = [0.516382, -0.115443]   ; c4d-r
+zpstr[3].amcoef = [0.380338, -0.067439]   ; c4d-i
+zpstr[4].amcoef = [0.074517, -0.067031]   ; c4d-z
+zpstr[5].amcoef = [-1.07800, -0.060014]   ; c4d-Y  
+zpstr[6].amcoef = [1.111859, -0.083630]   ; c4d-VR
+
+;; Convert to additive zero-point as used in NSC
+zpterm = -chstr.calib_zpterm
+;; Fix early DES exposures that used different units/gain
+gdes = where(chstr.gain lt 2,ngdes)
+if ngdes gt 0 then zpterm[gdes] -= 1.55
+;; global zpterm and airmass correction
+for i=0,n_elements(zpstr)-1 do begin
+  ind = where(chstr.filter eq zpstr[i].filter,nind)
+  if nind gt 0 then zpterm[ind] -= poly(chstr[ind].airmass,zpstr[i].amcoef)
+endfor
+
 fwhmthresh = 2.0                ; seeing 2.0" threshold
 filt = strmid(chstr.filter,0,1)
-gdch = where(chstr.fwhm*chstr.pixscale le fwhmthresh and chstr.exptime ge 90. and $
+gdch = where(chstr.fwhm*chstr.pixscale le fwhmthresh and chstr.exptime ge 90. and zpterm ge -0.5 and $
+             finite(zpterm) eq 1 and finite(chstr.apcor) eq 1 and $
              (filt eq 'u' or filt eq 'g' or filt eq 'r' or filt eq 'i' or filt eq 'z' or filt eq 'Y'),ngdch)
+
 if ngdch eq 0 then begin
   printlog,logfile,'No chips passed the cuts'
   return

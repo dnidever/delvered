@@ -170,13 +170,16 @@ def createsumtable(dbfile=None,delvedir='/dl1/users/dnidever/delve/'):
     lchstr = []
     for i in range(nnightsumfiles):
         print('Loading '+nightsumfiles[i])
-        expstr1 = fits.getdata(nightsumfiles[i],1)
-        nexpstr1 = dln.size(expstr1)
-        lexpstr.append(expstr1)
-        chstr1 = fits.getdata(nightsumfiles[i],2)
-        nchstr1 = dln.size(chstr1)
-        lchstr.append(chstr1)
-        # Concatenate them
+        #st = os.stat(nightsumfiles[i])
+        try:
+            expstr1 = fits.getdata(nightsumfiles[i],1)
+            nexpstr1 = dln.size(expstr1)
+            lexpstr.append(expstr1)
+            chstr1 = fits.getdata(nightsumfiles[i],2)
+            nchstr1 = dln.size(chstr1)
+            lchstr.append(chstr1)
+        except:
+            print('Problem loading '+nightsumfiles[i])
         
        # # Load the database
        # writecat2db(expstr1,dbfile,'exposure')
