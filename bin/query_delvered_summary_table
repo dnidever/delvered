@@ -33,8 +33,8 @@ if __name__ == "__main__":
     print('LIM = '+str(lim)+' deg')
 
     # If the database exists already, back it up
-    expdir = '/dl1/users/dnidever/delve/exposures/'
-    dbfile = '/dl1/users/dnidever/delve/bricks/db/delvered_summary.db'
+    expdir = '/net/dl2/dnidever/delve/exposures/'
+    dbfile = '/net/dl2/dnidever/delve/bricks/db/delvered_summary.db'
     if not os.path.exists(dbfile):
         print(dbfile+' NOT FOUND')
         sys.exit()
