@@ -337,7 +337,6 @@ if file_test(magfile) eq 0 then begin
   return
 endif
 
-
 ;; Step 4: Calculate coordinates
 ;;-------------------------------
 printlog,logfile,'Step 4: Adding coordinates'
@@ -511,8 +510,8 @@ for i=0,nchstr-1 do begin
   base1 = chstr[i].base
   fitsfile = base1+'.fits'
   if file_test(alffiles[i]) eq 1 and file_test(fitsfile) eq 1 then begin
-    LOADALS,alffiles[i],alf
-    nalf = n_elements(alf)
+    LOADALS,alffiles[i],alf,count=nalf
+    if nalf eq 0 then goto,BOMB2
     head = photred_readfile(fitsfile,/header)
 
     ;; Calibrate the photometry
@@ -556,6 +555,7 @@ for i=0,nchstr-1 do begin
     expcat[cnt:cnt+nalf-1] = newcat
     cnt += nalf
 
+    BOMB2:
   endif else print,alffile+' NOT FOUND'
 endfor
 expcat = expcat[0:cnt-1]  ; this should not be needed
