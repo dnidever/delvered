@@ -9,7 +9,8 @@ if n_elements(delvereddir) gt 0 then delvereddir=trailingslash(delvereddir) else
 
 ;str = mrdfits(nscdir+'decam_instcal_list.fits.gz',1)
 ;str = mrdfits('/net/dl2/dnidever/delve/lists/delvemc_info_20121022_20200216.fits.gz',1)
-str = mrdfits('/net/dl2/dnidever/delve/lists/delvemc_info_20121022_20200301.fits.gz',1)
+;str = mrdfits('/net/dl2/dnidever/delve/lists/delvemc_info_20121022_20200301.fits.gz',1)
+str = mrdfits('/net/dl2/dnidever/delve/lists/delvemc_info_20121022_20200318.fits.gz',1)
 str.prop_id = strtrim(str.prop_id,2)
 nstr = n_elements(str)
 
