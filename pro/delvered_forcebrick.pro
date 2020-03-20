@@ -277,9 +277,19 @@ chstr.file = strtrim(chstr.file,2)
 chstr.base = strtrim(chstr.base,2)
 ;add_tag,chstr,'newbase','',chstr
 
-;; Create the symlinks
+
+;; Create temporary local directory to perform the work/processing
+;;  copy everything to it
+if FILE_TEST(workdir,/directory) eq 0 then FILE_MKDIR,workdir
+procdir = first_el(MKTEMP('brk',outdir=workdir,/directory))+'/'
+procdir = repstr(procdir,'//','/')
+FILE_CHMOD,procdir,/a_execute
+printlog,logfile,'Working in temporary directory '+procdir
+
+
+;; Copy the filesCreate the symlinks
 ;;---------------------
-printlog,logfile,'Copying over the necessary files to ',bdir
+printlog,logfile,'Copying over the necessary files to ',procdir
 ;; Chip loop
 for i=0,nchstr-1 do begin
   printlog,logfile,'Copying over files for ',chstr[i].file
@@ -287,6 +297,7 @@ for i=0,nchstr-1 do begin
   ;chstr[i].newbase = chstr[i].base
   odir = file_dirname(chstr[i].file)+'/'
   obase = PHOTRED_GETFITSEXT(chstr[i].file,/basename)
+  obase = first_el(obase)
   ;; Need symlinks to .psf, .als
   if file_test(odir+obase+'.psf') eq 0 then begin
     printlog,logfile,odir+obase+'.psf NOT FOUND.  Skipping this chip'
@@ -296,21 +307,24 @@ for i=0,nchstr-1 do begin
     printlog,logfile,odir+obase+'.als NOT FOUND.  Skipping this chip'
     goto,BOMB1
   endif
-  FILE_DELETE,bdir+chstr[i].base+['.psf','.als','.ap','.opt','.als.opt','.log'],/allow
-  FILE_LINK,odir+obase+'.psf',bdir+chstr[i].base+'.psf'
-  FILE_LINK,odir+obase+'.als',bdir+chstr[i].base+'.als'
-  FILE_LINK,odir+obase+'.ap',bdir+chstr[i].base+'.ap'
-  FILE_LINK,odir+obase+'.opt',bdir+chstr[i].base+'.opt'
-  FILE_LINK,odir+obase+'.als.opt',bdir+chstr[i].base+'.als.opt'
-  FILE_LINK,odir+obase+'.log',bdir+chstr[i].base+'.log'
+  FILE_DELETE,procdir+chstr[i].base+['.psf','.als','.ap','.opt','.als.opt','.log'],/allow
+  FILE_COPY,odir+obase+['.psf','.als','.ap','.opt','.als.opt','.log'],procdir,/allow_same,/overwrite
+  FILE_CHMOD,procdir+chstr[i].base+['.psf','.als','.ap','.opt','.als.opt','.log'],'755'o   ; make sure they are writable
+  ;FILE_LINK,odir+obase+'.psf',procdir+chstr[i].base+'.psf'
+  ;FILE_LINK,odir+obase+'.als',procdir+chstr[i].base+'.als'
+  ;FILE_LINK,odir+obase+'.ap',procdir+chstr[i].base+'.ap'
+  ;FILE_LINK,odir+obase+'.opt',procdir+chstr[i].base+'.opt'
+  ;FILE_LINK,odir+obase+'.als.opt',procdir+chstr[i].base+'.als.opt'
+  ;FILE_LINK,odir+obase+'.log',procdir+chstr[i].base+'.log'
   ;; Copy the fits, fits resource file and header files locally
   if file_test(odir+obase+'.fits') eq 0 then begin
     printlog,logfile,odir+obase+'.fits NOT FOUND.  Skipping this chip'
     goto,BOMB1
   endif
-  FILE_COPY,odir+obase+'.fits',bdir,/over
-  if file_test(odir+'.'+obase+'.fits') eq 1 then FILE_COPY,odir+'.'+obase+'.fits',bdir,/over
-  if file_test(odir+obase+'.fits.head') eq 1 then FILE_COPY,odir+obase+'.fits.head',bdir,/over
+  FILE_COPY,odir+obase+'.fits',procdir,/over
+  if file_test(odir+'.'+obase+'.fits') eq 1 then FILE_COPY,odir+'.'+obase+'.fits',procdir,/over
+  if file_test(odir+obase+'.fits.head') eq 1 then FILE_COPY,odir+obase+'.fits.head',procdir,/over
+  FILE_CHMOD,procdir+chstr[i].base+'.fits','755'o
   BOMB1:
 endfor
 
@@ -318,7 +332,7 @@ endfor
 ;; Step 2: Run DAOMATCH_TILE.PRO on the files
 ;;--------------------------------------------
 printlog,logfile,'Step 2: Matching up objects with DAOMATCH_TILE'
-cd,bdir
+cd,procdir
 groupstr = {x0:0,y0:0}
 DAOMATCH_TILE,chstr.base+'.als',tilestr,groupstr
 
@@ -327,10 +341,10 @@ DAOMATCH_TILE,chstr.base+'.als',tilestr,groupstr
 ;;----------------------
 printlog,logfile,'Step 3: Run ALLFRAME'
 ;; DO I NEED TO HAVE IT TRIM THE COMBINED IMAGE???
-mchbase = bdir+chstr[0].base
+mchbase = procdir+chstr[0].base
 mchfile = mchbase+'.mch'  ;; allframe needs absolute path
 ALLFRAME,mchfile,tile=tilestr,setupdir=bdir,scriptsdir=scriptsdir,irafdir=irafdir,$
-         logfile=logfile,catformat='FITS',imager=thisimager,workdir=workdir
+         logfile=logfile,catformat='FITS',imager=thisimager  ;,workdir=workdir
 magfile = chstr[0].base+'.mag'
 if file_test(magfile) eq 0 then begin
   printlog,logfile,magfile+' NOT FOUND'
@@ -592,10 +606,9 @@ metafile = bdir+brick+'_meta.fits'
 printlog,logfile,'Writing meta-data to '+metafile
 MWRFITS,chstr,metafile,/create
 
-; SAVE A FILE WITH JUST THE OBJECT INFORMATION!!!
 
-;; Clean up
-;;----------
+;; Delete files we don't want to keep
+;;-----------------------------------
 ;; Individual fits files
 alsbase = file_basename(alsfiles,'.als')
 ;; if fits files have resources files then replace the fits file by a
@@ -624,6 +637,12 @@ spawn,['fpack','-D','-Y',base+'_combs.fits'],/noshell
 ;; gzip _comb.mask.fits and _comb.bpm.fits
 spawn,['gzip','-f',base+'_comb.mask.fits'],/noshell
 spawn,['gzip','-f',base+'_comb.bpm.fits'],/noshell
+
+;; Copy everything left back to the original directory
+printlog,logfile,'Copying files back to '+bdir
+allfiles = file_search(procdir+['*','.*.fits'],count=nallfiles)
+FILE_MOVE,allfiles,bdir,/allow,/overwrite
+FILE_DELETE,procdir  ; delete temporary processing directory
 
 printlog,logfile,'DELVERED_FORCEBRICK done after '+strtrim(systime(1)-t0,2)+' sec.'
 
