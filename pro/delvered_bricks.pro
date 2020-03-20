@@ -154,7 +154,7 @@ while (file_test(lockfile) eq 1) do begin
   wait,60
 endwhile
 dbinfo = file_info(dbfile)
-nightdirs = file_search(delvedir+'exposures/201?????',count=nnightdirs)
+nightdirs = file_search(delvedir+'exposures/20??????',count=nnightdirs)
 sumfiles = nightdirs+'/'+file_basename(nightdirs)+'_summary.fits'
 suminfo = file_info(sumfiles)  
 gsum = where(suminfo.exists eq 1 and suminfo.size gt 0,ngsum)
