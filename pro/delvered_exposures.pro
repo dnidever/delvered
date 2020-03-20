@@ -6,11 +6,12 @@
 ; single-image level catalogs and PSFs.
 ;
 ; INPUTS:
-;  input      What nights to run PHOTRED on.  Either an array or
-;               a range such as 20160101-20160506.
-;  /uselocal  Do all processing in a local drive.  Off by default.
-;  /startfresh  Start completely fresh.  Remove old files and start
-;                 from the very beginning.
+;  input         What nights to run PHOTRED on.  Either an array or
+;                  a range such as 20160101-20160506.
+;  /uselocal     Do all processing in a local drive.  Off by default.
+;  /startfresh   Start completely fresh.  Remove old files and start
+;                  from the very beginning.
+;  =doapcor      Control whether APCOR is run.
 ;  =dozeropoint  Control whether ZEROPOINT is run.
 ;
 ; OUTPUTS:
@@ -263,7 +264,11 @@ FOR i=0,nnights-1 do begin
   if READPAR(setup,'WCS') ne '0' then DELVERED_WCS,redo=redo,nmulti=nmulti
   if READPAR(setup,'DAOPHOT') ne '0' then DELVERED_DAOPHOT,redo=redo,nmulti=nmulti
   if READPAR(setup,'MATCH') ne '0' then DELVERED_MATCH,redo=redo,nmulti=nmulti
-  if READPAR(setup,'APCOR') ne '0' then PHOTRED_APCOR,redo=redo
+
+  if n_elements(doapcor) eq 1 then begin
+    if keyword_set(doapcor) then PHOTRED_APCOR,redo=redo
+  endif else if READPAR(setup,'APCOR') ne '0' then PHOTRED_APCOR,redo=redo
+
   if READPAR(setup,'ASTROM') ne '0' then PHOTRED_ASTROM,redo=redo
 
   if n_elements(dozeropoint) eq 1 then begin
