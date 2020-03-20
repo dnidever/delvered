@@ -24,8 +24,8 @@
 ; By D. Nidever  Feb 2019
 ;-
 
-pro delvered_exposures,input,delvedir=delvedir,redo=redo,dozeropoint=dozeropoint,uselocal=uselocal,$
-                       startfresh=startfresh,stp=stp,nmulti=nmulti
+pro delvered_exposures,input,delvedir=delvedir,redo=redo,dozeropoint=dozeropoint,doapcor=doapcor,$
+                       uselocal=uselocal,startfresh=startfresh,stp=stp,nmulti=nmulti
 
 ;; Defaults
 ;if n_elements(delvedir) gt 0 then delvedir=trailingslash(delvedir) else delvedir = '/net/dl1/users/dnidever/delve/'
