@@ -230,6 +230,7 @@ setup = ['##### REQUIRED #####',$
   print,strtrim(nfields,2),' fields found'
   print,''
 
+
   ;; Loop over the fields
   undefine,outfiles
   outfiles = strarr(62*ntoadd)
@@ -345,6 +346,16 @@ setup = ['##### REQUIRED #####',$
 
   ;; Write the "fields" file
   if n_elements(oldfieldstr) gt 0 then newfieldstr=[oldfieldstr,newfieldstr]
+
+  ;; Make sure the field names are unique
+  findex = create_index(newfieldstr.name)
+  bd = where(findex.num gt 1,nbd)
+  for j=0,nbd-1 do begin
+    find = findex.index[findex.lo[bd[j]]:findex.hi[bd[j]]]
+    nfind = n_elements(find)
+    newfieldstr[find[1:*]].name = newfieldstr[find[0]].name + '_'+strtrim(lindgen(nfind-1)+2,2)
+  endfor
+
   WRITELINE,nightdir+'fields',newfieldstr.shname+'   '+newfieldstr.name
 
   ;; Copy scripts into the directory

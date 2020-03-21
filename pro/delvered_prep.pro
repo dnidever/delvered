@@ -102,7 +102,8 @@ setup = ['##### REQUIRED #####',$
 ;; make_exposures_list.pro makes this file
 ;expfile = delvereddir+'data/decam_mcs_20181009.fits.gz'
 ;expfile = delvereddir+'data/decam_mcs_20191017.fits.gz'
-expfile = delvereddir+'data/decam_mcs_20200218.fits.gz'
+;expfile = delvereddir+'data/decam_mcs_20200218.fits.gz'
+expfile = delvereddir+'data/decam_mcs_20200320.fits.gz'
 print,'' & print,'Loading ',expfile
 allexpstr = MRDFITS(expfile,1,/silent)
 nallexp = n_elements(allexpstr)
@@ -195,6 +196,8 @@ if keyword_set(newonly) then begin
   nnights = n_elements(night_index.value)
   print,strtrim(nnights,2),' unique nights of data'
 endif
+
+stop
 
 ;; Loop over the nights
 ;;---------------------------
