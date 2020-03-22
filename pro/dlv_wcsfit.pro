@@ -276,7 +276,6 @@ gd = where(cat.mag lt 50.,ngd)
 if (ngd eq 0) then begin
   print,'NO good stars found'
   error = 'NO good stars found'
-stop
   undefine,cat
   return
 endif
