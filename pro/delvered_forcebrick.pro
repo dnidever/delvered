@@ -287,8 +287,8 @@ FILE_CHMOD,procdir,/a_execute
 printlog,logfile,'Working in temporary directory '+procdir
 
 
-;; Copy the filesCreate the symlinks
-;;---------------------
+;; Copy the files
+;;----------------
 printlog,logfile,'Copying over the necessary files to ',procdir
 ;; Chip loop
 for i=0,nchstr-1 do begin
@@ -310,12 +310,6 @@ for i=0,nchstr-1 do begin
   FILE_DELETE,procdir+chstr[i].base+['.psf','.als','.ap','.opt','.als.opt','.log'],/allow
   FILE_COPY,odir+obase+['.psf','.als','.ap','.opt','.als.opt','.log'],procdir,/allow_same,/overwrite
   FILE_CHMOD,procdir+chstr[i].base+['.psf','.als','.ap','.opt','.als.opt','.log'],'755'o   ; make sure they are writable
-  ;FILE_LINK,odir+obase+'.psf',procdir+chstr[i].base+'.psf'
-  ;FILE_LINK,odir+obase+'.als',procdir+chstr[i].base+'.als'
-  ;FILE_LINK,odir+obase+'.ap',procdir+chstr[i].base+'.ap'
-  ;FILE_LINK,odir+obase+'.opt',procdir+chstr[i].base+'.opt'
-  ;FILE_LINK,odir+obase+'.als.opt',procdir+chstr[i].base+'.als.opt'
-  ;FILE_LINK,odir+obase+'.log',procdir+chstr[i].base+'.log'
   ;; Copy the fits, fits resource file and header files locally
   if file_test(odir+obase+'.fits') eq 0 then begin
     printlog,logfile,odir+obase+'.fits NOT FOUND.  Skipping this chip'
