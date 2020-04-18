@@ -51,15 +51,15 @@ brkstr.nobj = n_elements(obj)
 
 gd = where(obj.gmag lt 50 and obj.rmag lt 50 and abs(obj.sharp) lt 1 and obj.chi lt 3 and obj.prob gt 0.5,ngd)
 if ngd gt 0 then begin
-  gmag = obj[gd].gmag-obj[gd].ebv*3.303
+  rmag = obj[gd].rmag-obj[gd].ebv*2.285
   gr = (obj[gd].gmag-obj[gd].ebv*3.303)-(obj[gd].rmag-obj[gd].ebv*2.285)
 
   ;; lmc density, maybe with various mag ranges
-  gdlmc = where(gr ge 0.10 and gr le 0.40 and gmag gt 21.8 and gmag lt 22.7,ngdlmc)
+  gdlmc = where(gr ge 0.10 and gr le 0.40 and rmag gt 21.8 and rmag lt 22.7,ngdlmc)
   brkstr.nlmc = ngdlmc
 
   ;; MW disk
-  gdback = where(gr ge 0.20 and gr le 0.45 and gmag ge 19.0 and gmag le 21.2,ngdback)
+  gdback = where(gr ge 0.20 and gr le 0.45 and rmag ge 19.0 and rmag le 21.2,ngdback)
   brkstr.nback = ngdback
 endif
 
