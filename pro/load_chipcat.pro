@@ -20,9 +20,10 @@ for i=0,n_elements(cols)-1 do begin
   endif
 endfor
 
+fitsfile = strtrim(chstr.file,2)
 
 ;; Load ALS file
-alsfile = repstr(chstr.file,'.fits','.als')
+alsfile = repstr(fitsfile,'.fits','.als')
 if file_test(alsfile) eq 0 then begin
   print,alsfile+' NOT FOUND'
   return,-1
@@ -33,7 +34,7 @@ if nals eq 0 then begin
   return,-1
 endif
 ;; Load FITS header
-head = PHOTRED_READFILE(chstr.file,/header)
+head = PHOTRED_READFILE(fitsfile,/header)
 
 ;; Calibrate the photometry
 ;; exptime, aperture correction, zero-point
@@ -47,14 +48,14 @@ cerr = sqrt(als.err^2+chstr.calib_zptermsig^2)
 HEAD_XYAD,head,als.x-1,als.y-1,ra,dec,/deg
 
 ;; Create the new catalog
-schema = {id:'',objid:'',exposure:'',ccdnum:0,filter:'',mjd:0.0d0,x:0.0,y:0.0,ra:0.0d0,dec:0.0d0,$
+schema = {id:'',objid:'',exposure:'',ccdnum:0,filter:'',mjd:0.0d0,forced:0B,x:0.0,y:0.0,ra:0.0d0,dec:0.0d0,$
           imag:0.0,ierr:0.0,mag:0.0,err:0.0,sky:0.0,chi:0.0,sharp:0.0}
 cat = replicate(schema,nals)
-cat.id = chstr.expnum+'_'+strtrim(chstr.chip,2)+'.'+strtrim(als.id,2)
-cat.exposure = chstr.base
+cat.id = strtrim(chstr.expnum,2)+'_'+strtrim(chstr.chip,2)+'.'+strtrim(als.id,2)
+cat.exposure = strtrim(chstr.base,2)
 cat.ccdnum = chstr.chip
-cat.filter = chstr.filter
-cat.mjd = date2jd(chstr.utdate+'T'+chstr.uttime,/mjd)
+cat.filter = strtrim(chstr.filter,2)
+cat.mjd = date2jd(strtrim(chstr.utdate,2)+'T'+strtrim(chstr.uttime,2),/mjd)
 cat.x = als.x
 cat.y = als.y
 cat.ra = ra
