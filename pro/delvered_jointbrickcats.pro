@@ -1,6 +1,6 @@
 ;+
 ;
-; DELVERED_FORCEBRICK
+; DELVERED_JOINTBRICKCATS
 ;
 ; Process a single DELVE brick and perform ALLFRAME FORCED photometry
 ;
@@ -10,7 +10,7 @@
 ; By D. Nidever  August 2019
 ;-
 
-pro add_data,brick,scriptsdir=scriptsdirs,irafdir=irafdir,workdir=workdir,redo=redo,logfile=logfile
+pro delvered_jointbrickcats,brick,scriptsdir=scriptsdirs,irafdir=irafdir,workdir=workdir,redo=redo,logfile=logfile
 
 ;; This bricks pre-processing script gets DELVE and community MC data ready
 ;; to run PHOTRED ALLFRAME on it.
@@ -179,7 +179,6 @@ nchstr = ngdch
 chstr.file = strtrim(chstr.file,2)
 chstr.base = strtrim(chstr.base,2)
 chstr.fieldname = strtrim(chstr.fieldname,2)
-
 
 ;; Load the forced photometry object catalog
 objfile = bdir+brick+'_object.fits.gz'
