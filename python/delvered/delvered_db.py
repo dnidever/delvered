@@ -9,7 +9,7 @@ from astropy.utils.exceptions import AstropyWarning
 from astropy.table import Table, vstack, Column
 from astropy.time import Time
 import healpy as hp
-from dlnpyutils import utils as dln, coords
+from dlnpyutils import utils as dln, coords, db
 import subprocess
 import time
 #from argparse import ArgumentParser
@@ -198,5 +198,7 @@ def createsumtable(dbfile=None,delvedir='/dl1/users/dnidever/delve/'):
     print('Indexing')
     createindexdb(dbfile,'ra','exposure',unique=False)
     createindexdb(dbfile,'dec','exposure',unique=False)
+    db.analyzetable(dbfile,'exposure')
     createindexdb(dbfile,'ra','chip',unique=False)
     createindexdb(dbfile,'dec','chip',unique=False)
+    db.analyzetable(dbfile,'chip')
