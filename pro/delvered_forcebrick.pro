@@ -642,6 +642,13 @@ printlog,logfile,'DELVERED_FORCEBRICK done after '+strtrim(systime(1)-t0,2)+' se
 
 CD,curdir  ;; back to original directory
 
+;; Create JOINT catalogs
+printlog,logfile,''
+printlog,logfile,'CREATE JOINT CATALOGS'
+printlog,logfile,''
+
+DELVERED_JOINTBRICKCATS,brick,logfile=logfile
+
 JOURNAL
 
 end
