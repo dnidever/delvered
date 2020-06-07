@@ -65,6 +65,13 @@ bdir = subdir+brick+'/'
 ;logfile = bdir+brick+'.'+logtime+'.log'
 logfile = -1
 
+;; Check output file
+if file_test(bdir+brick+'_joint_object.fits.gz') eq 1 and not keyword_set(redo) then begin
+  print,bdir+brick+'_joint_object.fits.gz EXISTS and /red NOT set'
+  return
+endif
+
+
 ;; DECam imager
 thisimager = {telescope:'BLANCO',instrument:'DECam',namps:62,separator:'_'}
 
