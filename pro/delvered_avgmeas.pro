@@ -60,15 +60,19 @@ otags = tag_names(obj)
 ;;   F23-00912982_15, trim off ccdnum
 exposure = reform((strsplitter(meas.exposure,'_',/extract))[0,*])
 eindex = create_index(exposure)
-nexposure = n_elements(expstr)
-print,strtrim(nexposure,2),' exposures'
-ufilter = expstr[uniq(expstr.filter,sort(expstr.filter))].filter
+;; match EXPSTR to EINDEX
+;;  also some exposures have 0 measurements
+MATCH,eindex.value,expstr.exposure,ind1,ind2,/sort
+mexpstr = expstr[ind2]   ;; matched expstr, ind1 is in the right order
+nexposure = n_elements(mexpstr)
+print,strtrim(nexposure,2),' exposures with measurements'
+ufilter = mexpstr[uniq(mexpstr.filter,sort(mexpstr.filter))].filter
 nufilter = n_elements(ufilter)
 print,strtrim(nufilter,2),' unique filters'
 
 ;; Loop over unique filters
 For f=0,nufilter-1 do begin
-  filtind = where(expstr.filter eq ufilter[f],nfiltind)
+  filtind = where(mexpstr.filter eq ufilter[f],nfiltind)
   
   ;; Indices for the magnitude and errors in OBJ
   magind = where(otags eq strupcase(ufilter[f])+'MAGALL')
@@ -141,7 +145,7 @@ Endfor  ;; unique filter loop
 
 ;; Loop over unique filters
 For f=0,nufilter-1 do begin
-  filtind = where(expstr.filter eq ufilter[f],nfiltind)
+  filtind = where(mexpstr.filter eq ufilter[f],nfiltind)
   
   ;; Indices for the magnitude and errors in OBJ
   magind = where(otags eq strupcase(ufilter[f])+'MAG')
@@ -170,7 +174,7 @@ For f=0,nufilter-1 do begin
       mind = eindex.index[eindex.lo[filtind[k]]:eindex.hi[filtind[k]]]
       wt = 1.0d0/meas[mind].err^2
       ;; Severely downweight shallow non-forced photometry with err>0.2 mag
-      if expstr[filtind[k]].exptime lt 90 then begin
+      if mexpstr[filtind[k]].exptime lt 90 then begin
         bd = where(meas[mind].forced eq 0 and meas[mind].err gt 0.2,nbd,comp=gd,ncomp=ngd)
         if nbd gt 0 then wt[bd] *= 1e-4
       endif else gd=lindgen(n_elements(mind))
@@ -204,7 +208,7 @@ For f=0,nufilter-1 do begin
     numobs = lonarr(nobj)
     for k=0,nfiltind-1 do begin
       mind = eindex.index[eindex.lo[filtind[k]]:eindex.hi[filtind[k]]]
-      if expstr[filtind[k]].exptime lt 90 then begin
+      if mexpstr[filtind[k]].exptime lt 90 then begin
         bd = where(meas[mind].forced eq 0 and meas[mind].err gt 0.2,nbd,comp=gd,ncomp=ngd)
       endif else begin
         gd = lindgen(n_elements(mind))
