@@ -559,6 +559,9 @@ for i=0,nchstr-1 do begin
     newcat.chi = alf.chi
     newcat.sharp = alf.sharp
 
+    ;; Add more elements
+    if cnt+nalf gt n_elements(expcat) then expcat=add_elements(expcat,100000L>nalf)
+
     ;; Add to global catalog
     expcat[cnt:cnt+nalf-1] = newcat
     cnt += nalf
