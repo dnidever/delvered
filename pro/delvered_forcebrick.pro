@@ -338,7 +338,7 @@ printlog,logfile,'Step 3: Run ALLFRAME'
 mchbase = procdir+chstr[0].base
 mchfile = mchbase+'.mch'  ;; allframe needs absolute path
 ALLFRAME,mchfile,tile=tilestr,setupdir=bdir,scriptsdir=scriptsdir,irafdir=irafdir,$
-         logfile=logfile,catformat='FITS',imager=thisimager  ;,workdir=workdir
+         logfile=logfile,catformat='FITS',imager=thisimager,geocoef=0
 magfile = chstr[0].base+'.mag'
 if file_test(magfile) eq 0 then begin
   printlog,logfile,magfile+' NOT FOUND'
@@ -650,7 +650,7 @@ printlog,logfile,''
 printlog,logfile,'CREATE JOINT CATALOGS'
 printlog,logfile,''
 
-DELVERED_JOINTBRICKCATS,brick,logfile=logfile
+DELVERED_JOINTBRICKCATS,brick,logfile=logfile,redo=redo
 
 JOURNAL
 
