@@ -67,7 +67,7 @@ logfile = -1
 
 ;; Check output file
 if file_test(bdir+brick+'_joint_object.fits.gz') eq 1 and not keyword_set(redo) then begin
-  print,bdir+brick+'_joint_object.fits.gz EXISTS and /red NOT set'
+  print,bdir+brick+'_joint_object.fits.gz EXISTS and /redo NOT set'
   return
 endif
 
@@ -212,6 +212,56 @@ fmeta.file = strtrim(fmeta.file,2)
 fmeta.base = strtrim(fmeta.base,2)
 fmeta.expnum = strtrim(fmeta.expnum,2)
 
+
+;; Check the ALLFRAME astrometric solutions
+printlog,logfile,'Checking the ALLFRAME astrometric solutions'
+mchfile = file_search(bdir+'*_comb.mch',count=nmchfile)
+if nmchfile eq 0 then begin
+  printlog,logfile,'No comb.mch file found for '+brick
+  return
+endif
+mchfile = mchfile[0]
+astcheck = CHECK_ALLFRAME_COORDTRANS(mchfile,/silent)
+bdchip = where(astcheck.decstd gt 1.0 or finite(astcheck.decstd) eq 0,nbdchip)
+if nbdchip eq 0 then begin
+  printlog,logfile,'NO ALLFRAME astrometric solutions problems'  
+endif else begin
+  printlog,logfile,strtrim(nbdchip,2)+' chips found with bad ALLFRAME astrometric solutions'
+  printlog,logfile,strjoin(file_basename(astcheck[bdchip].file),', ')
+  printlog,logfile,'Removing from forced META structure'
+  badchips = file_basename(astcheck[bdchip].file,'.alf')
+  ;; Remove bad chips from fmeta
+  MATCH,fmeta.base,badchips,ind1,ind2,/sort,count=nmatch
+  fmeta0 = fmeta
+  REMOVE,ind1,fmeta
+  ;; Remove bad chip measurements from fmeas
+  fmeaschipindex = create_index(fmeas.exposure)
+  MATCH,fmeaschipindex.value,badchips,ind1,ind2,/sort,count=nmatch
+  badind = lon64arr(total(fmeaschipindex.num[ind1],/int))
+  cnt = 0LL
+  for i=0,nmatch-1 do begin
+    ind = fmeaschipindex.index[fmeaschipindex.lo[ind1[i]]:fmeaschipindex.hi[ind1[i]]]
+    nind = n_elements(ind)
+    badind[cnt:cnt+nind-1] = ind
+    cnt += nind
+  endfor
+  printlog,logfile,'Removing '+strtrim(n_elements(badind),2)+' forced measurements from bad chips'
+  REMOVE,badind,fmeas
+  ;; Remove fobj objects with no measurements
+  ui = uniq(fmeas.objid,sort(fmeas.objid))
+  fobjid = fmeas[ui].objid
+  MATCH,fobj.objid,fobjid,ind1,ind2,/sort,count=nmatch
+  if nmatch lt n_elements(fobj) then begin
+    left = lindgen(n_elements(fobj))
+    REMOVE,ind1,left
+    printlog,logfile,'Removing '+strtrim(n_elements(left),2)+' forced objects with no measurements'
+    REMOVE,left,fobj
+  endif
+  ;; Remake fmeasexpindex
+  fmeasexpindex = create_index(fmeas.exposure)
+endelse
+
+
 ;; Initialize the final measurement table
 meas_schema = {id:'',objid:'',exposure:'',ccdnum:0,filter:'',mjd:0.0d0,forced:0B,x:0.0,y:0.0,ra:0.0d0,dec:0.0d0,$
                imag:0.0,ierr:0.0,mag:0.0,err:0.0,sky:0.0,chi:0.0,sharp:0.0}
@@ -246,6 +296,7 @@ if nmatch gt 0 then meta[ind1].nmeas = fmeasexpindex.num[ind2]
 
 
 ;; Step 1: Loop over the chips that we used for the forced photometry
+;;-------------------------------------------------------------------
 ;;  check for any measurements that were missed, e.g. for bright stars
 printlog,logfile,' '
 printlog,logfile,'Step 1: Adding ALLSTAR measurements for exposures already used in the forced photometry'
@@ -277,7 +328,7 @@ For e=0,nuexpnum-1 do begin
     if size(chcat,/type) ne 8 then goto,BOMB1
     nchcat = n_elements(chcat)
     printlog,logfile,'  chip '+strtrim(i+1,2)+' '+repstr(meta1.file,'.fits','.phot')+' '+strtrim(nchcat,2)
-    ;; Only keep meaurements INSIDE the brick/tile area
+    ;; Only keep measurements INSIDE the brick/tile area
     HEAD_ADXY,tilestr.head,chcat.ra,chcat.dec,bx,by,/deg
     gdcat = where(bx ge 0 and bx le (tilestr.nx-1) and by ge 0 and by le (tilestr.ny-1),ngdcat)
     if ngdcat gt 0 then begin
@@ -397,7 +448,7 @@ if mcount lt n_elements(meas) then meas=meas[0:mcount-1]
 ;; trim OBJ
 if ocount lt n_elements(obj) then obj=obj[0:ocount-1]
 
-;stop
+stop
 
 
 ;; Step 2: Add in completely new exposures
