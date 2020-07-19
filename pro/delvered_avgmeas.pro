@@ -41,7 +41,7 @@ for i=0,nobj-1 do measobj_index[oindex.index[oindex.lo[i]:oindex.hi[i]]] = i
 
 
 ;; Initialize the final object table, with ALL BANDS
-obj_schema = {objid:'',depthflag:0,ra:0.0d0,dec:0.0d0,ndet:0,ndetall:0,$
+obj_schema = {objid:'',depthflag:0,ra:0.0d0,dec:0.0d0,rarms:0.0,decrms:0.0,ndet:0,ndetall:0,$
               umag:99.99,uerr:9.99,urms:99.99,ndetu:0,umagall:99.99,uerrall:9.99,urmsall:99.99,ndetallu:0,$
               gmag:99.99,gerr:9.99,grms:99.99,ndetg:0,gmagall:99.99,gerrall:9.99,grmsall:99.99,ndetallg:0,$
               rmag:99.99,rerr:9.99,rrms:99.99,ndetr:0,rmagall:99.99,rerrall:9.99,rrmsall:99.99,ndetallr:0,$
@@ -240,6 +240,11 @@ For f=0,nufilter-1 do begin
 Endfor  ;; unique filter loop
 
 
+;; NDET and NDETALL
+obj.ndet = obj.ndetu+obj.ndetg+obj.ndetr+obj.ndeti+obj.ndetz+obj.ndety
+obj.ndetall = obj.ndetallu+obj.ndetallg+obj.ndetallr+obj.ndetalli+obj.ndetallz+obj.ndetally
+
+
 
 ;; Coordinates, morphology, ebv, etc
 ;;-----------------------------------
@@ -297,11 +302,11 @@ avgsharp = fltarr(nobj)+99.99
 if ngdsharp gt 0 then avgsharp[gdsharp]=totsharp[gdsharp]/totwtsharp[gdsharp]
 obj.sharp = avgsharp
 
+
 ;; Weighted RA/DEC
 totalwt = dblarr(nobj)
 totalrawt = dblarr(nobj)
 totaldecwt = dblarr(nobj)
-numobs = lonarr(nobj)
 for i=0,nexposure-1 do begin
   mind = eindex.index[eindex.lo[i]:eindex.hi[i]]  
   totalwt[measobj_index[mind]] += 1.0d0/meas[mind].err^2
@@ -313,12 +318,30 @@ newdec = totaldecwt/totalwt
 obj.ra = newra
 obj.dec = newdec
 
+
+; RA/DEC RMS
+;  sqrt(mean(diff^2))
+totalradiff = dblarr(nobj)
+totaldecdiff = dblarr(nobj)
+for i=0,nexposure-1 do begin
+  mind = eindex.index[eindex.lo[i]:eindex.hi[i]]  
+  totalradiff[measobj_index[mind]] += (obj[measobj_index[mind]].ra - meas[mind].ra)^2
+  totaldecdiff[measobj_index[mind]] += (obj[measobj_index[mind]].dec - meas[mind].dec)^2
+endfor
+newrarms = sqrt( totalradiff/(obj.ndetall>1) ) * 3600 * cos(obj.dec/!radeg)
+newdecrms = sqrt( totaldecdiff/(obj.ndetall>1) ) * 3600
+bd = where(obj.ndetall eq 0,nbd)
+if nbd gt 0 then newrarms[bd]=99.99
+if nbd gt 0 then newdecrms[bd]=99.99
+; Set rms=99.99 for numobs=1
+oneobs = where(obj.ndetall eq 1,noneobs)
+if noneobs gt 0 then newrarms[oneobs]=99.99
+if noneobs gt 0 then newdecrms[oneobs]=99.99
+obj.rarms = newrarms
+obj.decrms = newdecrms
+
 ;; EBV
 glactc,obj.ra,obj.dec,2000.0,glon,glat,1,/deg
 obj.ebv = dust_getval(glon,glat,/noloop,/interp)
-
-;; NDET and NDETALL
-obj.ndet = obj.ndetu+obj.ndetg+obj.ndetr+obj.ndeti+obj.ndetz+obj.ndety
-obj.ndetall = obj.ndetallu+obj.ndetallg+obj.ndetallr+obj.ndetalli+obj.ndetallz+obj.ndetally
 
 end
