@@ -36,6 +36,26 @@ endif
 ;; Load FITS header
 head = PHOTRED_READFILE(fitsfile,/header)
 
+;; Trim out bad half of DECam ccdnum 31
+dateobs = chstr.utdate+'T'+chstr.uttime
+mjd = date2jd(dateobs,/mjd)
+if chstr.chip eq 31 and mjd gt 56660 then begin
+  print,'Masking bad half of DECam chip 31'
+  ;; X: 1-1000 okay
+  ;; X: 1000-2049 bad
+  bdind = where(als.x ge 1000,nbdind,comp=gdind,ncomp=ngdind)
+  if nbdind gt 0 then begin   ; some bad ones found
+    if ngdind eq 0 then begin   ; all bad
+      print,'NO useful measurements in ',fitsfile
+      return,-1
+    endif else begin
+      print,'Removing '+strtrim(nbdind,2)+' bad measurements, '+strtrim(ngdind,2)+' left.'
+      REMOVE,bdind,als
+      nals = n_elements(als)
+    endelse
+  endif  ; some bad ones to remove
+endif
+
 ;; Calibrate the photometry
 ;; exptime, aperture correction, zero-point
 ;; aperture correction is SUBTRACTIVE, makes it brighter
