@@ -23,7 +23,7 @@ pro delvered_photvar,meas,obj
 ;; Not enough inputs
 nobj = n_elements(obj)
 nmeas = n_elements(meas)
-if nexpstr eq 0 or nmeas eq 0 or nobj eq 0 then begin
+if nmeas eq 0 or nobj eq 0 then begin
   print,'Syntax - delvered_photvar,meas,obj'
   return
 endif
