@@ -49,7 +49,10 @@ obj_schema = {objid:'',depthflag:0,ra:0.0d0,dec:0.0d0,ndet:0,ndetall:0,$
               zmag:99.99,zerr:9.99,zrms:99.99,ndetz:0,zmagall:99.99,zerrall:9.99,zrmsall:99.99,ndetallz:0,$
               ymag:99.99,yerr:9.99,yrms:99.99,ndety:0,ymagall:99.99,yerrall:9.99,yrmsall:99.99,ndetally:0,$
               chi:99.99,sharp:99.99,prob:99.99,ebv:99.99,mag_auto:99.99,magerr_auto:9.99,$
-              asemi:999999.0,bsemi:999999.0,theta:999999.0,ellipticity:999999.0,fwhm:999999.0,brickuniq:0B}
+              asemi:999999.0,bsemi:999999.0,theta:999999.0,ellipticity:999999.0,fwhm:999999.0,$
+              rmsvar:999999.0,madvar:999999.0,iqrvar:999999.0,etavar:999999.0,jvar:999999.0,$
+              kvar:999999.0,chivar:999999.0,romsvar:999999.0,variable10sig:-1,nsigvar:999999.0,$
+              brickuniq:0B}
 ; depthflag: 1-allstar, single processing; 2-forced photometry; 3-both
 obj = replicate(obj_schema,nobj)
 obj.objid = oindex.value
