@@ -212,8 +212,57 @@ fmeta.file = strtrim(fmeta.file,2)
 fmeta.base = strtrim(fmeta.base,2)
 fmeta.expnum = strtrim(fmeta.expnum,2)
 
+;; Remove measurements from bad half of chip 31 from forced measurements
+;;----------------------------------------------------------------------
+mjd = dblarr(n_elements(fmeta))
+for i=0,n_elements(fmeta)-1 do mjd[i]=date2jd(fmeta[i].utdate+'T'+fmeta[i].uttime,/mjd)
+bdchip = where(fmeta.chip eq 31 and mjd gt 56660,nbdchip)
+undefine,badmeasind
+if nbdchip gt 0 then begin
+  MATCH,fmeasexpindex.value,fmeta[bdchip].base,ind1,ind2,/sort,count=nmatch
+  for i=0,nbdchip-1 do begin
+    ind = fmeasexpindex.index[fmeasexpindex.lo[ind1[i]]:fmeasexpindex.hi[ind1[i]]]
+    bdind = where(fmeas[ind].x gt 1000,nbdind,comp=gdind,ncomp=ngdind)
+    if nbdind gt 0 then begin   ; some bad ones found
+      push,badmeasind,ind[bdind]
+      if ngdind eq 0 then begin   ; all bad
+        printlog,logfile,'NO useful measurements in '+fmeasexpindex.value[ind1[i]]
+        fmeta[bdchip[ind2[i]]].alf_nsources = 0
+      endif else begin
+        printlog,logfile,fmeasexpindex.value[ind1[i]]+' removing '+strtrim(nbdind,2)+' bad measurements, '+strtrim(ngdind,2)+' left'
+        fmeta[bdchip[ind2[i]]].alf_nsources = ngdind
+      endelse
+    endif  ; some bad ones to remove
+  endfor
+  printlog,logfile,strtrim(n_elements(badmeasind),2)+' bad chip 31 measurements to remove'
+  ;; Remove bad chip 31 measurements from fmeas
+  if n_elements(badmeasind) gt 0 then begin
+    REMOVE,badmeasind,fmeas
+  endif
+  ;; Remove chips with no measurements from fmeta
+  bdfmeta = where(fmeta.alf_nsources eq 0,nbdfmeta)
+  if nbdfmeta gt 0 then begin
+    printlog,logfile,'Removing '+strtrim(nbdfmeta,2)+' chips with no measurements'
+    REMOVE,bdfmeta,fmeta
+  endif
+  ;; Remove fobj objects with no measurements
+  ui = uniq(fmeas.objid,sort(fmeas.objid))
+  fobjid = fmeas[ui].objid
+  MATCH,fobj.objid,fobjid,ind1,ind2,/sort,count=nmatch
+  if nmatch lt n_elements(fobj) then begin
+    left = lindgen(n_elements(fobj))
+    REMOVE,ind1,left
+    printlog,logfile,'Removing '+strtrim(n_elements(left),2)+' forced objects with no measurements'
+    REMOVE,left,fobj
+  endif
+  ;; Remake fmeasexpindex
+  fmeasexpindex = create_index(fmeas.exposure)
+endif
 
-;; Check the ALLFRAME astrometric solutions
+
+;; Check the ALLFRAME astrometric solutions and removing data from
+;;   bad chips from the forced measurements catalog
+;;----------------------------------------------------------------
 printlog,logfile,'Checking the ALLFRAME astrometric solutions'
 mchfile = file_search(bdir+'*_comb.mch',count=nmchfile)
 if nmchfile eq 0 then begin
@@ -279,7 +328,10 @@ obj_schema = {objid:'',forced:0B,x:999999.0,y:999999.0,ra:0.0d0,dec:0.0d0,$
               zmag:99.99,zerr:9.99,zscatter:99.99,ndetz:0L,$
               ymag:99.99,yerr:9.99,yscatter:99.99,ndety:0L,$
               chi:99.99,sharp:99.99,prob:99.99,ebv:99.99,mag_auto:99.99,magerr_auto:9.99,$
-              asemi:999999.0,bsemi:999999.0,theta:999999.0,ellipticity:999999.0,fwhm:999999.9,depthflag:0,brickuniq:0B}
+              asemi:999999.0,bsemi:999999.0,theta:999999.0,ellipticity:999999.0,fwhm:999999.9,$
+              rmsvar:999999.0,madvar:999999.0,iqrvar:999999.0,etavar:999999.0,jvar:999999.0,$
+              kvar:999999.0,chivar:999999.0,romsvar:999999.0,variable10sig:-1,nsigvar:999999.0,$
+              depthflag:0,brickuniq:0B}
 ; depthflag: 1-allstar, single processing; 2-forced photometry; 3-both
 obj = replicate(obj_schema,nfobj)
 struct_assign,fobj,obj,/nozero
@@ -448,7 +500,7 @@ if mcount lt n_elements(meas) then meas=meas[0:mcount-1]
 ;; trim OBJ
 if ocount lt n_elements(obj) then obj=obj[0:ocount-1]
 
-stop
+;stop
 
 
 ;; Step 2: Add in completely new exposures
@@ -626,6 +678,12 @@ obj[ind1].bsemi = fobj[ind2].bsemi
 obj[ind1].theta = fobj[ind2].theta
 obj[ind1].ellipticity = fobj[ind2].ellipticity
 obj[ind1].fwhm = fobj[ind2].fwhm
+
+
+;; Calculate photometric variability metrics
+printlog,logfile,'Calculating photometric variability metrics'
+DELVERED_PHOTVAR,meas,obj
+
 
 ;; Fill in BRICKUNIQ
 ;; Getting objects that are in the UNIQUE brick area
