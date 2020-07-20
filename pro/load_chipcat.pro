@@ -1,4 +1,4 @@
-function load_chipcat,chstr
+function load_chipcat,chstr,usealf=usealf
 
 ;; Load the single ALS file and calibrate it the information in CHSTR
 
@@ -23,7 +23,12 @@ endfor
 fitsfile = strtrim(chstr.file,2)
 
 ;; Load ALS file
-alsfile = repstr(fitsfile,'.fits','.als')
+if not keyword_set(usealf) then begin
+  alsfile = repstr(fitsfile,'.fits','.als')
+endif else begin
+  ;; Using ALF file
+  alsfile = chstr.alffile
+endelse
 if file_test(alsfile) eq 0 then begin
   print,alsfile+' NOT FOUND'
   return,-1
