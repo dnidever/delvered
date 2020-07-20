@@ -8,6 +8,10 @@ dir = '/net/dl2/dnidever/delve/bricks/'+strmid(brick,0,4)+'/'+brick+'/'
 meta = mrdfits(dir+brick+'_joint_meta.fits',1)
 nmeta = n_elements(meta)
 
+;; Add ALF filename
+add_tag,meta,'alffile','',meta
+meta.alffile = dir+strtrim(meta.base,2)+'.alf'
+
 
 ;; Measurement schema
 meas_schema = {id:'',objid:'',exposure:'',ccdnum:0,filter:'',mjd:0.0d0,forced:0B,x:0.0,y:0.0,ra:0.0d0,dec:0.0d0,$
@@ -36,15 +40,26 @@ print,strtrim(nmeta,2),' chip files'
 for i=0,nmeta-1 do begin
   print,strtrim(i+1,2),' ',meta[i].base
   meta1 = meta[i]
-  cat1 = LOAD_CHIPCAT(meta1)
+  usealf = 0  ; 1
+  cat1 = LOAD_CHIPCAT(meta1,usealf=usealf)
   ncat1 = n_elements(cat1)
+  if size(cat1,/type) ne 8 then goto,BOMB
   
+  ;; Apply S/N cut
+  ;snr = 1.087/cat1.err
+  ;snrthresh = 5.0
+  ;bd = where(snr lt snrthresh,nbd,comp=gd,ncomp=ngd)
+  ;print,'Applying S/N>'+stringize(snrthresh,ndec=2)+' cut'
+  ;if ngd eq 0 then goto,BOMB
+  ;REMOVE,bd,cat1
+  ;ncat1 = n_elements(cat1)
+
   magind = where(otags eq strupcase(meta1.filter)+'MAG',nmagind)
   errind = where(otags eq strupcase(meta1.filter)+'ERR',nerrind)
   detind = where(otags eq 'NDET'+strupcase(meta1.filter),ndetind)
 
   ;; First catalog
-  if i eq 0 then begin
+  if ocount eq 0 then begin
     ;; Update the object catalog
     print,'Adding ',strtrim(ncat1,2),' objects'
     newobj = replicate(obj_schema,ncat1)
@@ -95,6 +110,7 @@ for i=0,nmeta-1 do begin
       mcount += ncat1
    endif
   endelse
+  BOMB:
 endfor  ;; file loop
 ;; Trim extra elements
 if n_elements(obj) gt ocount then obj=obj[0:ocount-1]
