@@ -93,7 +93,10 @@ For f=0,nufilter-1 do begin
     obj[measobj_index[mind]].(nobsind) = 1
     ;; Depthflag
     ;;  OR combine to depthflag, 1-single-exposure, 2-forced, 3-both
-    if meas[mind[0]].forced eq 0 then obj[measobj_index[mind]].depthflag OR= 1 else obj[measobj_index[mind]].depthflag OR= 2
+    ;;  within a single exposure we can have some forced and some
+    ;;  not, need to do this object by object
+    ;; forced=0 -> depthflag=1, forced=1 -> depthflag=2, depthflag=forced+1
+    obj[measobj_index[mind]].depthflag OR= (meas[mind].forced+1)
 
   ;; Multiple exposures for this filter to average
   endif else begin
@@ -106,7 +109,7 @@ For f=0,nufilter-1 do begin
       totalwt[measobj_index[mind]] += 1.0d0/meas[mind].err^2
       totalfluxwt[measobj_index[mind]] += 2.5118864d^meas[mind].mag * (1.0d0/meas[mind].err^2)
       ;; Depthflag
-      if meas[mind[0]].forced eq 0 then obj[measobj_index[mind]].depthflag OR= 1 else obj[measobj_index[mind]].depthflag OR= 2
+      obj[measobj_index[mind]].depthflag OR= (meas[mind].forced+1)
     endfor
     newflux = totalfluxwt/totalwt
     newmag = 2.50*alog10(newflux)
@@ -137,7 +140,6 @@ For f=0,nufilter-1 do begin
     obj.(errind) = newerr
     obj.(rmsind) = newrms
     obj.(nobsind) = numobs
-
   endelse  ; combine multiple exposures for this filter
 
 Endfor  ;; unique filter loop
