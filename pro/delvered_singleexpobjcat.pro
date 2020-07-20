@@ -102,9 +102,11 @@ for i=0,nmeta-1 do begin
       struct_assign,cat1,newobj,/nozero
       newobj.ndet = 1
       newobj.objid = strtrim(brick,2)+'.'+strtrim(lindgen(ncat1)+1+ocount,2)
+      if n_elements(obj) lt ocount+ncat1 then obj=add_elements(obj,ncat1>1e5)
       obj[ocount:ocount+ncat1-1] = newobj
       ocount += ncat1
       ;; Update the measurement catalog
+      if n_elements(meas) lt mcount+ncat1 then meas=add_elements(meas,ncat1>1e5)
       cat1.objid = newobj.objid
       meas[mcount:mcount+ncat1-1] = cat1
       mcount += ncat1
