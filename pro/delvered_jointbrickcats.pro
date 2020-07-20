@@ -451,7 +451,7 @@ For e=0,nuexpnum-1 do begin
     tempobj = obj[ind1]
     tempmeas = measexpnew[ind2]
     ADD_MEAS2OBJ,tempobj,tempmeas
-    tempobj.depthflag += 1
+    tempobj.depthflag OR= 1
     obj[ind1] = tempobj
     ;; update meas OBJID
     measexpnew[ind2].objid = obj[ind1].objid
@@ -472,7 +472,7 @@ For e=0,nuexpnum-1 do begin
     tempmeas = measexpnew[left]
     struct_assign,tempmeas,newobj,/nozero
     ADD_MEAS2OBJ,newobj,tempmeas
-    newobj.depthflag += 1
+    newobj.depthflag OR= 1
     ;; Assign new OBJID
     newobjid = brick+'.'+strtrim(lindgen(nleft)+1+objectidcount,2)
     objectidcount += nleft
@@ -590,7 +590,7 @@ For e=0,nuexpnum-1 do begin
     tempobj = obj[ind1]
     tempmeas = measexpnew[ind2]
     ADD_MEAS2OBJ,tempobj,tempmeas
-    tempobj.depthflag += 1
+    tempobj.depthflag OR= 1
     obj[ind1] = tempobj
     ;; update meas OBJID
     measexpnew[ind2].objid = obj[ind1].objid
@@ -611,7 +611,7 @@ For e=0,nuexpnum-1 do begin
     tempmeas = measexpnew[left]
     struct_assign,tempmeas,newobj,/nozero
     ADD_MEAS2OBJ,newobj,tempmeas
-    newobj.depthflag += 1
+    newobj.depthflag OR= 1
     ;; Assign new OBJID
     newobjid = brick+'.'+strtrim(lindgen(nleft)+1+objectidcount,2)
     objectidcount += nleft
@@ -660,6 +660,8 @@ exposure = reform((strsplitter(meas.exposure,'_',/extract))[0,*])
 eindex = create_index(exposure)
 match,expstr.exposure,eindex.value,ind1,ind2,/sort,count=nmatch
 expstr[ind1].nmeas = eindex.num[ind2]
+
+;stop
 
 ;; Average all of the measurements
 oldobj = obj
