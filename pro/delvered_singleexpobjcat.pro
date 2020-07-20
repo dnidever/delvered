@@ -84,6 +84,7 @@ for i=0,nmeta-1 do begin
    if nmatch gt 0 then begin
      obj[ind1].ndet += 1
      cat1[ind2].objid = obj[ind1].objid
+     if n_elements(meas) lt mcount+ncat1 then meas=add_elements(meas,ncat1>1e5)
      meas[mcount:mcount+nmatch-1] = cat1[ind2]
      mcount += nmatch
      if nmatch eq ncat1 then begin
