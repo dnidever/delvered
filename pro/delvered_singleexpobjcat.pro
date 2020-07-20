@@ -3,7 +3,7 @@ pro delvered_singleexpobjcat,brick,meas,obj
 ;; Create measurement and object catalogs from the single-exposure
 ;; level processing ALS files.
 
-brick = '0933m587'
+;brick = '0933m587'
 dir = '/net/dl2/dnidever/delve/bricks/'+strmid(brick,0,4)+'/'+brick+'/'
 meta = mrdfits(dir+brick+'_joint_meta.fits',1)
 nmeta = n_elements(meta)
@@ -137,6 +137,6 @@ DELVERED_AVGMEAS,expstr,meas,obj
 print,'Calculating photometric variability metrics'
 DELVERED_PHOTVAR,meas,obj
 
-stop
+;stop
 
 end
