@@ -105,8 +105,8 @@ endif else begin
     endif
     if refname eq 'GAIADR2' then begin
       tablename = 'gaia_dr2.gaia_source'
-      cols = 'source_id as source,ra,ra_error,dec,dec_error,pmra,pmra_error,pmdec,pmdec_error,phot_g_mean_flux as fg,phot_g_mean_flux_error as e_fg,'+$
-             'phot_g_mean_mag as gmag,phot_bp_mean_mag as bp,phot_bp_mean_flux as fbp,phot_bp_mean_flux_error as e_fbp,'+$
+      cols = 'source_id as source,ra,ra_error,dec,dec_error,parallax,parallax_error,pmra,pmra_error,pmdec,pmdec_error,phot_g_mean_flux as fg,'+$
+             'phot_g_mean_flux_error as e_fg,phot_g_mean_mag as gmag,phot_bp_mean_mag as bp,phot_bp_mean_flux as fbp,phot_bp_mean_flux_error as e_fbp,'+$
                           'phot_rp_mean_mag as rp,phot_rp_mean_flux as frp,phot_rp_mean_flux_error as e_frp'
       server = 'db02.datalab.noao.edu'
       ;server = 'gp04.datalab.noao.edu'
