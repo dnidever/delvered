@@ -90,6 +90,7 @@ endif else begin
       server = 'db02.datalab.noao.edu'
       ;server = 'gp04.datalab.noao.edu'
       ;server = 'dldb1.sdm.noao.edu'
+      user = 'dlquery'
     endif
     racol = 'ra'
     deccol = 'dec'
@@ -100,6 +101,7 @@ endif else begin
       server = 'db02.datalab.noao.edu'
       ;server = 'gp04.datalab.noao.edu'
       ;server = 'dldb1.sdm.noao.edu'
+      user = 'dlquery'
     endif
     if refname eq 'GAIADR2' then begin
       tablename = 'gaia_dr2.gaia_source'
@@ -108,12 +110,14 @@ endif else begin
                           'phot_rp_mean_mag as rp,phot_rp_mean_flux as frp,phot_rp_mean_flux_error as e_frp'
       server = 'db02.datalab.noao.edu'
       ;server = 'gp04.datalab.noao.edu'
+      user = 'dlquery'
     endif
     if refname eq 'PS' then begin
       ;tablename = 'cp_calib.ps1'
       tablename = 'public.ps1'
       cols = 'ra, dec, g as gmag, r as rmag, i as imag, z as zmag, y as ymag'
       server = 'gp02.datalab.noao.edu'
+      user = 'datalab'
     endif
     if refname eq 'SKYMAPPER' then begin
       tablename = 'skymapper_dr1.master'
@@ -121,27 +125,31 @@ endif else begin
              'e_i_psf as e_sm_imag, z_psf as sm_zmag, e_z_psf as e_sm_zmag'
       server = 'db02.datalab.noao.edu'
       ;server = 'gp04.datalab.noao.edu'
+      user = 'dlquery'
       racol = 'raj2000'
       deccol = 'dej2000'
     endif
     if refname eq 'ALLWISE' then begin
-       tablename = 'allwise.source'
-       cols = 'ra, dec, w1mpro as w1mag, w1sigmpro as e_w1mag, w2mpro as w2mag, w2sigmpro as e_w2mag'
-       server = 'db02.datalab.noao.edu'
-       ;server = 'gp04.datalab.noao.edu'
+      tablename = 'allwise.source'
+      cols = 'ra, dec, w1mpro as w1mag, w1sigmpro as e_w1mag, w2mpro as w2mag, w2sigmpro as e_w2mag'
+      server = 'db02.datalab.noao.edu'
+      ;server = 'gp04.datalab.noao.edu'
+      user = 'dlquery'
     endif
     if refname eq 'ATLAS' then begin
-       tablename = 'atlasrefcat2'
-       cols = 'objid,ra,dec,plx as parallax,dplx as parallax_error,pmra,dpmra as pmra_error,pmdec,dpmdec as pmdec_error,gaia,dgaia as gaiaerr,'+$
-              'bp,dbp as bperr,rp,drp as rperr,teff,agaia,dupvar,ag,rp1,r1,r10,g as gmag,dg as gerr,gchi,gcontrib,'+$
-              'r as rmag, dr as rerr,rchi,rcontrib,i as imag,di as ierr,ichi,icontrib,z as zmag,dz as zerr,zchi,zcontrib,nstat,'+$
-              'j as jmag,dj as jerr,h as hmag,dh as herr,k as kmag,dk as kerr'
-       server = 'gp10.datalab.noao.edu'
+      tablename = 'atlasrefcat2'
+      cols = 'objid,ra,dec,plx as parallax,dplx as parallax_error,pmra,dpmra as pmra_error,pmdec,dpmdec as pmdec_error,gaia,dgaia as gaiaerr,'+$
+             'bp,dbp as bperr,rp,drp as rperr,teff,agaia,dupvar,ag,rp1,r1,r10,g as gmag,dg as gerr,gchi,gcontrib,'+$
+             'r as rmag, dr as rerr,rchi,rcontrib,i as imag,di as ierr,ichi,icontrib,z as zmag,dz as zerr,zchi,zcontrib,nstat,'+$
+             'j as jmag,dj as jerr,h as hmag,dh as herr,k as kmag,dk as kerr'
+      server = 'gp10.datalab.noao.edu'
+      user = 'datalab'
     endif
     
-    ; Use Postgres command with q3c cone search                                                                                                                                    
+    ;; Use Postgres command with q3c cone search                             
+    ;; you need the password for user dlquery on db01/db02.  I use a .pgpass file.
     refcattemp = repstr(file,'.fits','.txt')
-    cmd = "psql -h "+server+" -U datalab -d tapdb -w --pset footer -c 'SELECT "+cols+" FROM "+tablename+$
+    cmd = "psql -h "+server+" -U "+user+" -d tapdb -w --pset footer -c 'SELECT "+cols+" FROM "+tablename+$
           " WHERE q3c_radial_query("+racol+","+deccol+","+stringize(cenra,ndec=4,/nocomma)+","+stringize(cendec,ndec=4,/nocomma)+$
           ","+stringize(radius,ndec=3)+")' > "+refcattemp
     file_delete,refcattemp,/allow
