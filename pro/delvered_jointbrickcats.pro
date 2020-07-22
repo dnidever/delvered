@@ -212,6 +212,62 @@ fmeta.file = strtrim(fmeta.file,2)
 fmeta.base = strtrim(fmeta.base,2)
 fmeta.expnum = strtrim(fmeta.expnum,2)
 
+;; Add ALLFRAME detection iteration number
+;;----------------------------------------
+printlog,logfile,'Adding ALLFRAME detection iteration number'
+; get it from the log file
+logfiles = file_search(bdir+brick+'.????????????.log',count=nlogfiles)
+if nlogfiles eq 0 then begin
+  print,'No logfile found'
+  return
+endif
+info = file_info(logfiles)
+si = reverse(sort(info.mtime))
+logfiles = logfiles[si]
+info = info[si]
+logfile = logfiles[0]
+readline,logfile,loglines
+lo = where(stregex(loglines,'STEP 3: Running allframe prep',/boolean) eq 1,nlo)
+hi = where(stregex(loglines,'STEP 4: Running ALLFRAME',/boolean) eq 1,nhi)
+if nlo eq 0 or nhi eq 0 then begin
+  print,'allfprep portion of log file '+logfile+' NOT FOUND'
+  return
+endif
+loglines1 = loglines[lo+4:hi-5]
+;; --Iteration 1--
+;; Running SExtractor
+;; SExtractor found 21671 sources
+;; Running ALLSTAR
+;; ALLSTAR found 18141 sources
+;; 18141 new stars found
+;; --Iteration 2--
+;; Running SExtractor
+;; SExtractor found 18307 sources
+;; Running ALLSTAR
+;; ALLSTAR found 26554 sources
+;; 8413 new stars found
+sexind = where(stregex(loglines1,'^SExtractor found',/boolean) eq 1,nsexind)
+dum = strsplitter(loglines1[sexind],' ',/extract)
+sexnstars = long(reform(dum[2,*]))
+;; restore the SExtractor file
+sexfile = file_search(bdir+'*_comb_allf.sex',count=nsexfile)
+scat = MRDFITS(sexfile[0],1,/silent)
+add_tag,scat,'NDETITER',0L,scat
+scount = 0LL
+for i=0,nsexind-1 do begin
+  scat[scount:scount+sexnstars[i]-1].ndetiter = i+1
+  scount += sexnstars[i]
+endfor
+;; Now match to the object catalog
+;; the obj.objid star number part should match with the SE number
+;; 0988m505.404   0988m505.899   0988m505.1423
+add_tag,fobj,'nalfdetiter',0,fobj
+objnum = long(reform((strsplitter(fobj.objid,'.',/extract))[1,*]))
+MATCH,scat.number,objnum,ind1,ind2,/sort,count=nmatch
+fobj[ind2].nalfdetiter = scat[ind1].ndetiter
+
+stop
+
 ;; Remove measurements from bad half of chip 31 from forced measurements
 ;;----------------------------------------------------------------------
 mjd = dblarr(n_elements(fmeta))
@@ -312,15 +368,16 @@ endelse
 
 
 ;; Initialize the final measurement table
-meas_schema = {id:'',objid:'',exposure:'',ccdnum:0,filter:'',mjd:0.0d0,forced:0B,x:0.0,y:0.0,ra:0.0d0,dec:0.0d0,$
+meas_schema = {id:'',objid:'',brick:'',exposure:'',ccdnum:0,filter:'',mjd:0.0d0,forced:0B,x:0.0,y:0.0,ra:0.0d0,dec:0.0d0,$
                imag:0.0,ierr:0.0,mag:0.0,err:0.0,sky:0.0,chi:0.0,sharp:0.0}
 meas = replicate(meas_schema,n_elements(fmeas))
 struct_assign,fmeas,meas
+meas.brick = brick
 meas.forced = 1B
 mcount = long64(n_elements(meas))
 
 ;; Initialize the final object table, with ALL BANDS
-obj_schema = {objid:'',forced:0B,x:999999.0,y:999999.0,ra:0.0d0,dec:0.0d0,$
+obj_schema = {objid:'',brick:'',forced:0B,x:999999.0,y:999999.0,ra:0.0d0,dec:0.0d0,nalfdetiter:0L,$
               umag:99.99,uerr:9.99,uscatter:99.99,ndetu:0L,$
               gmag:99.99,gerr:9.99,gscatter:99.99,ndetg:0L,$
               rmag:99.99,rerr:9.99,rscatter:99.99,ndetr:0L,$
@@ -329,15 +386,16 @@ obj_schema = {objid:'',forced:0B,x:999999.0,y:999999.0,ra:0.0d0,dec:0.0d0,$
               ymag:99.99,yerr:9.99,yscatter:99.99,ndety:0L,$
               chi:99.99,sharp:99.99,prob:99.99,ebv:99.99,mag_auto:99.99,magerr_auto:9.99,$
               asemi:999999.0,bsemi:999999.0,theta:999999.0,ellipticity:999999.0,fwhm:999999.9,$
-              rmsvar:999999.0,madvar:999999.0,iqrvar:999999.0,etavar:999999.0,jvar:999999.0,$
-              kvar:999999.0,chivar:999999.0,romsvar:999999.0,variable10sig:-1,nsigvar:999999.0,$
               depthflag:0,brickuniq:0B}
 ; depthflag: 1-allstar, single processing; 2-forced photometry; 3-both
 obj = replicate(obj_schema,nfobj)
 struct_assign,fobj,obj,/nozero
+obj.brick = brick
 obj.depthflag = 2
+obj.nalfdetiter = fobj.nalfdetiter
 obj = add_elements(obj,100000L)
 ocount = nfobj
+
 
 ;; Initialize the final meta structure
 meta = fmeta
@@ -664,10 +722,12 @@ expstr[ind1].nmeas = eindex.num[ind2]
 ;stop
 
 ;; Average all of the measurements
+;;  THIS CREATES A NEW OBJECT TABLE WITH THE FINAL SCHEMA!!!
 oldobj = obj
 undefine,obj
 printlog,logfile,'--- AVERAGING THE PHOTOMETRY ---'
 DELVERED_AVGMEAS,expstr,meas,obj
+
 
 ;; Copy over SExtractor information for the forced objects
 ;;   the measurement table only has ALF/ALS information
@@ -681,6 +741,8 @@ obj[ind1].theta = fobj[ind2].theta
 obj[ind1].ellipticity = fobj[ind2].ellipticity
 obj[ind1].fwhm = fobj[ind2].fwhm
 
+;; Copy over other information
+obj[ind1].nalfdetiter = fobj[ind2].nalfdetiter
 
 ;; Calculate photometric variability metrics
 printlog,logfile,'Calculating photometric variability metrics'
@@ -697,6 +759,38 @@ endif else begin
                   obj.dec ge brickstr1.dec1 and obj.dec lt brickstr1.dec2,ninside)
 endelse
 if ninside gt 0 then obj[ginside].brickuniq=1B
+
+;; Get Gaia DR2 data
+;; bricks are 0.25 x 0.25 deg, so half the diagonal is 0.177 deg
+printlog,logfile,'Crossmatching with Gaia DR2'
+gaia = DELVERED_GETREFCAT(brickstr1.ra,brickstr1.dec,0.2,'gaiadr2')
+srcmatch,obj.ra,obj.dec,gaia.ra,gaia.dec,1.0,ind1,ind2,/sph,count=nmatch
+printlog,logfile,strtrim(nmatch,2)+' Gaia DR2 matches'
+if nmatch gt 0 then begin
+  obj[ind1].gaia_match = 1
+  obj[ind1].gaia_xdist = sphdist(obj[ind1].ra,obj[ind1].dec,gaia[ind2].ra,gaia[ind2].dec,/deg)*3600
+  obj[ind1].gaia_sourceid = gaia[ind2].source
+  obj[ind1].gaia_ra = gaia[ind2].ra
+  obj[ind1].gaia_ra_error = gaia[ind2].ra_error
+  obj[ind1].gaia_dec = gaia[ind2].dec
+  obj[ind1].gaia_dec_error = gaia[ind2].dec_error
+  obj[ind1].gaia_parallax = gaia[ind2].parallax
+  obj[ind1].gaia_parallax_error = gaia[ind2].parallax_error
+  obj[ind1].gaia_pmra = gaia[ind2].pmra
+  obj[ind1].gaia_pmra_error = gaia[ind2].pmra_error
+  obj[ind1].gaia_pmdec = gaia[ind2].pmdec
+  obj[ind1].gaia_pmdec_error = gaia[ind2].pmdec_error
+  obj[ind1].gaia_gmag = gaia[ind2].gmag
+  gmag_error = 2.5*alog10(1.0+gaia[ind2].e_fg/gaia[ind2].fg)
+  obj[ind1].gaia_gmag_error = gmag_error
+  obj[ind1].gaia_bpmag = gaia[ind2].bp
+  bpmag_error = 2.5*alog10(1.0+gaia[ind2].e_fbp/gaia[ind2].fbp)
+  obj[ind1].gaia_bpmag_error = bpmag_error
+  obj[ind1].gaia_rpmag = gaia[ind2].rp
+  rpmag_error = 2.5*alog10(1.0+gaia[ind2].e_frp/gaia[ind2].frp)
+  obj[ind1].gaia_rpmag_error = rpmag_error
+endif else print,'NO Gaia DR2 matches'
+stop
 
 
 ;; Save JOINT files
