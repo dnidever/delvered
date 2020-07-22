@@ -147,7 +147,7 @@ setup = ['##### REQUIRED #####',$
          'psfcomglobal  0',$
          'psfcomgauss   0',$
          '#mchmaxshift  50.0',$
-         'finditer      2',$
+         'finditer      1',$      ; 2->1 on 7/22/20
          'alfdetprog  sextractor',$
          '#alfnocmbimscale 0',$
          'alftrimcomb   0',$
