@@ -520,6 +520,12 @@ for i=0,nchstr-1 do begin
   if file_test(alffiles[i]) eq 1 and file_test(fitsfile) eq 1 then begin
     LOADALS,alffiles[i],alf,count=nalf
     if nalf eq 0 then goto,BOMB2
+    ;; Sometimes the rows are duplicated in the ALF file
+    ui = uniq(alf.id,sort(alf.id))
+    if n_elements(ui) lt nalf then begin
+      alf = alf[ui]
+      nalf = n_elements(alf)
+    endif
     head = photred_readfile(fitsfile,/header)
 
     ;; Calibrate the photometry
@@ -584,9 +590,14 @@ STRUCT_ASSIGN,phot,obj,/nozero
 
 ;; Saving final catalog
 photfile = bdir+brick+'.fits'
-printlog,logfile,'Writing photometry to '+photfile+'.gz'
-MWRFITS,phot,photfile,/create
-spawn,['gzip','-f',photfile],/noshell
+if n_tags(phot) le 999 then begin
+  printlog,logfile,'Writing photometry to '+photfile+'.gz'
+  MWRFITS,phot,photfile,/create
+  spawn,['gzip','-f',photfile],/noshell
+endif else begin
+  printlog,logfile,'Too many columns for FITS.  Saving as IDL SAVE file instead. '+bdir+brick+'.dat'
+  SAVE,phot,file=bdir+brick+'.dat'
+endelse
 
 ;; Saving object photometry catalog
 objfile = bdir+brick+'_object.fits'
