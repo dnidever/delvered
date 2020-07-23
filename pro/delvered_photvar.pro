@@ -139,6 +139,7 @@ endfor  ; object loop
 si = sort(fidmag)   ; NaNs are at end
 varcol = 'madvar'
 gdvar = where(finite(obj.madvar) eq 1 and finite(fidmag) eq 1,ngdvar,comp=bdvar,ncomp=nbdvar)
+obj.variable10sig = 0
 if ngdvar gt 0 then begin
   binsize = 0.25
   BINDATA,fidmag[gdvar],fidmag[gdvar],fidmagmed_bins,fidmagmed,binsize=binsize,/med

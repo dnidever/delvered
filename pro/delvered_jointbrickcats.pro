@@ -187,6 +187,17 @@ chstr.file = strtrim(chstr.file,2)
 chstr.base = strtrim(chstr.base,2)
 chstr.fieldname = strtrim(chstr.fieldname,2)
 
+;; Get the "reference" name
+mchfile = file_search(bdir+'*_comb.mch',count=nmchfile)
+if nmchfile eq 0 then begin
+  printlog,logfile,'No comb.mch file found for '+brick
+  return
+endif
+mchfile = mchfile[0]
+mchbase = file_basename(mchfile,'_comb.mch')
+combbase = mchbase+'_comb'
+
+
 ;; Load the forced photometry object catalog
 objfile = bdir+brick+'_object.fits.gz'
 printlog,logfile,'Loading forced photometry object catalog '+objfile
@@ -211,6 +222,7 @@ fmeta = MRDFITS(metafile,1,/silent)
 fmeta.file = strtrim(fmeta.file,2)
 fmeta.base = strtrim(fmeta.base,2)
 fmeta.expnum = strtrim(fmeta.expnum,2)
+
 
 ;; Add ALLFRAME detection iteration number
 ;;----------------------------------------
@@ -251,11 +263,11 @@ dum = strsplitter(loglines1[sexind],' ',/extract)
 sexnstars = long(reform(dum[2,*]))
 ;; restore the SExtractor file
 sexfile = file_search(bdir+'*_comb_allf.sex',count=nsexfile)
-scat = MRDFITS(sexfile[0],1,/silent)
-add_tag,scat,'NDETITER',0L,scat
+sex = MRDFITS(sexfile[0],1,/silent)
+add_tag,sex,'NDETITER',0L,sex
 scount = 0LL
 for i=0,nsexind-1 do begin
-  scat[scount:scount+sexnstars[i]-1].ndetiter = i+1
+  sex[scount:scount+sexnstars[i]-1].ndetiter = i+1
   scount += sexnstars[i]
 endfor
 ;; Now match to the object catalog
@@ -263,10 +275,21 @@ endfor
 ;; 0988m505.404   0988m505.899   0988m505.1423
 add_tag,fobj,'nalfdetiter',0,fobj
 objnum = long(reform((strsplitter(fobj.objid,'.',/extract))[1,*]))
-MATCH,scat.number,objnum,ind1,ind2,/sort,count=nmatch
-fobj[ind2].nalfdetiter = scat[ind1].ndetiter
+MATCH,sex.number,objnum,ind1,ind2,/sort,count=nmatch
+fobj[ind2].nalfdetiter = sex[ind1].ndetiter
 
-stop
+
+;; Merge close neighbors
+;;----------------------
+printlog,logfile,'--- Merging close neighbors ---'
+combfits = bdir+combbase+'.fits.fz'
+if max(fobj.nalfdetiter) gt 1 then begin
+  DELVERED_MERGEALF_CLOSENEIGHBORS,combfits,sex,fobj,fmeas,newobj,newmeas,logfile=logfile
+  fobj = newobj & undefine,newobj
+  fmeas = newmeas & undefine,newmeas
+  nfobj = n_elements(fobj)
+endif
+
 
 ;; Remove measurements from bad half of chip 31 from forced measurements
 ;;----------------------------------------------------------------------
@@ -319,13 +342,14 @@ endif
 ;; Check the ALLFRAME astrometric solutions and removing data from
 ;;   bad chips from the forced measurements catalog
 ;;----------------------------------------------------------------
-printlog,logfile,'Checking the ALLFRAME astrometric solutions'
+printlog,logfile,'--- Removing chips with bad ALLFRAME astrometric solutions ---
 mchfile = file_search(bdir+'*_comb.mch',count=nmchfile)
 if nmchfile eq 0 then begin
   printlog,logfile,'No comb.mch file found for '+brick
   return
 endif
 mchfile = mchfile[0]
+mchbase = file_basename(mchfile,'_comb.mch')
 astcheck = CHECK_ALLFRAME_COORDTRANS(mchfile,/silent)
 bdchip = where(astcheck.decstd gt 1.0 or finite(astcheck.decstd) eq 0,nbdchip)
 if nbdchip eq 0 then begin
@@ -377,7 +401,7 @@ meas.forced = 1B
 mcount = long64(n_elements(meas))
 
 ;; Initialize the final object table, with ALL BANDS
-obj_schema = {objid:'',brick:'',forced:0B,x:999999.0,y:999999.0,ra:0.0d0,dec:0.0d0,nalfdetiter:0L,$
+obj_schema = {objid:'',brick:'',forced:0B,x:999999.0,y:999999.0,ra:0.0d0,dec:0.0d0,nalfdetiter:0L,neimerged:0,$
               umag:99.99,uerr:9.99,uscatter:99.99,ndetu:0L,$
               gmag:99.99,gerr:9.99,gscatter:99.99,ndetg:0L,$
               rmag:99.99,rerr:9.99,rscatter:99.99,ndetr:0L,$
@@ -393,6 +417,7 @@ struct_assign,fobj,obj,/nozero
 obj.brick = brick
 obj.depthflag = 2
 obj.nalfdetiter = fobj.nalfdetiter
+obj.neimerged = fobj.neimerged
 obj = add_elements(obj,100000L)
 ocount = nfobj
 
@@ -473,7 +498,10 @@ For e=0,nuexpnum-1 do begin
         printlog,logfile,'  Adding '+strtrim(nchcat,2)+' remaining measurements to MEASEXPNEW'
         if nchcat+mexpcount gt n_elements(measexpnew) then measexpnew=add_elements(measexpnew,100000L>nchcat)
         ;; Add all measurements
-        measexpnew[mexpcount:mexpcount+nchcat-1] = chcat
+        temp = measexpnew[mexpcount:mexpcount+nchcat-1]
+        struct_assign,chcat,temp,/nozero
+        temp.brick = brick
+        measexpnew[mexpcount:mexpcount+nchcat-1] = temp
         mexpcount += nchcat
         ;; Update meta
         meta[eind[i]].nmeas += nchcat
@@ -719,7 +747,6 @@ eindex = create_index(exposure)
 match,expstr.exposure,eindex.value,ind1,ind2,/sort,count=nmatch
 expstr[ind1].nmeas = eindex.num[ind2]
 
-;stop
 
 ;; Average all of the measurements
 ;;  THIS CREATES A NEW OBJECT TABLE WITH THE FINAL SCHEMA!!!
@@ -743,9 +770,11 @@ obj[ind1].fwhm = fobj[ind2].fwhm
 
 ;; Copy over other information
 obj[ind1].nalfdetiter = fobj[ind2].nalfdetiter
+obj[ind1].neimerged = fobj[ind2].neimerged
+obj.brick = brick
 
 ;; Calculate photometric variability metrics
-printlog,logfile,'Calculating photometric variability metrics'
+printlog,logfile,'--- Calculating photometric variability metrics ---'
 DELVERED_PHOTVAR,meas,obj
 
 
@@ -790,7 +819,6 @@ if nmatch gt 0 then begin
   rpmag_error = 2.5*alog10(1.0+gaia[ind2].e_frp/gaia[ind2].frp)
   obj[ind1].gaia_rpmag_error = rpmag_error
 endif else print,'NO Gaia DR2 matches'
-stop
 
 
 ;; Save JOINT files
