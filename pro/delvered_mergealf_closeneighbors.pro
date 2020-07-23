@@ -58,7 +58,10 @@ fwhm = optstr.fw
 temp = nmg
 add_tags,temp,['ndet','mag_auto','ndetiter','imval','flux','gmaxflux','mmaxflux','mrad'],$
               ['0L','99.99','0L','0.0','0.0','0.0','0.0','0.0'],nmg  & undefine,temp
-ndet = obj.ndetu+obj.ndetg+obj.ndetr+obj.ndeti+obj.ndetz+obj.ndety
+otags = tag_names(obj)
+detind = where(strmid(otags,0,4) eq 'NDET',ndetind)
+ndet = lonarr(n_elements(obj))
+for i=0,ndetind-1 do ndet += obj.(detind[i])
 nmg.ndet = ndet
 match,nmg.id,sex.number,ind1,ind2,/sort
 nmg[ind1].mag_auto = sex[ind2].mag_auto
@@ -454,16 +457,17 @@ MATCH,newobj.objid,avgobj.objid,ind1,ind2,/sort,count=nmatch
 temp = newobj[ind1]
 STRUCT_ASSIGN,avgobj[ind2],temp,/nozero
 newobj[ind1] = temp
-newobj[ind1].uscatter = avgobj[ind2].urms
-newobj[ind1].gscatter = avgobj[ind2].grms
-newobj[ind1].rscatter = avgobj[ind2].rrms
-newobj[ind1].iscatter = avgobj[ind2].irms
-newobj[ind1].zscatter = avgobj[ind2].zrms
-newobj[ind1].yscatter = avgobj[ind2].yrms
+otags = tag_names(newobj)
+atags = tag_names(avgobj)
+ufilter = meas[uniq(meas.filter,sort(meas.filter))].filter
+for i=0,n_elements(ufiles)-1 do begin
+  scatind = where(otags eq strupcase(ufilter[i])+'SCATTER',nscatind)
+  rmsind = where(atags eq strupcase(ufilter[i])+'RMS',nrmsind)
+  newobj[ind1].(scatind[0]) = avgobj[ind2].(rmsind[0])
+endfor
 ;; copy over other columns from the old object structure
 MATCH,newobj.objid,obj.objid,ind1,ind2,/sort,count=nmatch
 cols = ['PROB','EBV','MAG_AUTO','MAGERR_AUTO','ASEMI','BSEMI','THETA','ELLIPTICITY','FWHM','BRICKUNIQ']
-otags = tag_names(obj)
 for i=0,n_elements(cols)-1 do begin
   colind = where(otags eq cols[i],ncolind)
   newobj[ind1].(colind[0]) = obj[ind2].(colind[0])

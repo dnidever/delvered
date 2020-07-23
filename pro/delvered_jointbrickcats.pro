@@ -334,6 +334,7 @@ if nbdchip gt 0 then begin
     printlog,logfile,'Removing '+strtrim(n_elements(left),2)+' forced objects with no measurements'
     REMOVE,left,fobj
   endif
+  nfobj = n_elements(fobj)
   ;; Remake fmeasexpindex
   fmeasexpindex = create_index(fmeas.exposure)
 endif
@@ -342,7 +343,7 @@ endif
 ;; Check the ALLFRAME astrometric solutions and removing data from
 ;;   bad chips from the forced measurements catalog
 ;;----------------------------------------------------------------
-printlog,logfile,'--- Removing chips with bad ALLFRAME astrometric solutions ---
+printlog,logfile,'--- Removing chips with bad ALLFRAME astrometric solutions ---'
 mchfile = file_search(bdir+'*_comb.mch',count=nmchfile)
 if nmchfile eq 0 then begin
   printlog,logfile,'No comb.mch file found for '+brick
@@ -386,6 +387,7 @@ endif else begin
     printlog,logfile,'Removing '+strtrim(n_elements(left),2)+' forced objects with no measurements'
     REMOVE,left,fobj
   endif
+  nfobj = n_elements(fobj)
   ;; Remake fmeasexpindex
   fmeasexpindex = create_index(fmeas.exposure)
 endelse
@@ -641,7 +643,10 @@ For e=0,nuexpnum-1 do begin
         printlog,logfile,'  Adding '+strtrim(nchcat,2)+' remaining measurements to MEASEXPNEW'
         if nchcat+mexpcount gt n_elements(measexpnew) then measexpnew=add_elements(measexpnew,100000L>nchcat)
         ;; Add all measurements
-        measexpnew[mexpcount:mexpcount+nchcat-1] = chcat
+        temp = measexpnew[mexpcount:mexpcount+nchcat-1]
+        struct_assign,chcat,temp,/nozero
+        temp.brick = brick
+        measexpnew[mexpcount:mexpcount+nchcat-1] = temp
         mexpcount += nchcat
         ;; Update meta
         newmeta[eind[i]].nmeas += nchcat
