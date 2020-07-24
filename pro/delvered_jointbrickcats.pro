@@ -288,6 +288,8 @@ if max(fobj.nalfdetiter) gt 1 then begin
   fobj = newobj & undefine,newobj
   fmeas = newmeas & undefine,newmeas
   nfobj = n_elements(fobj)
+  ;; Remake the exposure index
+  fmeasexpindex = create_index(fmeas.exposure)
 endif
 
 
