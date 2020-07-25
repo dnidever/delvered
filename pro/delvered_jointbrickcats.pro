@@ -279,20 +279,6 @@ MATCH,sex.number,objnum,ind1,ind2,/sort,count=nmatch
 fobj[ind2].nalfdetiter = sex[ind1].ndetiter
 
 
-;; Merge close neighbors
-;;----------------------
-printlog,logfile,'--- Merging close neighbors ---'
-combfits = bdir+combbase+'.fits.fz'
-if max(fobj.nalfdetiter) gt 1 then begin
-  DELVERED_MERGEALF_CLOSENEIGHBORS,combfits,sex,fobj,fmeas,newobj,newmeas,logfile=logfile
-  fobj = newobj & undefine,newobj
-  fmeas = newmeas & undefine,newmeas
-  nfobj = n_elements(fobj)
-  ;; Remake the exposure index
-  fmeasexpindex = create_index(fmeas.exposure)
-endif
-
-
 ;; Remove measurements from bad half of chip 31 from forced measurements
 ;;----------------------------------------------------------------------
 mjd = dblarr(n_elements(fmeta))
@@ -301,7 +287,7 @@ bdchip = where(fmeta.chip eq 31 and mjd gt 56660,nbdchip)
 undefine,badmeasind
 if nbdchip gt 0 then begin
   MATCH,fmeasexpindex.value,fmeta[bdchip].base,ind1,ind2,/sort,count=nmatch
-  for i=0,nbdchip-1 do begin
+  for i=0,nmatch-1 do begin
     ind = fmeasexpindex.index[fmeasexpindex.lo[ind1[i]]:fmeasexpindex.hi[ind1[i]]]
     bdind = where(fmeas[ind].x gt 1000,nbdind,comp=gdind,ncomp=ngdind)
     if nbdind gt 0 then begin   ; some bad ones found
@@ -393,6 +379,22 @@ endif else begin
   ;; Remake fmeasexpindex
   fmeasexpindex = create_index(fmeas.exposure)
 endelse
+
+
+;; Merge close neighbors
+;;----------------------
+printlog,logfile,'--- Merging close neighbors ---'
+combfits = bdir+combbase+'.fits.fz'
+if max(fobj.nalfdetiter) gt 1 then begin
+  DELVERED_MERGEALF_CLOSENEIGHBORS,combfits,sex,fobj,fmeas,newobj,newmeas,logfile=logfile
+  fobj = newobj & undefine,newobj
+  fmeas = newmeas & undefine,newmeas
+  nfobj = n_elements(fobj)
+  ;; Remake the exposure index
+  fmeasexpindex = create_index(fmeas.exposure)
+endif
+
+
 
 
 ;; Initialize the final measurement table

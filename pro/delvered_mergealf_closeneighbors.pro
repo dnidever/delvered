@@ -48,9 +48,18 @@ dir = file_dirname(combfile)+'/'
 combbase = file_basename(combfile,'.fits.fz')
 FITS_READ,combfile,cim,chead
 
-;; Load NMG and OPT files
+;; Load NMG file
 nmgfile = dir+combbase+'.nmg'
 LOADALS,nmgfile,nmg
+;; match to OBJ, some objects might already have been removed
+objnum = long(reform((strsplitter(obj.objid,'.',/extract))[1,*]))
+MATCH,nmg.id,objnum,ind1,ind2,/sort
+si = sort(ind2)  ; sort by obj
+ind1 = ind1[si]
+ind2 = ind2[si]
+nmg = nmg[ind1]
+
+;; Load OPT file
 LOADOPT,dir+combbase+'.opt',optstr
 fwhm = optstr.fw
 
