@@ -193,7 +193,8 @@ cenra = brickstr1.ra
 cendec = brickstr1.dec
 tmpfile = MKTEMP('tmp',/nodot,outdir=tempdir) & TOUCHZERO,tmpfile+'.fits' & FILE_DELETE,[tmpfile,tmpfile+'.fits'],/allow
 tmpfile += '.fits'
-spawn,[delvereddir+'bin/query_delvered_summary_table',strtrim(cenra,2),strtrim(cendec,2),tmpfile,'--lim','0.5'],out,errout,/noshell
+;; /noshell causes problems on gp09 because it gives python2 instead of python3
+spawn,delvereddir+'bin/query_delvered_summary_table '+strtrim(cenra,2)+' '+strtrim(cendec,2)+' '+tmpfile+' --lim 0.5',out,errout
 info = file_info(tmpfile)
 if info.size eq 0 then begin
   printlog,logfile,'No overlapping chips found'
