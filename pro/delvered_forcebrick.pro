@@ -206,6 +206,12 @@ nchstr = n_elements(chstr)
 ;chstr.file = repstr(chstr.file,'/net/dl1/','/dl1/')   ;; fix /net/dl1 to /dl1
 printlog,logfile,'Found ',strtrim(nchstr,2),' overlapping chips within 0.5 deg of brick center'
 
+;; Make sure the chips are unique,  some were duplicated on SMASH nights
+chid = chstr.expnum+'-'+strtrim(chstr.chip,2)
+ui = uniq(chid,sort(chid))
+chstr = chstr[ui]
+nchstr = n_elements(chstr)
+
 ;; Do more rigorous overlap checking
 ;;  the brick region with overlap
 print,'Performing more rigorous overlap checking'
