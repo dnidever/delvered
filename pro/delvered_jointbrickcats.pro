@@ -365,34 +365,38 @@ endif else begin
   badchips = file_basename(astcheck[bdchip].file,'.alf')
   ;; Remove bad chips from fmeta
   MATCH,fmeta.base,badchips,ind1,ind2,/sort,count=nmatch
-  fmeta0 = fmeta
-  REMOVE,ind1,fmeta
-  ;; Remove bad chip measurements from fmeas
-  fmeaschipindex = create_index(fmeas.exposure)
-  MATCH,fmeaschipindex.value,badchips,ind1,ind2,/sort,count=nmatch
-  badind = lon64arr(total(fmeaschipindex.num[ind1],/int))
-  cnt = 0LL
-  for i=0,nmatch-1 do begin
-    ind = fmeaschipindex.index[fmeaschipindex.lo[ind1[i]]:fmeaschipindex.hi[ind1[i]]]
-    nind = n_elements(ind)
-    badind[cnt:cnt+nind-1] = ind
-    cnt += nind
-  endfor
-  printlog,logfile,'Removing '+strtrim(n_elements(badind),2)+' forced measurements from bad chips'
-  REMOVE,badind,fmeas
-  ;; Remove fobj objects with no measurements
-  ui = uniq(fmeas.objid,sort(fmeas.objid))
-  fobjid = fmeas[ui].objid
-  MATCH,fobj.objid,fobjid,ind1,ind2,/sort,count=nmatch
-  if nmatch lt n_elements(fobj) then begin
-    left = lindgen(n_elements(fobj))
-    REMOVE,ind1,left
-    printlog,logfile,'Removing '+strtrim(n_elements(left),2)+' forced objects with no measurements'
-    REMOVE,left,fobj
+  ;; there might not be a match if it's just a ccdnum=31 chip
+  ;; that was removed above.
+  if nmatch gt 0 then begin
+    fmeta0 = fmeta
+    REMOVE,ind1,fmeta
+    ;; Remove bad chip measurements from fmeas
+    fmeaschipindex = create_index(fmeas.exposure)
+    MATCH,fmeaschipindex.value,badchips,ind1,ind2,/sort,count=nmatch
+    badind = lon64arr(total(fmeaschipindex.num[ind1],/int))
+    cnt = 0LL
+    for i=0,nmatch-1 do begin
+      ind = fmeaschipindex.index[fmeaschipindex.lo[ind1[i]]:fmeaschipindex.hi[ind1[i]]]
+      nind = n_elements(ind)
+      badind[cnt:cnt+nind-1] = ind
+      cnt += nind
+    endfor
+    printlog,logfile,'Removing '+strtrim(n_elements(badind),2)+' forced measurements from bad chips'
+    REMOVE,badind,fmeas
+    ;; Remove fobj objects with no measurements
+    ui = uniq(fmeas.objid,sort(fmeas.objid))
+    fobjid = fmeas[ui].objid
+    MATCH,fobj.objid,fobjid,ind1,ind2,/sort,count=nmatch
+    if nmatch lt n_elements(fobj) then begin
+      left = lindgen(n_elements(fobj))
+      REMOVE,ind1,left
+      printlog,logfile,'Removing '+strtrim(n_elements(left),2)+' forced objects with no measurements'
+      REMOVE,left,fobj
+    endif
+    nfobj = n_elements(fobj)
+    ;; Remake fmeasexpindex
+    fmeasexpindex = create_index(fmeas.exposure)
   endif
-  nfobj = n_elements(fobj)
-  ;; Remake fmeasexpindex
-  fmeasexpindex = create_index(fmeas.exposure)
 endelse
 
 
