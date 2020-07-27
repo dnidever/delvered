@@ -66,11 +66,12 @@ otags = tag_names(obj)
 
 ;; Exposure names
 ;;   F23-00912982_15, trim off ccdnum
-exposure = reform((strsplitter(meas.exposure,'_',/extract))[0,*])
-eindex = create_index(exposure)
+dum = reform((strsplitter(meas.exposure,'_',/extract))[0,*])
+expnum = reform((strsplitter(dum,'-',/extract))[1,*])
+eindex = create_index(expnum)
 ;; match EXPSTR to EINDEX
 ;;  also some exposures have 0 measurements
-MATCH,eindex.value,expstr.exposure,ind1,ind2,/sort
+MATCH,eindex.value,expstr.expnum,ind1,ind2,/sort
 mexpstr = expstr[ind2]   ;; matched expstr, ind1 is in the right order
 nexposure = n_elements(mexpstr)
 print,strtrim(nexposure,2),' exposures with measurements'

@@ -810,13 +810,12 @@ FINAL:
 ;; Exposure information
 ui = uniq(meta.expnum,sort(meta.expnum))
 expstr = meta[ui]
-add_tag,expstr,'exposure','',expstr
-expstr.exposure = reform((strsplitter(expstr.base,'_',/extract))[0,*])
-si = sort(expstr.exposure)   ;; sort by exposure
+si = sort(expstr.expnum)   ;; sort by exposure
 expstr = expstr[si]
-exposure = reform((strsplitter(meas.exposure,'_',/extract))[0,*])
-eindex = create_index(exposure)
-match,expstr.exposure,eindex.value,ind1,ind2,/sort,count=nmatch
+dum = reform((strsplitter(meas.exposure,'_',/extract))[0,*])
+expnum = reform((strsplitter(dum,'-',/extract))[1,*])
+eindex = create_index(expnum)
+match,expstr.expnum,eindex.value,ind1,ind2,/sort,count=nmatch
 expstr[ind1].nmeas = eindex.num[ind2]
 
 
@@ -892,6 +891,7 @@ if nmatch gt 0 then begin
   obj[ind1].gaia_rpmag_error = rpmag_error
 endif else print,'NO Gaia DR2 matches'
 
+;stop
 
 ;; Save JOINT files
 ;;-------------------
