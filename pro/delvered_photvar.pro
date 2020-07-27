@@ -156,6 +156,12 @@ if ngdvar gt 0 then begin
   if nbdsmvarmed gt 0 then smvarmed[bdsmvarmed] = median(smvarmed)
   ;; Interpolate to all the objects
   gv = where(finite(smvarmed) eq 1,ngv,comp=bv,ncomp=nbv)
+  if ngv le 1 then begin
+    print,'Not enough good MADVAR values to detect variables'
+    obj.variable10sig = 0
+    obj.nsigvar = !values.f_nan
+    return
+  endif
   INTERP,fidmagmed[gv],smvarmed[gv],fidmag[gdvar],objvarmedgd
   objvarmed = dblarr(nobj)
   objvarmed[gdvar] = objvarmedgd
@@ -178,20 +184,24 @@ if ngdvar gt 0 then begin
   smvarsig = gsmooth(varsig,smlen)
   ;; Interpolate to all the objects
   gv = where(finite(smvarsig) eq 1,ngv,comp=bv,ncomp=nbv)
-  if ngv gt 0 then begin
-    INTERP,fidmagmed[gv],smvarsig[gv],fidmag[gdvar],objvarsiggd
-    objvarsig = dblarr(nobj)
-    objvarsig[gdvar] = objvarsiggd
-    objvarsig[gdvar] = min(smvarsig[gv]) > objvarsig[gdvar]   ; lower limit
-    if nbdvar gt 0 then objvarsig[bdvar]=smvarsig[gv[ngv-1]]   ; objects with bad fidmag, set to last value
-    ;; Detect positive outliers
-    nsigvarthresh = 10.0
-    nsigvar = (obj.madvar-objvarmed)/objvarsig
-    obj[gdvar].nsigvar = nsigvar[gdvar]
-    isvar = where(nsigvar[gdvar] gt nsigvarthresh,nisvar)
-    print,strtrim(nisvar,2)+' variables detected'
-    if nisvar gt 0 then obj[gdvar[isvar]].variable10sig = 1
-  endif else print,'Not enough good MADVAR values to detect variables'
+  if ngv le 1 then begin
+    print,'Not enough good MADVAR values to detect variables'
+    obj.variable10sig = 0
+    obj.nsigvar = !values.f_nan
+    return
+  endif
+  INTERP,fidmagmed[gv],smvarsig[gv],fidmag[gdvar],objvarsiggd
+  objvarsig = dblarr(nobj)
+  objvarsig[gdvar] = objvarsiggd
+  objvarsig[gdvar] = min(smvarsig[gv]) > objvarsig[gdvar]   ; lower limit
+  if nbdvar gt 0 then objvarsig[bdvar]=smvarsig[gv[ngv-1]]   ; objects with bad fidmag, set to last value
+  ;; Detect positive outliers
+  nsigvarthresh = 10.0
+  nsigvar = (obj.madvar-objvarmed)/objvarsig
+  obj[gdvar].nsigvar = nsigvar[gdvar]
+  isvar = where(nsigvar[gdvar] gt nsigvarthresh,nisvar)
+  print,strtrim(nisvar,2)+' variables detected'
+  if nisvar gt 0 then obj[gdvar[isvar]].variable10sig = 1
 endif
 
 end
