@@ -437,7 +437,7 @@ struct_assign,fobj,obj,/nozero
 obj.brick = brick
 obj.depthflag = 2
 obj.nalfdetiter = fobj.nalfdetiter
-obj.neimerged = fobj.neimerged
+if tag_exist(fobj,'NEIMERGED') then obj.neimerged = fobj.neimerged
 obj = add_elements(obj,100000L)
 ocount = nfobj
 
@@ -793,7 +793,7 @@ obj[ind1].fwhm = fobj[ind2].fwhm
 
 ;; Copy over other information
 obj[ind1].nalfdetiter = fobj[ind2].nalfdetiter
-obj[ind1].neimerged = fobj[ind2].neimerged
+if tag_exist(fobj,'NEIMERGED') then obj[ind1].neimerged = fobj[ind2].neimerged
 obj.brick = brick
 
 ;; Calculate photometric variability metrics
