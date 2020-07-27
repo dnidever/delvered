@@ -267,11 +267,14 @@ if nlo gt 0 and nhi gt 0 then begin
   sexfile = file_search(bdir+'*_comb_allf.sex',count=nsexfile)
   sex = MRDFITS(sexfile[0],1,/silent)
   add_tag,sex,'NDETITER',0L,sex
-  scount = 0LL
-  for i=0,nsexind-1 do begin
-    sex[scount:scount+sexnstars[i]-1].ndetiter = i+1
-    scount += sexnstars[i]
-  endfor
+  sex[0:sexnstars[0]-1].ndetiter = 1
+  sex[sexnstars[0]:*].ndetiter = 2
+  ;; The code has problems sometimes
+  ;scount = 0LL
+  ;for i=0,nsexind-1 do begin
+  ;  sex[scount:scount+sexnstars[i]-1].ndetiter = i+1
+  ;  scount += sexnstars[i]
+  ;endfor
 endif else begin
   ;; Something's wrong with the logfile
   printlog,logfile,'Cannont find ALLFPREP information in logfile.  Trying to get detection iteration information from SExtractor positions'
