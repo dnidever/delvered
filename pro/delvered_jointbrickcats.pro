@@ -114,6 +114,12 @@ nchstr = n_elements(chstr)
 ;chstr.file = repstr(chstr.file,'/net/dl1/','/dl1/')   ;; fix /net/dl1 to /dl1
 printlog,logfile,'Found ',strtrim(nchstr,2),' overlapping chips within 0.5 deg of brick center'
 
+;; Make sure the chips are unique,  some were duplicated on SMASH nights
+chid = chstr.expnum+'-'+strtrim(chstr.chip,2)
+ui = uniq(chid,sort(chid))
+chstr = chstr[ui]
+nchstr = n_elements(chstr)
+
 ;; Do more rigorous overlap checking
 ;;  the brick region with overlap
 print,'Performing more rigorous overlap checking'
@@ -297,6 +303,42 @@ MATCH,sex.number,objnum,ind1,ind2,/sort,count=nmatch
 fobj[ind2].nalfdetiter = sex[ind1].ndetiter
 
 
+;; Remove measurements from duplicate chips
+;;  this happened on some of the SMASH nights
+chid = fmeta.expnum+'-'+strtrim(fmeta.chip,2)
+ui = uniq(chid,sort(chid))
+ui = ui[sort(ui)]  ; try to keep in same order
+if n_elements(ui) lt n_elements(fmeta) then begin
+  bdchip = lindgen(n_elements(fmeta))
+  REMOVE,ui,bdchip
+  nbdchip = n_elements(bdchip)
+  printlog,logfile,'--- Removing measurements from '+strtrim(nbdchip,2)+' duplicate chips ---'
+  ;; Remove duplicate measurements from fmeas
+  MATCH,fmeasexpindex.value,fmeta[bdchip].base,ind1,ind2,/sort,count=nmatch
+  for i=0,nmatch-1 do begin
+    ind = fmeasexpindex.index[fmeasexpindex.lo[ind1[i]]:fmeasexpindex.hi[ind1[i]]]
+    push,badmeasind,ind
+  endfor
+  printlog,logfile,strtrim(n_elements(badmeasind),2)+' duplcate measurements to remove'
+  REMOVE,badmeasind,fmeas
+  ;; Remove chips with no measurements from fmeta
+  REMOVE,bdchip,fmeta
+  ;; Remove fobj objects with no measurements
+  ui = uniq(fmeas.objid,sort(fmeas.objid))
+  fobjid = fmeas[ui].objid
+  MATCH,fobj.objid,fobjid,ind1,ind2,/sort,count=nmatch
+  if nmatch lt n_elements(fobj) then begin
+    left = lindgen(n_elements(fobj))
+    REMOVE,ind1,left
+    printlog,logfile,'Removing '+strtrim(n_elements(left),2)+' forced objects with no measurements'
+    REMOVE,left,fobj
+  endif
+  nfobj = n_elements(fobj)
+  ;; Remake fmeasexpindex
+  fmeasexpindex = create_index(fmeas.exposure)
+endif
+
+
 ;; Remove measurements from bad half of chip 31 from forced measurements
 ;;----------------------------------------------------------------------
 mjd = dblarr(n_elements(fmeta))
@@ -344,6 +386,7 @@ if nbdchip gt 0 then begin
   ;; Remake fmeasexpindex
   fmeasexpindex = create_index(fmeas.exposure)
 endif
+
 
 
 ;; Check the ALLFRAME astrometric solutions and removing data from
@@ -415,8 +458,6 @@ if max(fobj.nalfdetiter) gt 1 then begin
   ;; Remake the exposure index
   fmeasexpindex = create_index(fmeas.exposure)
 endif
-
-
 
 
 ;; Initialize the final measurement table
