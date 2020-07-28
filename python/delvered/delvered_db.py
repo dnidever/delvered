@@ -172,10 +172,10 @@ def createsumtable(dbfile=None,delvedir='/dl1/users/dnidever/delve/'):
         print('Loading '+nightsumfiles[i])
         #st = os.stat(nightsumfiles[i])
         try:
-            expstr1 = fits.getdata(nightsumfiles[i],1)
+            expstr1 = fits.getdata(nightsumfiles[i],1,memmap=False)
             nexpstr1 = dln.size(expstr1)
             lexpstr.append(expstr1)
-            chstr1 = fits.getdata(nightsumfiles[i],2)
+            chstr1 = fits.getdata(nightsumfiles[i],2,memmap=False)
             nchstr1 = dln.size(chstr1)
             lchstr.append(chstr1)
         except:
