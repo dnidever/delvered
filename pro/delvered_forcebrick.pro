@@ -298,7 +298,7 @@ if keyword_set(update) and not keyword_set(redo) then begin
       return
     endif
     ;; Moving previous catalogs to a backup
-    oldfiles = file_search(bdir+[brick+'*fits*','photred.setup','allframe.opt','default.*'],count=noldfiles)
+    oldfiles = file_search(bdir+[brick+'*fits*','allframe.opt','default.*'],count=noldfiles)
     if noldfiles gt 0 then begin
       bakdir = bdir+'bak'+smonth+sday+syear+shour+sminute+ssecond
       printlog,logfile,'Backing up old files to ',bakdir
