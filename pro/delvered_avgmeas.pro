@@ -42,6 +42,7 @@ for i=0,nobj-1 do measobj_index[oindex.index[oindex.lo[i]:oindex.hi[i]]] = i
 
 ;; Initialize the final object table, with ALL BANDS
 obj_schema = {objid:'',brick:'',depthflag:0,nalfdetiter:0,neimerged:0,ra:0.0d0,dec:0.0d0,rarms:0.0,decrms:0.0,ndet:0,ndetall:0,$
+              mlon:0.0d0,mlat:0.0d0,$
               umag:99.99,uerr:9.99,urms:99.99,ndetu:0,umagall:99.99,uerrall:9.99,urmsall:99.99,ndetallu:0,$
               gmag:99.99,gerr:9.99,grms:99.99,ndetg:0,gmagall:99.99,gerrall:9.99,grmsall:99.99,ndetallg:0,$
               rmag:99.99,rerr:9.99,rrms:99.99,ndetr:0,rmagall:99.99,rerrall:9.99,rrmsall:99.99,ndetallr:0,$

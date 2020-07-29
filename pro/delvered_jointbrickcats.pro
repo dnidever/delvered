@@ -850,6 +850,11 @@ obj.brick = brick
 printlog,logfile,'--- Calculating photometric variability metrics ---'
 DELVERED_PHOTVAR,meas,obj
 
+;; Fill in mlon/mlat
+glactc,obj.ra,obj.dec,2000.0,glon,glat,1,/deg
+obj.mlon = mlon
+obj.mlat = mlat
+
 
 ;; Fill in BRICKUNIQ
 ;; Getting objects that are in the UNIQUE brick area
