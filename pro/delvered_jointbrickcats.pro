@@ -233,66 +233,68 @@ fmeta.expnum = strtrim(fmeta.expnum,2)
 
 ;; Add ALLFRAME detection iteration number
 ;;----------------------------------------
-printlog,logfile,'Adding ALLFRAME detection iteration number'
-; get it from the log file
-logfiles = file_search(bdir+brick+'.????????????.log',count=nlogfiles)
-if nlogfiles eq 0 then begin
-  print,'No logfile found'
-  return
-endif
-lognlines = file_lines(logfiles)
-gd = where(lognlines gt 1,ngd)
-logfiles = logfiles[gd]
-nlogfiles = ngd
-info = file_info(logfiles)
-si = reverse(sort(info.mtime))
-logfiles = logfiles[si]
-info = info[si]
-logfile = logfiles[0]
-readline,logfile,loglines
-lo = where(stregex(loglines,'STEP 3: Running allframe prep',/boolean) eq 1,nlo)
-hi = where(stregex(loglines,'STEP 4: Running ALLFRAME',/boolean) eq 1,nhi)
-if nlo gt 0 and nhi gt 0 then begin
-  loglines1 = loglines[lo+4:hi-5]
-  ;; --Iteration 1--
-  ;; Running SExtractor
-  ;; SExtractor found 21671 sources
-  ;; Running ALLSTAR
-  ;; ALLSTAR found 18141 sources
-  ;; 18141 new stars found
-  ;; --Iteration 2--
-  ;; Running SExtractor
-  ;; SExtractor found 18307 sources
-  ;; Running ALLSTAR
-  ;; ALLSTAR found 26554 sources
-  ;; 8413 new stars found
-  sexind = where(stregex(loglines1,'^SExtractor found',/boolean) eq 1,nsexind)
-  dum = strsplitter(loglines1[sexind],' ',/extract)
-  sexnstars = long(reform(dum[2,*]))
-  ;; restore the SExtractor file
-  sexfile = file_search(bdir+'*_comb_allf.sex',count=nsexfile)
-  sex = MRDFITS(sexfile[0],1,/silent)
-  add_tag,sex,'NDETITER',0L,sex
-  sex[0:sexnstars[0]-1].ndetiter = 1
-  sex[sexnstars[0]:*].ndetiter = 2
-  ;; The code has problems sometimes
-  ;scount = 0LL
-  ;for i=0,nsexind-1 do begin
-  ;  sex[scount:scount+sexnstars[i]-1].ndetiter = i+1
-  ;  scount += sexnstars[i]
-  ;endfor
-endif else begin
-  ;; Something's wrong with the logfile
-  printlog,logfile,'Cannont find ALLFPREP information in logfile.  Trying to get detection iteration information from SExtractor positions'
+;; restore the SExtractor file
+sexfile = file_search(bdir+'*_comb_allf.sex',count=nsexfile)
+sex = MRDFITS(sexfile[0],1,/silent)
+if tag_exist(sex,'NDETITER') eq 0 then begin
+  printlog,logfile,'Adding ALLFRAME detection iteration number'
+  ; get it from the log file
+  logfiles = file_search(bdir+brick+'.????????????.log',count=nlogfiles)
+  if nlogfiles eq 0 then begin
+    print,'No logfile found'
+    return
+  endif
+  lognlines = file_lines(logfiles)
+  gd = where(lognlines gt 1,ngd)
+  logfiles = logfiles[gd]
+  nlogfiles = ngd
+  info = file_info(logfiles)
+  si = reverse(sort(info.mtime))
+  logfiles = logfiles[si]
+  info = info[si]
+  logfile = logfiles[0]
+  readline,logfile,loglines
+  lo = where(stregex(loglines,'STEP 3: Running allframe prep',/boolean) eq 1,nlo)
+  hi = where(stregex(loglines,'STEP 4: Running ALLFRAME',/boolean) eq 1,nhi)
+  if nlo gt 0 and nhi gt 0 then begin
+    loglines1 = loglines[lo+4:hi-5]
+    ;; --Iteration 1--
+    ;; Running SExtractor
+    ;; SExtractor found 21671 sources
+    ;; Running ALLSTAR
+    ;; ALLSTAR found 18141 sources
+    ;; 18141 new stars found
+    ;; --Iteration 2--
+    ;; Running SExtractor
+    ;; SExtractor found 18307 sources
+    ;; Running ALLSTAR
+    ;; ALLSTAR found 26554 sources
+    ;; 8413 new stars found
+    sexind = where(stregex(loglines1,'^SExtractor found',/boolean) eq 1,nsexind)
+    dum = strsplitter(loglines1[sexind],' ',/extract)
+    sexnstars = long(reform(dum[2,*]))
+    add_tag,sex,'NDETITER',0L,sex
+    sex[0:sexnstars[0]-1].ndetiter = 1
+    sex[sexnstars[0]:*].ndetiter = 2
+    ;; The code has problems sometimes
+    ;scount = 0LL
+    ;for i=0,nsexind-1 do begin
+    ;  sex[scount:scount+sexnstars[i]-1].ndetiter = i+1
+    ;  scount += sexnstars[i]
+    ;endfor
+  endif else begin
+    ;; Something's wrong with the logfile
+    printlog,logfile,'Cannont find ALLFPREP information in logfile.  Trying to get detection iteration information from SExtractor positions'
 
-  sexfile = file_search(bdir+'*_comb_allf.sex',count=nsexfile)
-  sex = MRDFITS(sexfile[0],1,/silent)
-  add_tag,sex,'NDETITER',0L,sex
-  ;; Between iterations the Y value should change by a lot
-  bd = where(slope(sex.y_image) lt -max(sex.y_image)*0.5,nbd)
-  sex[0:bd[0]].ndetiter = 1
-  sex[bd[0]+1:*].ndetiter = 2
-endelse
+    sexfile = file_search(bdir+'*_comb_allf.sex',count=nsexfile)
+    sex = MRDFITS(sexfile[0],1,/silent)
+    add_tag,sex,'NDETITER',0L,sex
+    ;; Between iterations the Y value should change by a lot
+    bd = where(slope(sex.y_image) lt -max(sex.y_image)*0.5,nbd)
+    sex[0:bd[0]].ndetiter = 1
+    sex[bd[0]+1:*].ndetiter = 2
+  endelse
+endif
 
 ;; Now match to the object catalog
 ;; the obj.objid star number part should match with the SE number
