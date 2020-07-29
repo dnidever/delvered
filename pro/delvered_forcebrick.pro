@@ -10,7 +10,7 @@
 ; By D. Nidever  August 2019
 ;-
 
-pro delvered_forcebrick,brick,scriptsdir=scriptsdirs,irafdir=irafdir,workdir=workdir,redo=redo,logfile=logfile
+pro delvered_forcebrick,brick,scriptsdir=scriptsdirs,irafdir=irafdir,workdir=workdir,redo=redo,update=update,logfile=logfile
 
 ;; This bricks pre-processing script gets DELVE and community MC data ready
 ;; to run PHOTRED ALLFRAME on it.
@@ -94,7 +94,7 @@ logfile = bdir+brick+'.'+logtime+'.log'
 
 ;; Check the output file
 photfile = bdir+brick+'.fits'
-if file_test(photfile+'.gz') and not keyword_set(redo) then begin
+if file_test(photfile+'.gz') and not keyword_set(redo) and not keyword_set(update) then begin
   printlog,logfile,photfile+'.gz EXISTS and /redo NOT set'
   return
 endif
@@ -283,6 +283,32 @@ nchstr = ngdch
 chstr.file = strtrim(chstr.file,2)
 chstr.base = strtrim(chstr.base,2)
 ;add_tag,chstr,'newbase','',chstr
+
+
+;; Check if we need to update
+if keyword_set(update) and not keyword_set(redo) then begin
+  ;; Load previous meta
+  metafile = bdir+brick+'_meta.fits'
+  if file_test(metafile) then begin
+    meta0 = mrdfits(metafile,1,/silent)
+    meta0.base = strtrim(meta0.base,2)
+    MATCH,meta0.base,chstr.base,ind1,ind2,/sort,count=nmatch
+    if nchstr eq n_elements(meta0) and nchstr eq nmatch then begin
+      printlog,logfile,'Nothing to UPDATE'
+      return
+    endif
+    ;; Moving previous catalogs to a backup
+    oldfiles = file_search(bdir+[brick+'*fits*','photred.setup','allframe.opt','default.*'],count=noldfiles)
+    if noldfiles gt 0 then begin
+      bakdir = bdir+'bak'+smonth+sday+syear+shour+sminute+ssecond
+      printlog,logfile,'Backing up old files to ',bakdir
+      FILE_MKDIR,bakdir
+      FILE_MOVE,oldfiles,bakdir
+   endif else printlog,logfile,'No old files to backup'
+  endif
+  printlog,logfile,'There are new exposures to include.  UPDATING'
+endif
+
 
 
 ;; Create temporary local directory to perform the work/processing
