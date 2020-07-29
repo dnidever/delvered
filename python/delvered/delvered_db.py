@@ -157,6 +157,9 @@ def createsumtable(dbfile=None,delvedir='/net/dl2/dnidever/delve/'):
     ndirs = dln.size(dirs)
     nights = np.zeros(dirs.size,(np.str,10))
     for i,d in enumerate(dirs): nights[i]=os.path.basename(d)
+    si = np.argsort(nights)
+    nights = nights[si]
+    dirs = dirs[si]
     # Nightly summary files
     allnightsumfiles = dln.strjoin(dirs,'/',nights)
     allnightsumfiles = dln.strjoin(allnightsumfiles,'_summary.fits')
