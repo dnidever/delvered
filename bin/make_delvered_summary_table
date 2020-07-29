@@ -17,11 +17,12 @@ if __name__ == "__main__":
     #args = parser.parse_args()
 
     # If the database exists already, back it up
-    expdir = '/net/dl2/dnidever/delve/exposures/'
-    dbfile = '/net/dl2/dnidever/delve/bricks/db/delvered_summary.db'
+    delvedir = '/net/dl2/dnidever/delve/'
+    expdir = delvedir+'exposures/'
+    dbfile = delvedir+'bricks/db/delvered_summary.db'
     if os.path.exists(dbfile):
        print(dbfile+' exists already. Backing it up')
-       if not os.path.exists('/net/dl2/dnidever/delve/bricks/db/backup/'): os.mkdir('/net/dl2/dnidever/delve/bricks/db/backup/')
+       if not os.path.exists(delvedir+'bricks/db/backup/'): os.mkdir(delvedir+'bricks/db/backup/')
        # Add the date+time to the filename
        ltime = time.localtime()
        # time.struct_time(tm_year=2019, tm_mon=7, tm_mday=22, tm_hour=0, tm_min=30, tm_sec=20, tm_wday=0, tm_yday=203, tm_isdst=1)
@@ -38,7 +39,7 @@ if __name__ == "__main__":
        if ltime[5]<10: ssecond='0'+ssecond
        logtime = smonth+sday+syear+shour+sminute+ssecond
        backupfile = os.path.splitext(os.path.basename(dbfile))[0]+'.'+logtime+'.db'
-       shutil.move(dbfile,'/net/dl2/dnidever/delve/bricks/db/backup/'+backupfile)
+       shutil.move(dbfile,delvedir+'bricks/db/backup/'+backupfile)
 
     # Run the code
-    delvedb.createsumtable(dbfile)
+    delvedb.createsumtable(dbfile,delvedir=delvedir)

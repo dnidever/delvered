@@ -142,7 +142,7 @@ def getdatadb(dbfile,table='meas',cols='*',rar=None,decr=None,verbose=False):
 
     return cat
 
-def createsumtable(dbfile=None,delvedir='/dl1/users/dnidever/delve/'):
+def createsumtable(dbfile=None,delvedir='/net/dl2/dnidever/delve/'):
     """ Create the DELVE-MC exposures and chips database"""
 
     expdir = delvedir+'exposures/'
