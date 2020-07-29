@@ -130,7 +130,7 @@ if nbd gt 0 then begin
 endif
 
 ;; Check if bricks were previously done
-if not keyword_set(redo) ando not keyword_set(update) then begin
+if not keyword_set(redo) and not keyword_set(update) then begin
   print,'Checking for any bricks were previously done'
   outfiles = brickdir+bricks+'/'+bricks+'.fits.gz'
   bd = where(file_test(outfiles) eq 1,nbd,comp=gd,ncomp=ngd)
