@@ -9,7 +9,8 @@
 ;  input    What bricks to run PHOTRED/ALLFRAME on.  Either an array or
 ;            a range such as 100-110.
 ;  =nmulti  Number of simultaneous jobs to run.
-;  =redo    Redo bricks that were previously done.
+;  /redo    Redo bricks that were previously done.
+;  /update  Check for updates and rerun if there are.
 ;
 ; OUTPUTS:
 ;  PHOTRED_ALLFRAME will be run on each brick and a final catalog and
@@ -21,7 +22,7 @@
 ; By D. Nidever  Aug 2019
 ;-
 
-pro delvered_bricks,input,nmulti=nmulti,redo=redo,stp=stp
+pro delvered_bricks,input,nmulti=nmulti,redo=redo,update=update,stp=stp
 
 t0 = systime(1)
   
@@ -47,7 +48,7 @@ if n_elements(nmulti) eq 0 then nmulti=10
 
 ;; Not enough inputs
 if n_elements(input) eq 0 then begin
-  print,'Syntax - delvered_bricks,input,nmulti=nmulti,redo=redo,stp=stp'
+  print,'Syntax - delvered_bricks,input,nmulti=nmulti,redo=redo,update=update,stp=stp'
   return
 endif
 
@@ -129,7 +130,7 @@ if nbd gt 0 then begin
 endif
 
 ;; Check if bricks were previously done
-if not keyword_set(redo) then begin
+if not keyword_set(redo) ando not keyword_set(update) then begin
   print,'Checking for any bricks were previously done'
   outfiles = brickdir+bricks+'/'+bricks+'.fits.gz'
   bd = where(file_test(outfiles) eq 1,nbd,comp=gd,ncomp=ngd)
@@ -177,6 +178,7 @@ print,'Processing ',strtrim(nbricks,2),' brick(s)'
 ;#########################################
 cmd = "delvered_forcebrick,'"+bricks+"'"
 if keyword_set(redo) then cmd += ',/redo'
+if keyword_set(update) then cmd += ',/update'
 cmddirs = strarr(nbricks)+workdir
 PBS_DAEMON,cmd,cmddirs,jobs=jobs,prefix='dlvbrcks',/idle,/hyperthread,nmulti=nmulti,wait=5
 
