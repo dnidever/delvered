@@ -6,6 +6,7 @@ radeg = 180.0d0 / !dpi
 
 delvereddir = '/home/dnidever/projects/delvered/'
 brickstr = MRDFITS(delvereddir+'data/delvemc_bricks_0.25deg.fits.gz',1,/silent)
+brickstr.brickname = strtrim(brickstr.brickname,2)
 
 nfiles = n_elements(files)
 print,strtrim(nfiles,2),' file(s) to process'
@@ -13,6 +14,11 @@ print,strtrim(nfiles,2),' file(s) to process'
 for i=0,nfiles-1 do begin
   brick = (strsplit(file_basename(files[i]),'_',/extract))[1]
   print,strtrim(i+1,2),' ',files[i]
+  info = file_info(files[i])
+  if info.exists eq 0 or info.size eq 0 then begin
+    print,files[i],' is empty'
+    continue
+  endif
   arr = importascii(files[i],/header,/silent)
   narr = n_elements(arr)
   print,'  ',strtrim(narr,2),' rows'
