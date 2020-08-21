@@ -235,7 +235,14 @@ fmeta.expnum = strtrim(fmeta.expnum,2)
 ;;----------------------------------------
 ;; restore the SExtractor file
 sexfile = file_search(bdir+'*_comb_allf.sex',count=nsexfile)
+;; reverse sort by date if more than 1
+if nsexfile gt 0 then begin
+  sexinfo = file_info(sexfile)
+  si = reverse(sort(sexinfo.ctime))
+  sexfile = sexfile[si]
+endif
 sex = MRDFITS(sexfile[0],1,/silent)
+nsex = n_elements(sex)
 if tag_exist(sex,'NDETITER') eq 0 then begin
   printlog,logfile,'Adding ALLFRAME detection iteration number'
   ; get it from the log file
@@ -275,7 +282,7 @@ if tag_exist(sex,'NDETITER') eq 0 then begin
     sexnstars = long(reform(dum[2,*]))
     add_tag,sex,'NDETITER',0L,sex
     sex[0:sexnstars[0]-1].ndetiter = 1
-    sex[sexnstars[0]:*].ndetiter = 2
+    if nsex gt sexnstars[0] then sex[sexnstars[0]:*].ndetiter = 2
     ;; The code has problems sometimes
     ;scount = 0LL
     ;for i=0,nsexind-1 do begin
@@ -852,6 +859,7 @@ DELVERED_PHOTVAR,meas,obj
 
 ;; Fill in mlon/mlat
 glactc,obj.ra,obj.dec,2000.0,glon,glat,1,/deg
+gal2mag,glon,glat,mlon,mlat
 obj.mlon = mlon
 obj.mlat = mlat
 
