@@ -694,7 +694,8 @@ printlog,logfile,''
 printlog,logfile,'CREATE JOINT CATALOGS'
 printlog,logfile,''
 
-DELVERED_JOINTBRICKCATS,brick,logfile=logfile,redo=redo
+if keyword_set(redo) or keyword_set(update) then jntredo=1 else jntredo=0
+DELVERED_JOINTBRICKCATS,brick,logfile=logfile,redo=jntredo
 
 JOURNAL
 
