@@ -272,13 +272,13 @@ FOR i=0,nnights-1 do begin
   if READPAR(setup,'ASTROM') ne '0' then PHOTRED_ASTROM,redo=redo
 
   if n_elements(dozeropoint) eq 1 then begin
-    if keyword_set(dozeropoint) then DELVERED_ZEROPOINT,redo=redo
-  endif else if READPAR(setup,'ZEROPOINT') ne '0' then DELVERED_ZEROPOINT,redo=redo
+    if keyword_set(dozeropoint) then DELVERED_ZEROPOINT,redo=redo,nmulti=nmulti
+  endif else if READPAR(setup,'ZEROPOINT') ne '0' then DELVERED_ZEROPOINT,redo=redo,nmulti=nmulti
 
   if READPAR(setup,'CALIB') ne '0' then PHOTRED_CALIB,redo=redo
   if READPAR(setup,'COMBINE') ne '0' then PHOTRED_COMBINE,redo=redo
   if READPAR(setup,'DEREDDEN') ne '0' then PHOTRED_DEREDDEN,redo=redo
-  if READPAR(setup,'SAVE') ne '0' then PHOTRED_SAVE,redo=redo,/sumquick
+  if READPAR(setup,'SAVE') ne '0' then PHOTRED_SAVE,redo=redo,/sumquick,nmulti=nmulti
 
   print,'DELVERED FINISHED'
   stages = ['WCS','DAOPHOT','MATCH','APCOR','ASTROM','ZEROPOINT','CALIB','COMBINE','DEREDDEN','SAVE']
