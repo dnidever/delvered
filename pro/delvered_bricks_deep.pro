@@ -1,6 +1,6 @@
 ;+
 ;
-; DELVERED_BRICKS
+; DELVERED_BRICKS_DEEP
 ;
 ; This is a script to run PHOTRED ALLFRAME on DELVE MC exposures to create
 ; forced-photometry catalogs.
@@ -24,12 +24,12 @@
 ; By D. Nidever  Aug 2019
 ;-
 
-pro delvered_bricks,input,nmulti=nmulti,redo=redo,update=update,delvedir=delvedir,delvereddir=delvereddir,stp=stp
+pro delvered_bricks_deep,input,nmulti=nmulti,redo=redo,update=update,delvedir=delvedir,delvereddir=delvereddir,stp=stp
 
 t0 = systime(1)
   
 ;; Defaults
-if n_elements(delvedir) gt 0 then delvedir=trailingslash(delvedir) else delvedir = '/net/dl2/dnidever/delve/'
+if n_elements(delvedir) gt 0 then delvedir=trailingslash(delvedir) else delvedir = '/net/dl2/dnidever/delve/deep/'
 if n_elements(delvereddir) gt 0 then delvereddir=trailingslash(delvereddir) else delvereddir = '/home/dnidever/projects/delvered/'
 ;; Exposures directory
 expdir = trailingslash(delvedir)+'exposures/'
@@ -77,7 +77,7 @@ logfile = logsdir+'delvered_bricks.'+hostname+'.'+logtime+'.log'
 JOURNAL,logfile
 
 ;; Load the brick information
-brickstr = MRDFITS(delvereddir+'data/delvemc_bricks_0.25deg.fits.gz',1)
+brickstr = MRDFITS(delvereddir+'data/delve_deep_bricks.fits',1)
 
 ;; Parse the input nights
 for i=0,n_elements(input)-1 do begin
@@ -148,7 +148,7 @@ if not keyword_set(redo) and not keyword_set(update) then begin
 endif
 
 ;; Check if we need to update the exposures database
-dbfile = '/net/dl2/dnidever/delve/bricks/db/delvered_summary.db'
+dbfile = '/net/dl2/dnidever/delve/deep/bricks/db/delvered_summary.db'
 lockfile = dbfile+'.lock'
 print,'Checking if exposures database needs to be updated'
 ;; Check for lockfile
@@ -168,7 +168,7 @@ if ngsum gt 0 then begin
     print,'Waiting 10 sec to let current queries finish'
     wait,10
     ;; This takes about 2.5 min to run
-    SPAWN,delvereddir+'bin/make_delvered_summary_table',/noshell
+    SPAWN,delvereddir+'bin/make_delvered_deep_summary_table',/noshell
     file_delete,lockfile,/allow
   endif
 endif
@@ -178,7 +178,7 @@ print,'Processing ',strtrim(nbricks,2),' brick(s)'
 ;#########################################
 ;#  STARTING THE PROCESSING
 ;#########################################
-cmd = "delvered_forcebrick,'"+bricks+"',delvedir='"+delvedir+"'"
+cmd = "delvered_forcebrick_deep,'"+bricks+"',delvedir='"+delvedir+"'"
 if keyword_set(redo) then cmd += ',/redo'
 if keyword_set(update) then cmd += ',/update'
 cmddirs = strarr(nbricks)+workdir

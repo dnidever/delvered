@@ -1,6 +1,6 @@
 ;+
 ;
-; DELVERED_FORCEBRICK
+; DELVERED_FORCEBRICK_DEEP
 ;
 ; Process a single DELVE brick and perform ALLFRAME FORCED photometry
 ;
@@ -10,8 +10,8 @@
 ; By D. Nidever  August 2019
 ;-
 
-pro delvered_forcebrick,brick,scriptsdir=scriptsdirs,irafdir=irafdir,workdir=workdir,redo=redo,update=update,$
-                        logfile=logfile,delvedir=delvedir
+pro delvered_forcebrick_deep,brick,scriptsdir=scriptsdirs,irafdir=irafdir,workdir=workdir,redo=redo,update=update,$
+                             logfile=logfile,delvedir=delvedir
 
 ;; This bricks pre-processing script gets DELVE and community MC data ready
 ;; to run PHOTRED ALLFRAME on it.
@@ -26,7 +26,7 @@ if n_elements(brick) eq 0 then begin
 endif
 
 ;; Defaults
-if n_elements(delvedir) gt 0 then delvedir=trailingslash(delvedir) else delvedir = '/net/dl2/dnidever/delve/'
+if n_elements(delvedir) gt 0 then delvedir=trailingslash(delvedir) else delvedir = '/net/dl2/dnidever/delve/deep/'
 if FILE_TEST(delvedir,/directory) eq 0 then FILE_MKDIR,delvedir
 if n_elements(delvereddir) gt 0 then delvereddir=trailingslash(delvereddir) else delvereddir = '/home/dnidever/projects/delvered/'
 ;expfile = '/home/dnidever/projects/delvered/data/decam_mcs_20181009.fits.gz'
@@ -75,7 +75,7 @@ JOURNAL,journalfile
 decam = IMPORTASCII(delvereddir+'data/decam.txt',/header,/silent)
 
 ;; Load the brick information
-brickstr = MRDFITS(delvereddir+'data/delvemc_bricks_0.25deg.fits.gz',1,/silent)
+brickstr = MRDFITS(delvereddir+'data/delve_deep_bricks.fits',1,/silent)
 
 ;; Get the brick information
 bind = where(brickstr.brickname eq brick,nbind)
@@ -195,7 +195,7 @@ cendec = brickstr1.dec
 tmpfile = MKTEMP('tmp',/nodot,outdir=tempdir) & TOUCHZERO,tmpfile+'.fits' & FILE_DELETE,[tmpfile,tmpfile+'.fits'],/allow
 tmpfile += '.fits'
 ;; /noshell causes problems on gp09 because it gives python2 instead of python3
-spawn,delvereddir+'bin/query_delvered_summary_table '+strtrim(cenra,2)+' '+strtrim(cendec,2)+' '+tmpfile+' --lim 0.5',out,errout
+spawn,delvereddir+'bin/query_delvered_deep_summary_table '+strtrim(cenra,2)+' '+strtrim(cendec,2)+' '+tmpfile+' --lim 0.5',out,errout
 info = file_info(tmpfile)
 if info.size eq 0 then begin
   printlog,logfile,'No overlapping chips found'
