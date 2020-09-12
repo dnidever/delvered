@@ -11,6 +11,8 @@
 ;  =nmulti  Number of simultaneous jobs to run.
 ;  /redo    Redo bricks that were previously done.
 ;  /update  Check for updates and rerun if there are.
+;  =delvedir  The main delve directory.  Default is /net/dl2/dnidever/delve/
+;  =delvereddir  The main delvered software directory.  Default is /home/dnidever/projects/delvered/'.
 ;
 ; OUTPUTS:
 ;  PHOTRED_ALLFRAME will be run on each brick and a final catalog and
@@ -22,7 +24,7 @@
 ; By D. Nidever  Aug 2019
 ;-
 
-pro delvered_bricks,input,nmulti=nmulti,redo=redo,update=update,stp=stp
+pro delvered_bricks,input,nmulti=nmulti,redo=redo,update=update,delvedir=delvedir,delvereddir=delvereddir,stp=stp
 
 t0 = systime(1)
   
