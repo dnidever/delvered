@@ -6,7 +6,8 @@ delvedir = '/net/dl2/dnidever/delve/'
 brickdir = delvedir+'bricks/'
 subdir = brickdir+strmid(brick,0,4)+'/'
 bdir = subdir+brick+'/'
-objfile = bdir+brick+'_object.fits.gz'
+;objfile = bdir+brick+'_object.fits.gz'
+objfile = bdir+brick+'_joint_object.fits.gz'
 if file_test(objfile) eq 0 then begin
   print,objfile+' NOT FOUND'
   return

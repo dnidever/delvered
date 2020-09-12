@@ -1,5 +1,5 @@
 pro delvered_prep,delvedir,scriptsdir=scriptsdirs,irafdir=irafdir,workdir=workdir,redo=redo,$
-                  nmulti=nmulti,nightmin=nightmin,newonly=newonly
+                  nmulti=nmulti,nightmin=nightmin,newonly=newonly,expfile=expfile
 
 ;; This pre-processing script gets DELVE and community MC data ready
 ;; from the NOAO mass store to be processed with PHOTRED.
@@ -69,7 +69,7 @@ setup = ['##### REQUIRED #####',$
          'psfcomglobal  0',$
          'psfcomgauss   0',$
          '#mchmaxshift  50.0',$
-         'finditer      2',$
+         'finditer      1',$       ; 2->1 on 7/22/20
          'alfdetprog  sextractor',$
          '#alfnocmbimscale 0',$
          'alftrimcomb   0',$
@@ -103,7 +103,7 @@ setup = ['##### REQUIRED #####',$
 ;expfile = delvereddir+'data/decam_mcs_20181009.fits.gz'
 ;expfile = delvereddir+'data/decam_mcs_20191017.fits.gz'
 ;expfile = delvereddir+'data/decam_mcs_20200218.fits.gz'
-expfile = delvereddir+'data/decam_mcs_20200320.fits.gz'
+if n_elements(expfile) eq 0 then expfile = delvereddir+'data/decam_mcs_20200320.fits.gz'
 print,'' & print,'Loading ',expfile
 allexpstr = MRDFITS(expfile,1,/silent)
 nallexp = n_elements(allexpstr)

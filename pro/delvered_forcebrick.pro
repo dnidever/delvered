@@ -10,7 +10,7 @@
 ; By D. Nidever  August 2019
 ;-
 
-pro delvered_forcebrick,brick,scriptsdir=scriptsdirs,irafdir=irafdir,workdir=workdir,redo=redo,logfile=logfile
+pro delvered_forcebrick,brick,scriptsdir=scriptsdirs,irafdir=irafdir,workdir=workdir,redo=redo,update=update,logfile=logfile
 
 ;; This bricks pre-processing script gets DELVE and community MC data ready
 ;; to run PHOTRED ALLFRAME on it.
@@ -94,7 +94,7 @@ logfile = bdir+brick+'.'+logtime+'.log'
 
 ;; Check the output file
 photfile = bdir+brick+'.fits'
-if file_test(photfile+'.gz') and not keyword_set(redo) then begin
+if file_test(photfile+'.gz') and not keyword_set(redo) and not keyword_set(update) then begin
   printlog,logfile,photfile+'.gz EXISTS and /redo NOT set'
   return
 endif
@@ -147,7 +147,7 @@ setup = ['##### REQUIRED #####',$
          'psfcomglobal  0',$
          'psfcomgauss   0',$
          '#mchmaxshift  50.0',$
-         'finditer      2',$
+         'finditer      1',$      ; 2->1 on 7/22/20
          'alfdetprog  sextractor',$
          '#alfnocmbimscale 0',$
          'alftrimcomb   0',$
@@ -193,7 +193,8 @@ cenra = brickstr1.ra
 cendec = brickstr1.dec
 tmpfile = MKTEMP('tmp',/nodot,outdir=tempdir) & TOUCHZERO,tmpfile+'.fits' & FILE_DELETE,[tmpfile,tmpfile+'.fits'],/allow
 tmpfile += '.fits'
-spawn,[delvereddir+'bin/query_delvered_summary_table',strtrim(cenra,2),strtrim(cendec,2),tmpfile,'--lim','0.5'],out,errout,/noshell
+;; /noshell causes problems on gp09 because it gives python2 instead of python3
+spawn,delvereddir+'bin/query_delvered_summary_table '+strtrim(cenra,2)+' '+strtrim(cendec,2)+' '+tmpfile+' --lim 0.5',out,errout
 info = file_info(tmpfile)
 if info.size eq 0 then begin
   printlog,logfile,'No overlapping chips found'
@@ -204,6 +205,12 @@ file_delete,tmpfile,/allow
 nchstr = n_elements(chstr)
 ;chstr.file = repstr(chstr.file,'/net/dl1/','/dl1/')   ;; fix /net/dl1 to /dl1
 printlog,logfile,'Found ',strtrim(nchstr,2),' overlapping chips within 0.5 deg of brick center'
+
+;; Make sure the chips are unique,  some were duplicated on SMASH nights
+chid = chstr.expnum+'-'+strtrim(chstr.chip,2)
+ui = uniq(chid,sort(chid))
+chstr = chstr[ui]
+nchstr = n_elements(chstr)
 
 ;; Do more rigorous overlap checking
 ;;  the brick region with overlap
@@ -276,6 +283,32 @@ nchstr = ngdch
 chstr.file = strtrim(chstr.file,2)
 chstr.base = strtrim(chstr.base,2)
 ;add_tag,chstr,'newbase','',chstr
+
+
+;; Check if we need to update
+if keyword_set(update) and not keyword_set(redo) then begin
+  ;; Load previous meta
+  metafile = bdir+brick+'_meta.fits'
+  if file_test(metafile) then begin
+    meta0 = mrdfits(metafile,1,/silent)
+    meta0.base = strtrim(meta0.base,2)
+    MATCH,meta0.base,chstr.base,ind1,ind2,/sort,count=nmatch
+    if nchstr eq n_elements(meta0) and nchstr eq nmatch then begin
+      printlog,logfile,'Nothing to UPDATE'
+      return
+    endif
+    ;; Moving previous catalogs to a backup
+    oldfiles = file_search(bdir+[brick+'*fits*','allframe.opt','default.*'],count=noldfiles)
+    if noldfiles gt 0 then begin
+      bakdir = bdir+'bak'+smonth+sday+syear+shour+sminute+ssecond
+      printlog,logfile,'Backing up old files to ',bakdir
+      FILE_MKDIR,bakdir
+      FILE_MOVE,oldfiles,bakdir
+   endif else printlog,logfile,'No old files to backup'
+  endif
+  printlog,logfile,'There are new exposures to include.  UPDATING'
+endif
+
 
 
 ;; Create temporary local directory to perform the work/processing
@@ -500,7 +533,7 @@ if ninside gt 0 then phot[ginside].brickuniq=1B
 ;; Get some meta-data
 for i=0,nchstr-1 do begin
   alffile = chstr[i].base+'.alf'
-  if file_test(alffile) eq 1 then chstr[i].alf_nsources=file_lines(alffile)
+  if file_test(alffile) eq 1 then chstr[i].alf_nsources=file_lines(alffile)-3
 endfor
 
 
@@ -520,6 +553,12 @@ for i=0,nchstr-1 do begin
   if file_test(alffiles[i]) eq 1 and file_test(fitsfile) eq 1 then begin
     LOADALS,alffiles[i],alf,count=nalf
     if nalf eq 0 then goto,BOMB2
+    ;; Sometimes the rows are duplicated in the ALF file
+    ui = uniq(alf.id,sort(alf.id))
+    if n_elements(ui) lt nalf then begin
+      alf = alf[ui]
+      nalf = n_elements(alf)
+    endif
     head = photred_readfile(fitsfile,/header)
 
     ;; Calibrate the photometry
@@ -584,9 +623,14 @@ STRUCT_ASSIGN,phot,obj,/nozero
 
 ;; Saving final catalog
 photfile = bdir+brick+'.fits'
-printlog,logfile,'Writing photometry to '+photfile+'.gz'
-MWRFITS,phot,photfile,/create
-spawn,['gzip','-f',photfile],/noshell
+if n_tags(phot) le 999 then begin
+  printlog,logfile,'Writing photometry to '+photfile+'.gz'
+  MWRFITS,phot,photfile,/create
+  spawn,['gzip','-f',photfile],/noshell
+endif else begin
+  printlog,logfile,'Too many columns for FITS.  Saving as IDL SAVE file instead. '+bdir+brick+'.dat'
+  SAVE,phot,file=bdir+brick+'.dat'
+endelse
 
 ;; Saving object photometry catalog
 objfile = bdir+brick+'_object.fits'
@@ -650,7 +694,8 @@ printlog,logfile,''
 printlog,logfile,'CREATE JOINT CATALOGS'
 printlog,logfile,''
 
-DELVERED_JOINTBRICKCATS,brick,logfile=logfile,redo=redo
+if keyword_set(redo) or keyword_set(update) then jntredo=1 else jntredo=0
+DELVERED_JOINTBRICKCATS,brick,logfile=logfile,redo=jntredo
 
 JOURNAL
 

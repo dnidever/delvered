@@ -67,7 +67,7 @@ logfile = -1
 
 ;; Check output file
 if file_test(bdir+brick+'_joint_object.fits.gz') eq 1 and not keyword_set(redo) then begin
-  print,bdir+brick+'_joint_object.fits.gz EXISTS and /red NOT set'
+  print,bdir+brick+'_joint_object.fits.gz EXISTS and /redo NOT set'
   return
 endif
 
@@ -101,7 +101,8 @@ cenra = brickstr1.ra
 cendec = brickstr1.dec
 tmpfile = MKTEMP('tmp',/nodot,outdir=tempdir) & TOUCHZERO,tmpfile+'.fits' & FILE_DELETE,[tmpfile,tmpfile+'.fits'],/allow
 tmpfile += '.fits'
-spawn,[delvereddir+'bin/query_delvered_summary_table',strtrim(cenra,2),strtrim(cendec,2),tmpfile,'--lim','0.5'],out,errout,/noshell
+;; /noshell causes problems on gp09 because it gives python2 instead of python3
+spawn,delvereddir+'bin/query_delvered_summary_table '+strtrim(cenra,2)+' '+strtrim(cendec,2)+' '+tmpfile+' --lim 0.5',out,errout
 info = file_info(tmpfile)
 if info.size eq 0 then begin
   printlog,logfile,'No overlapping chips found'
@@ -112,6 +113,12 @@ file_delete,tmpfile,/allow
 nchstr = n_elements(chstr)
 ;chstr.file = repstr(chstr.file,'/net/dl1/','/dl1/')   ;; fix /net/dl1 to /dl1
 printlog,logfile,'Found ',strtrim(nchstr,2),' overlapping chips within 0.5 deg of brick center'
+
+;; Make sure the chips are unique,  some were duplicated on SMASH nights
+chid = chstr.expnum+'-'+strtrim(chstr.chip,2)
+ui = uniq(chid,sort(chid))
+chstr = chstr[ui]
+nchstr = n_elements(chstr)
 
 ;; Do more rigorous overlap checking
 ;;  the brick region with overlap
@@ -187,6 +194,17 @@ chstr.file = strtrim(chstr.file,2)
 chstr.base = strtrim(chstr.base,2)
 chstr.fieldname = strtrim(chstr.fieldname,2)
 
+;; Get the "reference" name
+mchfile = file_search(bdir+'*_comb.mch',count=nmchfile)
+if nmchfile eq 0 then begin
+  printlog,logfile,'No comb.mch file found for '+brick
+  return
+endif
+mchfile = mchfile[0]
+mchbase = file_basename(mchfile,'_comb.mch')
+combbase = mchbase+'_comb'
+
+
 ;; Load the forced photometry object catalog
 objfile = bdir+brick+'_object.fits.gz'
 printlog,logfile,'Loading forced photometry object catalog '+objfile
@@ -212,16 +230,256 @@ fmeta.file = strtrim(fmeta.file,2)
 fmeta.base = strtrim(fmeta.base,2)
 fmeta.expnum = strtrim(fmeta.expnum,2)
 
+
+;; Add ALLFRAME detection iteration number
+;;----------------------------------------
+;; restore the SExtractor file
+sexfile = file_search(bdir+'*_comb_allf.sex',count=nsexfile)
+;; reverse sort by date if more than 1
+if nsexfile gt 0 then begin
+  sexinfo = file_info(sexfile)
+  si = reverse(sort(sexinfo.ctime))
+  sexfile = sexfile[si]
+endif
+sex = MRDFITS(sexfile[0],1,/silent)
+nsex = n_elements(sex)
+if tag_exist(sex,'NDETITER') eq 0 then begin
+  printlog,logfile,'Adding ALLFRAME detection iteration number'
+  ; get it from the log file
+  logfiles = file_search(bdir+brick+'.????????????.log',count=nlogfiles)
+  if nlogfiles eq 0 then begin
+    print,'No logfile found'
+    return
+  endif
+  lognlines = file_lines(logfiles)
+  gd = where(lognlines gt 1,ngd)
+  logfiles = logfiles[gd]
+  nlogfiles = ngd
+  info = file_info(logfiles)
+  si = reverse(sort(info.mtime))
+  logfiles = logfiles[si]
+  info = info[si]
+  logfile = logfiles[0]
+  readline,logfile,loglines
+  lo = where(stregex(loglines,'STEP 3: Running allframe prep',/boolean) eq 1,nlo)
+  hi = where(stregex(loglines,'STEP 4: Running ALLFRAME',/boolean) eq 1,nhi)
+  if nlo gt 0 and nhi gt 0 then begin
+    loglines1 = loglines[lo+4:hi-5]
+    ;; --Iteration 1--
+    ;; Running SExtractor
+    ;; SExtractor found 21671 sources
+    ;; Running ALLSTAR
+    ;; ALLSTAR found 18141 sources
+    ;; 18141 new stars found
+    ;; --Iteration 2--
+    ;; Running SExtractor
+    ;; SExtractor found 18307 sources
+    ;; Running ALLSTAR
+    ;; ALLSTAR found 26554 sources
+    ;; 8413 new stars found
+    sexind = where(stregex(loglines1,'^SExtractor found',/boolean) eq 1,nsexind)
+    dum = strsplitter(loglines1[sexind],' ',/extract)
+    sexnstars = long(reform(dum[2,*]))
+    add_tag,sex,'NDETITER',0L,sex
+    sex[0:sexnstars[0]-1].ndetiter = 1
+    if nsex gt sexnstars[0] then sex[sexnstars[0]:*].ndetiter = 2
+    ;; The code has problems sometimes
+    ;scount = 0LL
+    ;for i=0,nsexind-1 do begin
+    ;  sex[scount:scount+sexnstars[i]-1].ndetiter = i+1
+    ;  scount += sexnstars[i]
+    ;endfor
+  endif else begin
+    ;; Something's wrong with the logfile
+    printlog,logfile,'Cannont find ALLFPREP information in logfile.  Trying to get detection iteration information from SExtractor positions'
+
+    sexfile = file_search(bdir+'*_comb_allf.sex',count=nsexfile)
+    sex = MRDFITS(sexfile[0],1,/silent)
+    add_tag,sex,'NDETITER',0L,sex
+    ;; Between iterations the Y value should change by a lot
+    bd = where(slope(sex.y_image) lt -max(sex.y_image)*0.5,nbd)
+    sex[0:bd[0]].ndetiter = 1
+    sex[bd[0]+1:*].ndetiter = 2
+  endelse
+endif
+
+;; Now match to the object catalog
+;; the obj.objid star number part should match with the SE number
+;; 0988m505.404   0988m505.899   0988m505.1423
+add_tag,fobj,'nalfdetiter',0,fobj
+objnum = long(reform((strsplitter(fobj.objid,'.',/extract))[1,*]))
+MATCH,sex.number,objnum,ind1,ind2,/sort,count=nmatch
+fobj[ind2].nalfdetiter = sex[ind1].ndetiter
+
+
+;; Remove measurements from duplicate chips
+;;  this happened on some of the SMASH nights
+chid = fmeta.expnum+'-'+strtrim(fmeta.chip,2)
+ui = uniq(chid,sort(chid))
+ui = ui[sort(ui)]  ; try to keep in same order
+if n_elements(ui) lt n_elements(fmeta) then begin
+  bdchip = lindgen(n_elements(fmeta))
+  REMOVE,ui,bdchip
+  nbdchip = n_elements(bdchip)
+  printlog,logfile,'--- Removing measurements from '+strtrim(nbdchip,2)+' duplicate chips ---'
+  ;; Remove duplicate measurements from fmeas
+  MATCH,fmeasexpindex.value,fmeta[bdchip].base,ind1,ind2,/sort,count=nmatch
+  for i=0,nmatch-1 do begin
+    ind = fmeasexpindex.index[fmeasexpindex.lo[ind1[i]]:fmeasexpindex.hi[ind1[i]]]
+    push,badmeasind,ind
+  endfor
+  printlog,logfile,strtrim(n_elements(badmeasind),2)+' duplcate measurements to remove'
+  REMOVE,badmeasind,fmeas
+  ;; Remove chips with no measurements from fmeta
+  REMOVE,bdchip,fmeta
+  ;; Remove fobj objects with no measurements
+  ui = uniq(fmeas.objid,sort(fmeas.objid))
+  fobjid = fmeas[ui].objid
+  MATCH,fobj.objid,fobjid,ind1,ind2,/sort,count=nmatch
+  if nmatch lt n_elements(fobj) then begin
+    left = lindgen(n_elements(fobj))
+    REMOVE,ind1,left
+    printlog,logfile,'Removing '+strtrim(n_elements(left),2)+' forced objects with no measurements'
+    REMOVE,left,fobj
+  endif
+  nfobj = n_elements(fobj)
+  ;; Remake fmeasexpindex
+  fmeasexpindex = create_index(fmeas.exposure)
+endif
+
+
+;; Remove measurements from bad half of chip 31 from forced measurements
+;;----------------------------------------------------------------------
+mjd = dblarr(n_elements(fmeta))
+for i=0,n_elements(fmeta)-1 do mjd[i]=date2jd(fmeta[i].utdate+'T'+fmeta[i].uttime,/mjd)
+bdchip = where(fmeta.chip eq 31 and mjd gt 56660,nbdchip)
+undefine,badmeasind
+if nbdchip gt 0 then begin
+  MATCH,fmeasexpindex.value,fmeta[bdchip].base,ind1,ind2,/sort,count=nmatch
+  for i=0,nmatch-1 do begin
+    ind = fmeasexpindex.index[fmeasexpindex.lo[ind1[i]]:fmeasexpindex.hi[ind1[i]]]
+    bdind = where(fmeas[ind].x gt 1000,nbdind,comp=gdind,ncomp=ngdind)
+    if nbdind gt 0 then begin   ; some bad ones found
+      push,badmeasind,ind[bdind]
+      if ngdind eq 0 then begin   ; all bad
+        printlog,logfile,'NO useful measurements in '+fmeasexpindex.value[ind1[i]]
+        fmeta[bdchip[ind2[i]]].alf_nsources = 0
+      endif else begin
+        printlog,logfile,fmeasexpindex.value[ind1[i]]+' removing '+strtrim(nbdind,2)+' bad measurements, '+strtrim(ngdind,2)+' left'
+        fmeta[bdchip[ind2[i]]].alf_nsources = ngdind
+      endelse
+    endif  ; some bad ones to remove
+  endfor
+  printlog,logfile,strtrim(n_elements(badmeasind),2)+' bad chip 31 measurements to remove'
+  ;; Remove bad chip 31 measurements from fmeas
+  if n_elements(badmeasind) gt 0 then begin
+    REMOVE,badmeasind,fmeas
+  endif
+  ;; Remove chips with no measurements from fmeta
+  bdfmeta = where(fmeta.alf_nsources eq 0,nbdfmeta)
+  if nbdfmeta gt 0 then begin
+    printlog,logfile,'Removing '+strtrim(nbdfmeta,2)+' chips with no measurements'
+    REMOVE,bdfmeta,fmeta
+  endif
+  ;; Remove fobj objects with no measurements
+  ui = uniq(fmeas.objid,sort(fmeas.objid))
+  fobjid = fmeas[ui].objid
+  MATCH,fobj.objid,fobjid,ind1,ind2,/sort,count=nmatch
+  if nmatch lt n_elements(fobj) then begin
+    left = lindgen(n_elements(fobj))
+    REMOVE,ind1,left
+    printlog,logfile,'Removing '+strtrim(n_elements(left),2)+' forced objects with no measurements'
+    REMOVE,left,fobj
+  endif
+  nfobj = n_elements(fobj)
+  ;; Remake fmeasexpindex
+  fmeasexpindex = create_index(fmeas.exposure)
+endif
+
+
+
+;; Check the ALLFRAME astrometric solutions and removing data from
+;;   bad chips from the forced measurements catalog
+;;----------------------------------------------------------------
+printlog,logfile,'--- Removing chips with bad ALLFRAME astrometric solutions ---'
+mchfile = file_search(bdir+'*_comb.mch',count=nmchfile)
+if nmchfile eq 0 then begin
+  printlog,logfile,'No comb.mch file found for '+brick
+  return
+endif
+mchfile = mchfile[0]
+mchbase = file_basename(mchfile,'_comb.mch')
+astcheck = CHECK_ALLFRAME_COORDTRANS(mchfile,/silent)
+bdchip = where(astcheck.decstd gt 1.0 or finite(astcheck.decstd) eq 0,nbdchip)
+if nbdchip eq 0 then begin
+  printlog,logfile,'NO ALLFRAME astrometric solutions problems'  
+endif else begin
+  printlog,logfile,strtrim(nbdchip,2)+' chips found with bad ALLFRAME astrometric solutions'
+  printlog,logfile,strjoin(file_basename(astcheck[bdchip].file),', ')
+  printlog,logfile,'Removing from forced META structure'
+  badchips = file_basename(astcheck[bdchip].file,'.alf')
+  ;; Remove bad chips from fmeta
+  MATCH,fmeta.base,badchips,ind1,ind2,/sort,count=nmatch
+  ;; there might not be a match if it's just a ccdnum=31 chip
+  ;; that was removed above.
+  if nmatch gt 0 then begin
+    fmeta0 = fmeta
+    REMOVE,ind1,fmeta
+    ;; Remove bad chip measurements from fmeas
+    fmeaschipindex = create_index(fmeas.exposure)
+    MATCH,fmeaschipindex.value,badchips,ind1,ind2,/sort,count=nmatch
+    badind = lon64arr(total(fmeaschipindex.num[ind1],/int))
+    cnt = 0LL
+    for i=0,nmatch-1 do begin
+      ind = fmeaschipindex.index[fmeaschipindex.lo[ind1[i]]:fmeaschipindex.hi[ind1[i]]]
+      nind = n_elements(ind)
+      badind[cnt:cnt+nind-1] = ind
+      cnt += nind
+    endfor
+    printlog,logfile,'Removing '+strtrim(n_elements(badind),2)+' forced measurements from bad chips'
+    REMOVE,badind,fmeas
+    ;; Remove fobj objects with no measurements
+    ui = uniq(fmeas.objid,sort(fmeas.objid))
+    fobjid = fmeas[ui].objid
+    MATCH,fobj.objid,fobjid,ind1,ind2,/sort,count=nmatch
+    if nmatch lt n_elements(fobj) then begin
+      left = lindgen(n_elements(fobj))
+      REMOVE,ind1,left
+      printlog,logfile,'Removing '+strtrim(n_elements(left),2)+' forced objects with no measurements'
+      REMOVE,left,fobj
+    endif
+    nfobj = n_elements(fobj)
+    ;; Remake fmeasexpindex
+    fmeasexpindex = create_index(fmeas.exposure)
+  endif
+endelse
+
+
+;; Merge close neighbors
+;;----------------------
+printlog,logfile,'--- Merging close neighbors ---'
+combfits = bdir+combbase+'.fits.fz'
+if max(fobj.nalfdetiter) gt 1 then begin
+  DELVERED_MERGEALF_CLOSENEIGHBORS,combfits,sex,fobj,fmeas,newobj,newmeas,logfile=logfile
+  fobj = newobj & undefine,newobj
+  fmeas = newmeas & undefine,newmeas
+  nfobj = n_elements(fobj)
+  ;; Remake the exposure index
+  fmeasexpindex = create_index(fmeas.exposure)
+endif
+
+
 ;; Initialize the final measurement table
-meas_schema = {id:'',objid:'',exposure:'',ccdnum:0,filter:'',mjd:0.0d0,forced:0B,x:0.0,y:0.0,ra:0.0d0,dec:0.0d0,$
+meas_schema = {id:'',objid:'',brick:'',exposure:'',ccdnum:0,filter:'',mjd:0.0d0,forced:0B,x:0.0,y:0.0,ra:0.0d0,dec:0.0d0,$
                imag:0.0,ierr:0.0,mag:0.0,err:0.0,sky:0.0,chi:0.0,sharp:0.0}
 meas = replicate(meas_schema,n_elements(fmeas))
 struct_assign,fmeas,meas
+meas.brick = brick
 meas.forced = 1B
 mcount = long64(n_elements(meas))
 
 ;; Initialize the final object table, with ALL BANDS
-obj_schema = {objid:'',forced:0B,x:999999.0,y:999999.0,ra:0.0d0,dec:0.0d0,$
+obj_schema = {objid:'',brick:'',forced:0B,x:999999.0,y:999999.0,ra:0.0d0,dec:0.0d0,nalfdetiter:0L,neimerged:0,$
               umag:99.99,uerr:9.99,uscatter:99.99,ndetu:0L,$
               gmag:99.99,gerr:9.99,gscatter:99.99,ndetg:0L,$
               rmag:99.99,rerr:9.99,rscatter:99.99,ndetr:0L,$
@@ -229,13 +487,18 @@ obj_schema = {objid:'',forced:0B,x:999999.0,y:999999.0,ra:0.0d0,dec:0.0d0,$
               zmag:99.99,zerr:9.99,zscatter:99.99,ndetz:0L,$
               ymag:99.99,yerr:9.99,yscatter:99.99,ndety:0L,$
               chi:99.99,sharp:99.99,prob:99.99,ebv:99.99,mag_auto:99.99,magerr_auto:9.99,$
-              asemi:999999.0,bsemi:999999.0,theta:999999.0,ellipticity:999999.0,fwhm:999999.9,depthflag:0,brickuniq:0B}
+              asemi:999999.0,bsemi:999999.0,theta:999999.0,ellipticity:999999.0,fwhm:999999.9,$
+              depthflag:0,brickuniq:0B}
 ; depthflag: 1-allstar, single processing; 2-forced photometry; 3-both
 obj = replicate(obj_schema,nfobj)
 struct_assign,fobj,obj,/nozero
+obj.brick = brick
 obj.depthflag = 2
+obj.nalfdetiter = fobj.nalfdetiter
+if tag_exist(fobj,'NEIMERGED') then obj.neimerged = fobj.neimerged
 obj = add_elements(obj,100000L)
 ocount = nfobj
+
 
 ;; Initialize the final meta structure
 meta = fmeta
@@ -246,6 +509,7 @@ if nmatch gt 0 then meta[ind1].nmeas = fmeasexpindex.num[ind2]
 
 
 ;; Step 1: Loop over the chips that we used for the forced photometry
+;;-------------------------------------------------------------------
 ;;  check for any measurements that were missed, e.g. for bright stars
 printlog,logfile,' '
 printlog,logfile,'Step 1: Adding ALLSTAR measurements for exposures already used in the forced photometry'
@@ -277,7 +541,7 @@ For e=0,nuexpnum-1 do begin
     if size(chcat,/type) ne 8 then goto,BOMB1
     nchcat = n_elements(chcat)
     printlog,logfile,'  chip '+strtrim(i+1,2)+' '+repstr(meta1.file,'.fits','.phot')+' '+strtrim(nchcat,2)
-    ;; Only keep meaurements INSIDE the brick/tile area
+    ;; Only keep measurements INSIDE the brick/tile area
     HEAD_ADXY,tilestr.head,chcat.ra,chcat.dec,bx,by,/deg
     gdcat = where(bx ge 0 and bx le (tilestr.nx-1) and by ge 0 and by le (tilestr.ny-1),ngdcat)
     if ngdcat gt 0 then begin
@@ -312,7 +576,10 @@ For e=0,nuexpnum-1 do begin
         printlog,logfile,'  Adding '+strtrim(nchcat,2)+' remaining measurements to MEASEXPNEW'
         if nchcat+mexpcount gt n_elements(measexpnew) then measexpnew=add_elements(measexpnew,100000L>nchcat)
         ;; Add all measurements
-        measexpnew[mexpcount:mexpcount+nchcat-1] = chcat
+        temp = measexpnew[mexpcount:mexpcount+nchcat-1]
+        struct_assign,chcat,temp,/nozero
+        temp.brick = brick
+        measexpnew[mexpcount:mexpcount+nchcat-1] = temp
         mexpcount += nchcat
         ;; Update meta
         meta[eind[i]].nmeas += nchcat
@@ -348,7 +615,7 @@ For e=0,nuexpnum-1 do begin
     tempobj = obj[ind1]
     tempmeas = measexpnew[ind2]
     ADD_MEAS2OBJ,tempobj,tempmeas
-    tempobj.depthflag += 1
+    tempobj.depthflag OR= 1
     obj[ind1] = tempobj
     ;; update meas OBJID
     measexpnew[ind2].objid = obj[ind1].objid
@@ -369,7 +636,7 @@ For e=0,nuexpnum-1 do begin
     tempmeas = measexpnew[left]
     struct_assign,tempmeas,newobj,/nozero
     ADD_MEAS2OBJ,newobj,tempmeas
-    newobj.depthflag += 1
+    newobj.depthflag OR= 1
     ;; Assign new OBJID
     newobjid = brick+'.'+strtrim(lindgen(nleft)+1+objectidcount,2)
     objectidcount += nleft
@@ -452,7 +719,10 @@ For e=0,nuexpnum-1 do begin
         printlog,logfile,'  Adding '+strtrim(nchcat,2)+' remaining measurements to MEASEXPNEW'
         if nchcat+mexpcount gt n_elements(measexpnew) then measexpnew=add_elements(measexpnew,100000L>nchcat)
         ;; Add all measurements
-        measexpnew[mexpcount:mexpcount+nchcat-1] = chcat
+        temp = measexpnew[mexpcount:mexpcount+nchcat-1]
+        struct_assign,chcat,temp,/nozero
+        temp.brick = brick
+        measexpnew[mexpcount:mexpcount+nchcat-1] = temp
         mexpcount += nchcat
         ;; Update meta
         newmeta[eind[i]].nmeas += nchcat
@@ -487,7 +757,7 @@ For e=0,nuexpnum-1 do begin
     tempobj = obj[ind1]
     tempmeas = measexpnew[ind2]
     ADD_MEAS2OBJ,tempobj,tempmeas
-    tempobj.depthflag += 1
+    tempobj.depthflag OR= 1
     obj[ind1] = tempobj
     ;; update meas OBJID
     measexpnew[ind2].objid = obj[ind1].objid
@@ -508,7 +778,7 @@ For e=0,nuexpnum-1 do begin
     tempmeas = measexpnew[left]
     struct_assign,tempmeas,newobj,/nozero
     ADD_MEAS2OBJ,newobj,tempmeas
-    newobj.depthflag += 1
+    newobj.depthflag OR= 1
     ;; Assign new OBJID
     newobjid = brick+'.'+strtrim(lindgen(nleft)+1+objectidcount,2)
     objectidcount += nleft
@@ -549,20 +819,22 @@ FINAL:
 ;; Exposure information
 ui = uniq(meta.expnum,sort(meta.expnum))
 expstr = meta[ui]
-add_tag,expstr,'exposure','',expstr
-expstr.exposure = reform((strsplitter(expstr.base,'_',/extract))[0,*])
-si = sort(expstr.exposure)   ;; sort by exposure
+si = sort(expstr.expnum)   ;; sort by exposure
 expstr = expstr[si]
-exposure = reform((strsplitter(meas.exposure,'_',/extract))[0,*])
-eindex = create_index(exposure)
-match,expstr.exposure,eindex.value,ind1,ind2,/sort,count=nmatch
+dum = reform((strsplitter(meas.exposure,'_',/extract))[0,*])
+expnum = reform((strsplitter(dum,'-',/extract))[1,*])
+eindex = create_index(expnum)
+match,expstr.expnum,eindex.value,ind1,ind2,/sort,count=nmatch
 expstr[ind1].nmeas = eindex.num[ind2]
 
+
 ;; Average all of the measurements
+;;  THIS CREATES A NEW OBJECT TABLE WITH THE FINAL SCHEMA!!!
 oldobj = obj
 undefine,obj
 printlog,logfile,'--- AVERAGING THE PHOTOMETRY ---'
 DELVERED_AVGMEAS,expstr,meas,obj
+
 
 ;; Copy over SExtractor information for the forced objects
 ;;   the measurement table only has ALF/ALS information
@@ -576,6 +848,22 @@ obj[ind1].theta = fobj[ind2].theta
 obj[ind1].ellipticity = fobj[ind2].ellipticity
 obj[ind1].fwhm = fobj[ind2].fwhm
 
+;; Copy over other information
+obj[ind1].nalfdetiter = fobj[ind2].nalfdetiter
+if tag_exist(fobj,'NEIMERGED') then obj[ind1].neimerged = fobj[ind2].neimerged
+obj.brick = brick
+
+;; Calculate photometric variability metrics
+printlog,logfile,'--- Calculating photometric variability metrics ---'
+DELVERED_PHOTVAR,meas,obj
+
+;; Fill in mlon/mlat
+glactc,obj.ra,obj.dec,2000.0,glon,glat,1,/deg
+gal2mag,glon,glat,mlon,mlat
+obj.mlon = mlon
+obj.mlat = mlat
+
+
 ;; Fill in BRICKUNIQ
 ;; Getting objects that are in the UNIQUE brick area
 if brickstr1.dec eq -90 then begin
@@ -587,6 +875,38 @@ endif else begin
 endelse
 if ninside gt 0 then obj[ginside].brickuniq=1B
 
+;; Get Gaia DR2 data
+;; bricks are 0.25 x 0.25 deg, so half the diagonal is 0.177 deg
+printlog,logfile,'Crossmatching with Gaia DR2'
+gaia = DELVERED_GETREFCAT(brickstr1.ra,brickstr1.dec,0.2,'gaiadr2')
+srcmatch,obj.ra,obj.dec,gaia.ra,gaia.dec,1.0,ind1,ind2,/sph,count=nmatch
+printlog,logfile,strtrim(nmatch,2)+' Gaia DR2 matches'
+if nmatch gt 0 then begin
+  obj[ind1].gaia_match = 1
+  obj[ind1].gaia_xdist = sphdist(obj[ind1].ra,obj[ind1].dec,gaia[ind2].ra,gaia[ind2].dec,/deg)*3600
+  obj[ind1].gaia_sourceid = gaia[ind2].source
+  obj[ind1].gaia_ra = gaia[ind2].ra
+  obj[ind1].gaia_ra_error = gaia[ind2].ra_error
+  obj[ind1].gaia_dec = gaia[ind2].dec
+  obj[ind1].gaia_dec_error = gaia[ind2].dec_error
+  obj[ind1].gaia_parallax = gaia[ind2].parallax
+  obj[ind1].gaia_parallax_error = gaia[ind2].parallax_error
+  obj[ind1].gaia_pmra = gaia[ind2].pmra
+  obj[ind1].gaia_pmra_error = gaia[ind2].pmra_error
+  obj[ind1].gaia_pmdec = gaia[ind2].pmdec
+  obj[ind1].gaia_pmdec_error = gaia[ind2].pmdec_error
+  obj[ind1].gaia_gmag = gaia[ind2].gmag
+  gmag_error = 2.5*alog10(1.0+gaia[ind2].e_fg/gaia[ind2].fg)
+  obj[ind1].gaia_gmag_error = gmag_error
+  obj[ind1].gaia_bpmag = gaia[ind2].bp
+  bpmag_error = 2.5*alog10(1.0+gaia[ind2].e_fbp/gaia[ind2].fbp)
+  obj[ind1].gaia_bpmag_error = bpmag_error
+  obj[ind1].gaia_rpmag = gaia[ind2].rp
+  rpmag_error = 2.5*alog10(1.0+gaia[ind2].e_frp/gaia[ind2].frp)
+  obj[ind1].gaia_rpmag_error = rpmag_error
+endif else print,'NO Gaia DR2 matches'
+
+;stop
 
 ;; Save JOINT files
 ;;-------------------

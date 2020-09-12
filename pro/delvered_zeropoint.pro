@@ -74,7 +74,8 @@ if n_elements(nmulti) eq 0 then begin
   if nmultizp ne '0' and nmultizp ne '' and nmultizp ne '-1' then nmulti=long(nmultizp)
   ;; Default is 5
   if n_elements(nmulti) eq 0 then nmulti=5
-  nmulti = nmulti > 1       ; must be >=1
+  nmulti = nmulti > 2       ; must be >=2
+  ;; for some reason running it with nmulti=1 causes problems
 endif
 ;; Hyperthread
 hyperthread = READPAR(setup,'hyperthread')

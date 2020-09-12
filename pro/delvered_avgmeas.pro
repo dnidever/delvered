@@ -41,7 +41,8 @@ for i=0,nobj-1 do measobj_index[oindex.index[oindex.lo[i]:oindex.hi[i]]] = i
 
 
 ;; Initialize the final object table, with ALL BANDS
-obj_schema = {objid:'',depthflag:0,ra:0.0d0,dec:0.0d0,ndet:0,ndetall:0,$
+obj_schema = {objid:'',brick:'',depthflag:0,nalfdetiter:0,neimerged:0,ra:0.0d0,dec:0.0d0,rarms:0.0,decrms:0.0,ndet:0,ndetall:0,$
+              mlon:0.0d0,mlat:0.0d0,$
               umag:99.99,uerr:9.99,urms:99.99,ndetu:0,umagall:99.99,uerrall:9.99,urmsall:99.99,ndetallu:0,$
               gmag:99.99,gerr:9.99,grms:99.99,ndetg:0,gmagall:99.99,gerrall:9.99,grmsall:99.99,ndetallg:0,$
               rmag:99.99,rerr:9.99,rrms:99.99,ndetr:0,rmagall:99.99,rerrall:9.99,rrmsall:99.99,ndetallr:0,$
@@ -49,7 +50,15 @@ obj_schema = {objid:'',depthflag:0,ra:0.0d0,dec:0.0d0,ndet:0,ndetall:0,$
               zmag:99.99,zerr:9.99,zrms:99.99,ndetz:0,zmagall:99.99,zerrall:9.99,zrmsall:99.99,ndetallz:0,$
               ymag:99.99,yerr:9.99,yrms:99.99,ndety:0,ymagall:99.99,yerrall:9.99,yrmsall:99.99,ndetally:0,$
               chi:99.99,sharp:99.99,prob:99.99,ebv:99.99,mag_auto:99.99,magerr_auto:9.99,$
-              asemi:999999.0,bsemi:999999.0,theta:999999.0,ellipticity:999999.0,fwhm:999999.0,brickuniq:0B}
+              asemi:999999.0,bsemi:999999.0,theta:999999.0,ellipticity:999999.0,fwhm:999999.0,$
+              rmsvar:999999.0,madvar:999999.0,iqrvar:999999.0,etavar:999999.0,jvar:999999.0,$
+              kvar:999999.0,chivar:999999.0,romsvar:999999.0,variable10sig:-1,nsigvar:999999.0,$
+              gaia_match:0,gaia_xdist:999999.0,gaia_sourceid:0LL,gaia_ra:999999.0d0,gaia_ra_error:999999.0,$
+              gaia_dec:999999.0d0,gaia_dec_error:999999.0,gaia_parallax:999999.0,gaia_parallax_error:999999.0,gaia_pmra:999999.0,$
+              gaia_pmra_error:999999.0,gaia_pmdec:999999.0,gaia_pmdec_error:999999.0,gaia_gmag:999999.0,$
+              gaia_gmag_error:999999.0,gaia_bpmag:999999.0,gaia_bpmag_error:999999.0,gaia_rpmag:999999.0,$
+              gaia_rpmag_error:999999.0,$
+              brickuniq:0B}
 ; depthflag: 1-allstar, single processing; 2-forced photometry; 3-both
 obj = replicate(obj_schema,nobj)
 obj.objid = oindex.value
@@ -58,11 +67,12 @@ otags = tag_names(obj)
 
 ;; Exposure names
 ;;   F23-00912982_15, trim off ccdnum
-exposure = reform((strsplitter(meas.exposure,'_',/extract))[0,*])
-eindex = create_index(exposure)
+dum = reform((strsplitter(meas.exposure,'_',/extract))[0,*])
+expnum = reform((strsplitter(dum,'-',/extract))[1,*])
+eindex = create_index(expnum)
 ;; match EXPSTR to EINDEX
 ;;  also some exposures have 0 measurements
-MATCH,eindex.value,expstr.exposure,ind1,ind2,/sort
+MATCH,eindex.value,expstr.expnum,ind1,ind2,/sort
 mexpstr = expstr[ind2]   ;; matched expstr, ind1 is in the right order
 nexposure = n_elements(mexpstr)
 print,strtrim(nexposure,2),' exposures with measurements'
@@ -90,7 +100,10 @@ For f=0,nufilter-1 do begin
     obj[measobj_index[mind]].(nobsind) = 1
     ;; Depthflag
     ;;  OR combine to depthflag, 1-single-exposure, 2-forced, 3-both
-    if meas[mind[0]].forced eq 0 then obj[measobj_index[mind]].depthflag OR= 1 else obj[measobj_index[mind]].depthflag OR= 2
+    ;;  within a single exposure we can have some forced and some
+    ;;  not, need to do this object by object
+    ;; forced=0 -> depthflag=1, forced=1 -> depthflag=2, depthflag=forced+1
+    obj[measobj_index[mind]].depthflag OR= (meas[mind].forced+1)
 
   ;; Multiple exposures for this filter to average
   endif else begin
@@ -103,7 +116,7 @@ For f=0,nufilter-1 do begin
       totalwt[measobj_index[mind]] += 1.0d0/meas[mind].err^2
       totalfluxwt[measobj_index[mind]] += 2.5118864d^meas[mind].mag * (1.0d0/meas[mind].err^2)
       ;; Depthflag
-      if meas[mind[0]].forced eq 0 then obj[measobj_index[mind]].depthflag OR= 1 else obj[measobj_index[mind]].depthflag OR= 2
+      obj[measobj_index[mind]].depthflag OR= (meas[mind].forced+1)
     endfor
     newflux = totalfluxwt/totalwt
     newmag = 2.50*alog10(newflux)
@@ -134,7 +147,6 @@ For f=0,nufilter-1 do begin
     obj.(errind) = newerr
     obj.(rmsind) = newrms
     obj.(nobsind) = numobs
-
   endelse  ; combine multiple exposures for this filter
 
 Endfor  ;; unique filter loop
@@ -237,6 +249,11 @@ For f=0,nufilter-1 do begin
 Endfor  ;; unique filter loop
 
 
+;; NDET and NDETALL
+obj.ndet = obj.ndetu+obj.ndetg+obj.ndetr+obj.ndeti+obj.ndetz+obj.ndety
+obj.ndetall = obj.ndetallu+obj.ndetallg+obj.ndetallr+obj.ndetalli+obj.ndetallz+obj.ndetally
+
+
 
 ;; Coordinates, morphology, ebv, etc
 ;;-----------------------------------
@@ -294,11 +311,11 @@ avgsharp = fltarr(nobj)+99.99
 if ngdsharp gt 0 then avgsharp[gdsharp]=totsharp[gdsharp]/totwtsharp[gdsharp]
 obj.sharp = avgsharp
 
+
 ;; Weighted RA/DEC
 totalwt = dblarr(nobj)
 totalrawt = dblarr(nobj)
 totaldecwt = dblarr(nobj)
-numobs = lonarr(nobj)
 for i=0,nexposure-1 do begin
   mind = eindex.index[eindex.lo[i]:eindex.hi[i]]  
   totalwt[measobj_index[mind]] += 1.0d0/meas[mind].err^2
@@ -310,12 +327,30 @@ newdec = totaldecwt/totalwt
 obj.ra = newra
 obj.dec = newdec
 
+
+; RA/DEC RMS
+;  sqrt(mean(diff^2))
+totalradiff = dblarr(nobj)
+totaldecdiff = dblarr(nobj)
+for i=0,nexposure-1 do begin
+  mind = eindex.index[eindex.lo[i]:eindex.hi[i]]  
+  totalradiff[measobj_index[mind]] += (obj[measobj_index[mind]].ra - meas[mind].ra)^2
+  totaldecdiff[measobj_index[mind]] += (obj[measobj_index[mind]].dec - meas[mind].dec)^2
+endfor
+newrarms = sqrt( totalradiff/(obj.ndetall>1) ) * 3600 * cos(obj.dec/!radeg)
+newdecrms = sqrt( totaldecdiff/(obj.ndetall>1) ) * 3600
+bd = where(obj.ndetall eq 0,nbd)
+if nbd gt 0 then newrarms[bd]=99.99
+if nbd gt 0 then newdecrms[bd]=99.99
+; Set rms=99.99 for numobs=1
+oneobs = where(obj.ndetall eq 1,noneobs)
+if noneobs gt 0 then newrarms[oneobs]=99.99
+if noneobs gt 0 then newdecrms[oneobs]=99.99
+obj.rarms = newrarms
+obj.decrms = newdecrms
+
 ;; EBV
 glactc,obj.ra,obj.dec,2000.0,glon,glat,1,/deg
 obj.ebv = dust_getval(glon,glat,/noloop,/interp)
-
-;; NDET and NDETALL
-obj.ndet = obj.ndetu+obj.ndetg+obj.ndetr+obj.ndeti+obj.ndetz+obj.ndety
-obj.ndetall = obj.ndetallu+obj.ndetallg+obj.ndetallr+obj.ndetalli+obj.ndetallz+obj.ndetally
 
 end

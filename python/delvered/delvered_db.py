@@ -142,7 +142,7 @@ def getdatadb(dbfile,table='meas',cols='*',rar=None,decr=None,verbose=False):
 
     return cat
 
-def createsumtable(dbfile=None,delvedir='/dl1/users/dnidever/delve/'):
+def createsumtable(dbfile=None,delvedir='/net/dl2/dnidever/delve/'):
     """ Create the DELVE-MC exposures and chips database"""
 
     expdir = delvedir+'exposures/'
@@ -157,6 +157,9 @@ def createsumtable(dbfile=None,delvedir='/dl1/users/dnidever/delve/'):
     ndirs = dln.size(dirs)
     nights = np.zeros(dirs.size,(np.str,10))
     for i,d in enumerate(dirs): nights[i]=os.path.basename(d)
+    si = np.argsort(nights)
+    nights = nights[si]
+    dirs = dirs[si]
     # Nightly summary files
     allnightsumfiles = dln.strjoin(dirs,'/',nights)
     allnightsumfiles = dln.strjoin(allnightsumfiles,'_summary.fits')
@@ -172,10 +175,10 @@ def createsumtable(dbfile=None,delvedir='/dl1/users/dnidever/delve/'):
         print('Loading '+nightsumfiles[i])
         #st = os.stat(nightsumfiles[i])
         try:
-            expstr1 = fits.getdata(nightsumfiles[i],1)
+            expstr1 = fits.getdata(nightsumfiles[i],1,memmap=False)
             nexpstr1 = dln.size(expstr1)
             lexpstr.append(expstr1)
-            chstr1 = fits.getdata(nightsumfiles[i],2)
+            chstr1 = fits.getdata(nightsumfiles[i],2,memmap=False)
             nchstr1 = dln.size(chstr1)
             lchstr.append(chstr1)
         except:
