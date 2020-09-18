@@ -48,7 +48,7 @@ if n_elements(logfile) eq 0 then logfile=-1
 decam = IMPORTASCII(delvereddir+'data/decam.txt',/header,/silent)
 
 ;; Load the brick information
-brickstr = MRDFITS(delvereddir+'data/delve_deep_bricks.fits.gz',1,/silent)
+brickstr = MRDFITS(delvereddir+'data/delve_deep_bricks.fits',1,/silent)
 
 ;; Get the brick information
 bind = where(brickstr.brickname eq brick,nbind)
