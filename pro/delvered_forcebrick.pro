@@ -113,7 +113,7 @@ printlog,logfile,'IRAFDIR = ',irafdir
 printlog,logfile,'EXPOSUREDIR = ',expdir
 printlog,logfile,'WORKINGDIR = ',workdir
 printlog,logfile,'HOST = ',host
-
+printlog,logfile,systime(0)
 
 
 ;; The photed.setup file
@@ -206,6 +206,7 @@ file_delete,tmpfile,/allow
 nchstr = n_elements(chstr)
 ;chstr.file = repstr(chstr.file,'/net/dl1/','/dl1/')   ;; fix /net/dl1 to /dl1
 printlog,logfile,'Found ',strtrim(nchstr,2),' overlapping chips within 0.5 deg of brick center'
+printlog,logfile,systime(0)
 
 ;; Make sure the chips are unique,  some were duplicated on SMASH nights
 chid = chstr.expnum+'-'+strtrim(chstr.chip,2)
@@ -319,7 +320,7 @@ procdir = first_el(MKTEMP('brk',outdir=workdir,/directory))+'/'
 procdir = repstr(procdir,'//','/')
 FILE_CHMOD,procdir,/a_execute
 printlog,logfile,'Working in temporary directory '+procdir
-
+printlog,logfile,systime(0)
 
 ;; Copy the files
 ;;----------------
@@ -360,6 +361,7 @@ endfor
 ;; Step 2: Run DAOMATCH_TILE.PRO on the files
 ;;--------------------------------------------
 printlog,logfile,'Step 2: Matching up objects with DAOMATCH_TILE'
+printlog,logfile,systime(0)
 cd,procdir
 groupstr = {x0:0,y0:0}
 DAOMATCH_TILE,chstr.base+'.als',tilestr,groupstr
@@ -368,6 +370,7 @@ DAOMATCH_TILE,chstr.base+'.als',tilestr,groupstr
 ;; Step 3: Run ALLFRAME
 ;;----------------------
 printlog,logfile,'Step 3: Run ALLFRAME'
+printlog,logfile,systime(0)
 ;; DO I NEED TO HAVE IT TRIM THE COMBINED IMAGE???
 mchbase = procdir+chstr[0].base
 mchfile = mchbase+'.mch'  ;; allframe needs absolute path
@@ -382,6 +385,7 @@ endif
 ;; Step 4: Calculate coordinates
 ;;-------------------------------
 printlog,logfile,'Step 4: Adding coordinates'
+printlog,logfile,systime(0)
 ; Load the MCH file
 LOADMCH,mchfile,alsfiles
 nalsfiles = n_elements(alsfiles)
@@ -397,6 +401,7 @@ HEAD_XYAD,tilestr.head,instphot.x-1.0,instphot.y-1.0,ra,dec,/degree
 ;; Step 5: Calibrating photometry with zero-points
 ;;-------------------------------------------------
 printlog,logfile,'Step 5: Calibrating photometry with zero-points'
+printlog,logfile,systime(0)
 cmag = fltarr(ninstphot,nchstr)+99.99
 cerr = fltarr(ninstphot,nchstr)+9.99
 ;; Chip loop
@@ -623,6 +628,7 @@ obj = replicate(obj_schema,ninstphot)
 STRUCT_ASSIGN,phot,obj,/nozero
 
 ;; Saving final catalog
+printlog,logfile,systime(0)
 photfile = bdir+brick+'.fits'
 if n_tags(phot) le 999 then begin
   printlog,logfile,'Writing photometry to '+photfile+'.gz'
@@ -686,6 +692,7 @@ allfiles = file_search(procdir+['*','.*.fits'],count=nallfiles)
 FILE_MOVE,allfiles,bdir,/allow,/overwrite
 FILE_DELETE,procdir  ; delete temporary processing directory
 
+printlog,logfile,systime(0)
 printlog,logfile,'DELVERED_FORCEBRICK done after '+strtrim(systime(1)-t0,2)+' sec.'
 
 CD,curdir  ;; back to original directory
@@ -694,6 +701,7 @@ CD,curdir  ;; back to original directory
 printlog,logfile,''
 printlog,logfile,'CREATE JOINT CATALOGS'
 printlog,logfile,''
+printlog,logfile,systime(0)
 
 if keyword_set(redo) or keyword_set(update) then jntredo=1 else jntredo=0
 DELVERED_JOINTBRICKCATS,brick,logfile=logfile,redo=jntredo

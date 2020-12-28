@@ -89,6 +89,7 @@ printlog,logfile,'RA = ',stringize(brickstr1.ra,ndec=5)
 printlog,logfile,'DEC = ',stringize(brickstr1.dec,ndec=5)
 printlog,logfile,'RA range  = [ ',stringize(brickstr1.ra1,ndec=5),',',stringize(brickstr1.ra2,ndec=5),' ]'
 printlog,logfile,'DEC range = [ ',stringize(brickstr1.dec1,ndec=5),',',stringize(brickstr1.dec2,ndec=5),' ]'
+printlog,logfile,systime(0)
 
 ;; Get the Brick WCS information
 tilestr = MAKE_BRICK_WCS(brickstr1)
@@ -97,6 +98,7 @@ tilestr = MAKE_BRICK_WCS(brickstr1)
 ;; Step 1: Get the list of exposures/chips that overlap this brick
 ;;----------------------------------------------------------------
 printlog,logfile,'Step 1: Get list of chip files that overlap this brick'
+printlog,logfile,systime(0)
 cenra = brickstr1.ra
 cendec = brickstr1.dec
 tmpfile = MKTEMP('tmp',/nodot,outdir=tempdir) & TOUCHZERO,tmpfile+'.fits' & FILE_DELETE,[tmpfile,tmpfile+'.fits'],/allow
@@ -122,7 +124,8 @@ nchstr = n_elements(chstr)
 
 ;; Do more rigorous overlap checking
 ;;  the brick region with overlap
-print,'Performing more rigorous overlap checking'
+printlog,logfile,'Performing more rigorous overlap checking'
+printlog,logfile,systime(0)
 HEAD_XYAD,tilestr.head,[0,tilestr.nx-1,tilestr.nx-1,0],[0,0,tilestr.ny-1,tilestr.ny-1],bvra,bvdec,/deg
 olap = intarr(nchstr)
 vxarr = fltarr(nchstr,4)
@@ -145,12 +148,14 @@ if ng eq 0 then begin
   return
 endif
 printlog,logfile,strtrim(ng,2),' chips overlap this brick'
+printlog,logfile,systime(0)
 chstr = chstr[g]
 nchstr = ng
 
 ;; APPLY cuts on the exposures
 ;;-----------------------------
 printlog,logfile,'Applying quality, zero-point, filter and exptime cuts'
+printlog,logfile,systime(0)
 
 ; Zero-point structure, from NSC
 zpstr = replicate({instrument:'',filter:'',amcoef:fltarr(2),thresh:0.5},7)
@@ -402,6 +407,7 @@ endif
 ;;   bad chips from the forced measurements catalog
 ;;----------------------------------------------------------------
 printlog,logfile,'--- Removing chips with bad ALLFRAME astrometric solutions ---'
+printlog,logfile,systime(0)
 mchfile = file_search(bdir+'*_comb.mch',count=nmchfile)
 if nmchfile eq 0 then begin
   printlog,logfile,'No comb.mch file found for '+brick
@@ -458,6 +464,7 @@ endelse
 ;; Merge close neighbors
 ;;----------------------
 printlog,logfile,'--- Merging close neighbors ---'
+printlog,logfile,systime(0)
 combfits = bdir+combbase+'.fits.fz'
 if max(fobj.nalfdetiter) gt 1 then begin
   DELVERED_MERGEALF_CLOSENEIGHBORS,combfits,sex,fobj,fmeas,newobj,newmeas,logfile=logfile
@@ -514,6 +521,7 @@ if nmatch gt 0 then meta[ind1].nmeas = fmeasexpindex.num[ind2]
 printlog,logfile,' '
 printlog,logfile,'Step 1: Adding ALLSTAR measurements for exposures already used in the forced photometry'
 printlog,logfile,' '
+printlog,logfile,systime(0)
 
 ui = uniq(meta.expnum,sort(meta.expnum))
 uexpnum = meta[ui].expnum
@@ -673,6 +681,7 @@ if ocount lt n_elements(obj) then obj=obj[0:ocount-1]
 printlog,logfile,' '
 printlog,logfile,'Step 2: Adding ALLSTAR measurements for NEW exposures'
 printlog,logfile,' '
+printlog,logfile,systime(0)
 
 ;; Get leftover chips
 MATCH,chstr.base,fmeta.base,ind1,ind2,/sort,count=nmatch
@@ -691,6 +700,7 @@ nuexpnum = n_elements(uexpnum)
 
 printlog,logfile,strtrim(nuexpnum,2)+' new exposures to add'
 printlog,logfile,' '
+printlog,logfile,systime(0)
 
 ;; Loop over the new exposures
 For e=0,nuexpnum-1 do begin
@@ -801,6 +811,9 @@ For e=0,nuexpnum-1 do begin
   printlog,logfile,' '
 Endfor ;; exposure loop
 
+printlog,logfile,'Finished adding new exposures'
+printlog,logfile,systime(0)
+
 ;; trim MEAS
 if mcount lt n_elements(meas) then meas=meas[0:mcount-1]
 ;; trim OBJ
@@ -833,6 +846,7 @@ expstr[ind1].nmeas = eindex.num[ind2]
 oldobj = obj
 undefine,obj
 printlog,logfile,'--- AVERAGING THE PHOTOMETRY ---'
+printlog,logfile,systime(0)
 DELVERED_AVGMEAS,expstr,meas,obj
 
 
@@ -855,6 +869,7 @@ obj.brick = brick
 
 ;; Calculate photometric variability metrics
 printlog,logfile,'--- Calculating photometric variability metrics ---'
+printlog,logfile,systime(0)
 DELVERED_PHOTVAR,meas,obj
 
 ;; Fill in mlon/mlat
@@ -878,6 +893,7 @@ if ninside gt 0 then obj[ginside].brickuniq=1B
 ;; Get Gaia DR2 data
 ;; bricks are 0.25 x 0.25 deg, so half the diagonal is 0.177 deg
 printlog,logfile,'Crossmatching with Gaia DR2'
+printlog,logfile,systime(0)
 gaia = DELVERED_GETREFCAT(brickstr1.ra,brickstr1.dec,0.2,'gaiadr2')
 srcmatch,obj.ra,obj.dec,gaia.ra,gaia.dec,1.0,ind1,ind2,/sph,count=nmatch
 printlog,logfile,strtrim(nmatch,2)+' Gaia DR2 matches'
@@ -912,6 +928,7 @@ endif else print,'NO Gaia DR2 matches'
 ;;-------------------
 printlog,logfile,' '
 printlog,logfile,'Saving joint catalogs'
+printlog,logfile,systime(0)
 
 ;; Saving object photometry catalog
 objfile = bdir+brick+'_joint_object.fits'
