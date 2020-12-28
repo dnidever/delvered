@@ -43,6 +43,10 @@ brkstr.ra = cenra
 brkstr.dec = cendec
 brkstr.nobj = n_elements(obj)
 
+;; Sometimes these coordinates can be WAY off
+;; Use the ones from the master brick list
+
+
   ;; Extinction coefficients
   ;;u  4.239
   ;;g  3.303

@@ -80,7 +80,7 @@ brickstr = MRDFITS(delvereddir+'data/delve_deep_bricks.fits',1,/silent)
 ;; Get the brick information
 bind = where(brickstr.brickname eq brick,nbind)
 if nbind eq 0 then begin
-  printlog,logfile,ibrick+' not in DELVE-MC brick list'
+  printlog,logfile,ibrick+' not in DELVE-DEEP brick list'
   return
 endif
 brickstr1 = brickstr[bind[0]]
@@ -696,7 +696,7 @@ printlog,logfile,'CREATE JOINT CATALOGS'
 printlog,logfile,''
 
 if keyword_set(redo) or keyword_set(update) then jntredo=1 else jntredo=0
-DELVERED_JOINTBRICKCATS,brick,logfile=logfile,redo=jntredo
+DELVERED_JOINTBRICKCATS_DEEP,brick,logfile=logfile,redo=jntredo
 
 JOURNAL
 
