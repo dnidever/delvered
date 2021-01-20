@@ -13,6 +13,10 @@
 pro delvered_forcebrick,brick,scriptsdir=scriptsdirs,irafdir=irafdir,workdir=workdir,redo=redo,update=update,$
                         logfile=logfile,delvedir=delvedir
 
+
+;; Limit the number of threads
+CPU,tpool_nthreads=4
+
 ;; This bricks pre-processing script gets DELVE and community MC data ready
 ;; to run PHOTRED ALLFRAME on it.
 

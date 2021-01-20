@@ -14,6 +14,9 @@ pro delvered_jointbrickcats,brick,scriptsdir=scriptsdirs,irafdir=irafdir,workdir
 
 ;; This bricks pre-processing script gets DELVE and community MC data ready
 ;; to run PHOTRED ALLFRAME on it.
+  
+;; Limit the number of threads
+CPU,tpool_nthreads=4
 
 t0 = systime(1)
 CD,current=curdir
