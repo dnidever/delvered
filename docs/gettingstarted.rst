@@ -5,18 +5,27 @@ Getting Started
 Quickstart
 ==========
 
-This is how you can run |idl2py| directly from the unix command line.
+There are two main steps to |delvered|, the `exposure` level processing and the `brick` level forced-photometry processing.  Most of the
+software is IDL.
 
-.. code-block:: bash
+Exposure
+--------
 
-	idl2py program.pro
+The exposure-level processing is grouped on a nightly basis.  The "driver" program is called `delvered_exposures` and can be given a list
+or range of nights to process.
 
-The translated code will then appear in a file called ``program.py``.
-	
-You can also run |idl2py| from python.
+.. code-block:: idl
 
-.. code-block:: python
+	IDL>delvered_exposures,'20160101'
 
-	from idl2py import idl2py
-	idl2py.convert('program.pro')
+
+Brick
+-----
+
+The brick-level processing is grouped by `bricks` that cover 0.25x0.25 deg on the sky.  The driver program is called `delvered_bricks` and
+can be given a list of brick names.
+
+.. code-block:: idl
+
+	IDL>delvered_bricks,'1887m827'
 

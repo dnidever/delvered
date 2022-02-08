@@ -4,14 +4,13 @@
    contain the root `toctree` directive.
 
 **********
-idl2py
+delvered
 **********
 
 Introduction
 ============
-|idl2py| is a simple tool to convert IDL programs to Python.  It is designed to give
-a jump start on the translation process, not produce runable code.
-
+|delvered| is photometric reduction software to process the DECam data
+for the DELVE-MC survey of the Magellanic Clouds.
 
 .. toctree::
    :maxdepth: 1
