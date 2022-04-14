@@ -6,6 +6,8 @@ import numpy as np
 import socket
 import logging
 import tempfile
+import shutil
+from glob import glob
 from datetime import datetime
 from dlnpyutils import utils as dln
 
@@ -106,20 +108,20 @@ def forcebrick(brick,scriptsdir=None,irafdir=None,workdir=None,redo=False,
     brickstr = MRDFITS(delvereddir+'data/delvemc_bricks_0.25deg.fits.gz',1,/silent) 
      
     # Get the brick information 
-    bind , = np.where(brickstr.brickname == brick,nbind) 
-    if nbind == 0: 
-        logger.info(ibrick+' not in DELVE-MC brick list' 
+    bind, = np.where(brickstr['brickname'] == brick) 
+    if len(bind) == 0: 
+        logger.info(ibrick+' not in DELVE-MC brick list')
         return 
-    brickstr1 = brickstr[bind[0]] 
+    brickstr1 = brickstr[bind[0]]
      
     # Subdirectory is the first 4 digits of the brickname, e.g., 0952 of 0952m462, the RA portion of the name 
-    subdir = brickdir+strmid(brick,0,4)+'/' 
-    if os.path.exists(subdir,/directory) == 0 : 
-        file_mkdir,subdir 
+    subdir = brickdir+brick[0:4]+'/' 
+    if os.path.exists(subdir)==False:
+        os.makedirs(subdir)
     # Create brick directory if it doesn't exist yet 
     bdir = subdir+brick+'/' 
-    if os.path.exists(bdir,/directory) == 0 : 
-        file_mkdir,bdir 
+    if os.path.exists(bdir):
+        os.makedirs(bdir)
     logfile = bdir+brick+'.'+logtime+'.log' 
      
     # Check the output file 
@@ -211,7 +213,7 @@ def forcebrick(brick,scriptsdir=None,irafdir=None,workdir=None,redo=False,
     logger.info('DEC range = [ %.5f,%.5f ]' % (brickstr1['dec1'],brickstr1['dec2']))                
      
     # Get the Brick WCS information 
-    tilestr = make_brick_wcs(brickstr1) 
+    tilestr = make_brick_wcs(brickstr1)
      
      
     # Step 1: Get the list of exposures/chips that overlap this brick 
@@ -225,11 +227,13 @@ def forcebrick(brick,scriptsdir=None,irafdir=None,workdir=None,redo=False,
     for f in [tmpfile,tmpfile+'.fits']:
         if os.path.exists(f): os.remove(f)
     tmpfile += '.fits' 
-    # /noshell causes problems on gp09 because it gives python2 instead of python3 
-    spawn,delvereddir+'bin/query_delvered_summary_table '+str(cenra,2)+' '+str(cendec,2)+' '+tmpfile+' --lim 0.5',out,errout 
-    info = file_info(tmpfile) 
-    if info.size == 0: 
+    # /noshell causes problems on gp09 because it gives python2 instead of python3
+    out = subprocess.check_output(delvereddir+'bin/query_delvered_summary_table '+str(cenra,2)+' '+str(cendec,2)+' '+tmpfile+' --lim 0.5')
+    exists = os.path.exists(tmpfile)
+    size = os.size(tmpfile)
+    if size == 0: 
         logger.info('No overlapping chips found')
+        if os.path.exists(tmpfile): os.remove(tmpfile)
         return
     chstr = Table.read(tmpfile)
     if os.path.exists(tmpfile): os.remove(tmpfile)
@@ -246,6 +250,7 @@ def forcebrick(brick,scriptsdir=None,irafdir=None,workdir=None,redo=False,
     # Do more rigorous overlap checking 
     #  the brick region with overlap 
     print('Performing more rigorous overlap checking')
+    
     HEAD_XYAD,tilestr.head,[0,tilestr.nx-1,tilestr.nx-1,0],[0,0,tilestr.ny-1,tilestr.ny-1],bvra,bvdec,/deg 
     olap = intarr(nchstr) 
     vxarr = fltarr(nchstr,4) 
@@ -253,17 +258,18 @@ def forcebrick(brick,scriptsdir=None,irafdir=None,workdir=None,redo=False,
     for i in range(nchstr): 
         if (i mod 100 == 0) and (i > 0): 
             print(i)
-        hd1 = PHOTRED_READFILE(chstr[i].file,/header) 
-        nx = sxpar(hd1,'naxis1') 
-        ny = sxpar(hd1,'naxis2') 
+        hd1 = photred.utils.readfile(chstr['file'][i],header=True)
+        nx = hd1['naxis1']
+        ny = hd1['naxis2']
         head_xyad,hd1,[0,nx-1,nx-1,0],[0,0,ny-1,ny-1],vra,vdec,/degree 
-        olap[i] =:polygonsoverlap(bvra,bvdec,vra,vdec) 
-        head_adxy,tilestr.head,vra,vdec,vx,vy,/deg 
+        olap[i] = dln.dopolygonsoverlap(bvra,bvdec,vra,vdec) 
+        head_adxy,tilestr['head'],vra,vdec,vx,vy,/deg 
         vxarr[i,:] = vx 
         vyarr[i,:] = vy 
     # Require at least a 2 pixel overlap in X and Y 
-    g , = np.where(olap == 1 and max(vxarr,dim=2) >= 2 and max(vyarr,dim=2) >= 2 and min(vxarr,dim=2) <= tilestr.nx-3 and min(vyarr,dim=2) <= tilestr.ny-3,ng) 
-    if ng == 0: 
+    g, = np.where(olap == 1 and np.max(vxarr,axis=2) >= 2 and np.max(vyarr,axis=2) >= 2 and
+                   min(vxarr,axis=2) <= tilestr.nx-3 and np.min(vyarr,axis=2) <= tilestr.ny-3) 
+    if len(g) == 0: 
         logger.info('No chips overlap this brick')
         return 
     logger.info(str(ng)+' chips overlap this brick')
@@ -274,74 +280,81 @@ def forcebrick(brick,scriptsdir=None,irafdir=None,workdir=None,redo=False,
     #----------------------------- 
     logger.info('Applying quality, zero-point, filter and exptime cuts')
      
-    # Zero-point structure, from NSC 
-    zpstr = replicate({instrument:'',filter:'',amcoef:fltarr(2),thresh:0.5},7) 
-    zpstr.instrument = 'c4d' 
-    zpstr.filter = ['u','g','r','i','z','Y','VR'] 
-    zpstr[0].amcoef = [-1.60273, -0.375253]  # c4d-u 
-    zpstr[1].amcoef = [0.277124, -0.198037]  # c4d-g 
-    zpstr[2].amcoef = [0.516382, -0.115443]  # c4d-r 
-    zpstr[3].amcoef = [0.380338, -0.067439]  # c4d-i 
-    zpstr[4].amcoef = [0.074517, -0.067031]  # c4d-z 
-    zpstr[5].amcoef = [-1.07800, -0.060014]  # c4d-Y 
-    zpstr[6].amcoef = [1.111859, -0.083630]  # c4d-VR 
+    # Zero-point structure, from NSC
+    zpstr = np.zeros(7,dtype=np.dtype([('instrument',np.str,10),('filter',np.str,10),('amcoef',(float,2)),('thresh',float)]))
+    #zpstr = replicate({instrument:'',filter:'',amcoef:fltarr(2),thresh:0.5},7)
+    zpstr['instrument'] = 'c4d'
+    zpstr['filter'] = ['u','g','r','i','z','Y','VR'] 
+    zpstr['amcoef'][0] = [-1.60273, -0.375253]  # c4d-u 
+    zpstr['amcoef'][1] = [0.277124, -0.198037]  # c4d-g 
+    zpstr['amcoef'][2] = [0.516382, -0.115443]  # c4d-r 
+    zpstr['amcoef'][3] = [0.380338, -0.067439]  # c4d-i 
+    zpstr['amcoef'][4] = [0.074517, -0.067031]  # c4d-z 
+    zpstr['amcoef'][5] = [-1.07800, -0.060014]  # c4d-Y 
+    zpstr['amcoef'][6] = [1.111859, -0.083630]  # c4d-VR 
      
     # Convert to additive zero-point as used in NSC 
-    zpterm = -chstr.calib_zpterm 
+    zpterm = -chstr['calib_zpterm']
     # Fix early DES exposures that used different units/gain 
-    gdes, = np.where(chstr.gain < 2,ngdes) 
+    gdes, = np.where(chstr['gain'] < 2)
     if len(gdes) > 0: 
         zpterm[gdes] -= 1.55 
     # global zpterm and airmass correction 
     for i in range(len(zpstr)): 
-        ind , = np.where(chstr.filter == zpstr[i].filter,nind) 
-        if nind > 0 : 
-            zpterm[ind] -= poly(chstr[ind].airmass,zpstr[i].amcoef) 
-     
-    fwhmthresh = 2.0# seeing 2.0" threshold 
-    filt = strmid(chstr.filter,0,1) 
-    gdch , = np.where(chstr.fwhm*chstr.pixscale <= fwhmthresh and chstr.exptime >= 90. and zpterm >= -0.5 and              finite(zpterm) == 1 and finite(chstr.apcor) == 1 and              (filt == 'u' or filt == 'g' or filt == 'r' or filt == 'i' or filt == 'z' or filt == 'Y'),ngdch) 
-     
-    if ngdch == 0: 
+        ind, = np.where(chstr['filter']==zpstr['filter'][i])
+        if len(ind)>0: 
+            zpterm[ind] -= np.polyval(chstr['airmass'][ind],zpstr['amcoef'][i]) 
+                     
+    fwhmthresh = 2.0  # seeing 2.0" threshold 
+    filt = chstr['filter'][0]
+    gdch, = np.where((chstr['fwhm']*chstr['pixscale'] <= fwhmthresh) & (chstr['exptime'] >= 90.) & (zpterm >= -0.5) &
+                     np.isfinite(zpterm) & np.isfinite(chstr['apcor']) &
+                     ((filt== 'u') or (filt=='g') or (filt=='r') or (filt=='i') or (filt=='z') or (filt=='Y')))
+    if len(gdch) == 0: 
         logger.info('No chips passed the cuts')
         return 
     logger.info(str(ngdch)+' chips passed the cuts')
     chstr = chstr[gdch] 
     nchstr = ngdch 
-    chstr.file = str(chstr.file,2) 
-    chstr.base = str(chstr.base,2) 
-     
+    chstr['file'] = str(chstr['file']) 
+    chstr['base'] = str(chstr['base'])
      
     # Check if we need to update
     if update and redo==False:
         # Load previous meta 
-        metafile = bdir+brick+'_meta.fits' 
-        if os.path.exists(metafile): 
-            meta0 = mrdfits(metafile,1,/silent) 
-            meta0.base = str(meta0.base,2) 
-            MATCH,meta0.base,chstr.base,ind1,ind2,/sort,count=nmatch 
+        metafile = bdir+brick+'_meta.fits'
+        if os.path.exists(metafile):
+            meta0 = Table.read(metafile,1)
+            meta0['base'] = str(meta0['base'])
+            ind1,ind2 = dln.match(meta0['base'],chstr['base'])
             if nchstr == len(meta0) and nchstr == nmatch: 
                 logger.info('Nothing to UPDATE') 
                 return 
-            # Moving previous catalogs to a backup 
-            oldfiles = file_search(bdir+[brick+'*fits*','allframe.opt','default.*'],count=noldfiles) 
-            if noldfiles > 0: 
+            # Moving previous catalogs to a backup
+            oldfiles = glob(bdir+brick+'*fits*')
+            oldfiles += glob(bdir+brick+'allframe.opt')
+            oldfiles += glob(bdir+brick+'default.*')
+            if len(oldfiles)>0: 
                 bakdir = bdir+'bak'+logtime
                 logger.info('Backing up old files to '+bakdir)
-                FILE_MKDIR,bakdir 
-                FILE_MOVE,oldfiles,bakdir 
-             else logger.info('No old files to backup')
+                os.makedirs(bakdir)
+                for f in oldfiles:
+                    shutil.move(f,bakdir)
+            else:
+                logger.info('No old files to backup')
             logger.info('There are new exposures to include.  UPDATING')
          
-         
-         
+                  
         # Create temporary local directory to perform the work/processing 
         #  copy everything to it 
-        if os.path.exists(workdir,/directory) == 0 : 
-            FILE_MKDIR,workdir 
-        procdir = first_el(MKTEMP('brk',outdir=workdir,/directory))+'/' 
-        procdir = repstr(procdir,'//','/') 
-        FILE_CHMOD,procdir,/a_execute 
+        if os.path.exists(workdir)==False:
+            os.makedirs(workdir)
+                     
+        tid2,procdir = tempfile.mkstemp(prefix="brk",dir=workdir)
+        procdir += '/'
+        #procdir = first_el(MKTEMP('brk',outdir=workdir,/directory))+'/' 
+        #procdir = repstr(procdir,'//','/')
+        os.chmod(prodic,0o755)
         logger.info('Working in temporary directory '+procdir)
         logger.info(datetime.now().strftime("%a %b %d %H:%M:%S %Y")) 
                     
@@ -350,17 +363,17 @@ def forcebrick(brick,scriptsdir=None,irafdir=None,workdir=None,redo=False,
         logger.info('Copying over the necessary files to '+procdir)
         # Chip loop 
         for i in range(nchstr): 
-            logger.info('Copying over files for ',chstr[i].file 
+            logger.info('Copying over files for '+chstr['file'][i])
             # New filename 
             #chstr[i].newbase = chstr[i].base 
-            odir = os.path.dirname(chstr[i].file)+'/' 
-            obase = PHOTRED_GETFITSEXT(chstr[i].file,/basename) 
+            odir = os.path.dirname(chstr['file'][i])+'/' 
+            obase = PHOTRED_GETFITSEXT(chstr['file'][i],/basename) 
             obase = first_el(obase) 
             # Need symlinks to .psf, .als 
-            if os.path.exists(odir+obase+'.psf') == 0: 
+            if os.path.exists(odir+obase+'.psf') == False: 
                 logger.info(odir+obase+'.psf NOT FOUND.  Skipping this chip' 
                 goto,BOMB1 
-            if os.path.exists(odir+obase+'.als') == 0: 
+            if os.path.exists(odir+obase+'.als') == False: 
                 logger.info(odir+obase+'.als NOT FOUND.  Skipping this chip' 
                 goto,BOMB1 
             os.remove(procdir+chstr[i].base+['.psf','.als','.ap','.opt','.als.opt','.log'],/allow 
