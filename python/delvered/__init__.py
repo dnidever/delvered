@@ -1,1 +1,1 @@
-__all__ = ["delvered_db"]
+__all__ = ["delvered_db","bricks","forcebrick"]

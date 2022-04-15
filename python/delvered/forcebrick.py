@@ -9,9 +9,14 @@ import tempfile
 import shutil
 from glob import glob
 from datetime import datetime
-from dlnpyutils import utils as dln
+from dlnpyutils import utils as dln, coords
+import photred
+import photred.io as io
+import photred.allframe as alf
+import dill as pickle
+from astropy.coordinates import SkyCoord
+from dustmaps.sfd import SFDQuery
 
- 
 def forcebrick(brick,scriptsdir=None,irafdir=None,workdir=None,redo=False,
                update=False,logfile=None,delvedir=None):
     """
@@ -101,11 +106,11 @@ def forcebrick(brick,scriptsdir=None,irafdir=None,workdir=None,redo=False,
     logger.addHandler(consoleHandler)
     logger.setLevel(logging.NOTSET)
      
-    # Chip name and CCDNUM relations 
-    decam = IMPORTASCII(delvereddir+'data/decam.txt',/header,/silent) 
+    # Chip name and CCDNUM relations
+    decam = Table.read(delvereddir+'data/decam.txt',format='ascii')
      
-    # Load the brick information 
-    brickstr = MRDFITS(delvereddir+'data/delvemc_bricks_0.25deg.fits.gz',1,/silent) 
+    # Load the brick information
+    brickstr = Table.read(delvereddir+'data/delvemc_bricks_0.25deg.fits.gz')
      
     # Get the brick information 
     bind, = np.where(brickstr['brickname'] == brick) 
@@ -204,7 +209,7 @@ def forcebrick(brick,scriptsdir=None,irafdir=None,workdir=None,redo=False,
              '#save',
              '#html']
     dln.writelines(bdir+'photred.setup',setup)
-    setup = photred.utils.loadsetup(setupdir=bdir)
+    setup = io.loadsetup(setupdir=bdir)
      
     # Print out some information about the brick 
     logger.info('RA = %.5f' % brickstr1['ra'])
@@ -250,25 +255,28 @@ def forcebrick(brick,scriptsdir=None,irafdir=None,workdir=None,redo=False,
     # Do more rigorous overlap checking 
     #  the brick region with overlap 
     print('Performing more rigorous overlap checking')
-    
-    HEAD_XYAD,tilestr.head,[0,tilestr.nx-1,tilestr.nx-1,0],[0,0,tilestr.ny-1,tilestr.ny-1],bvra,bvdec,/deg 
-    olap = intarr(nchstr) 
-    vxarr = fltarr(nchstr,4) 
-    vyarr = fltarr(nchstr,4) 
+    bvra,bvdec = tilestr.wcs.pixel_to_world([0,tilestr['nx']-1,tilestr['nx']-1,0],[0,0,tilestr['ny']-1,tilestr['ny']-1],0)
+    #HEAD_XYAD,tilestr.head,[0,tilestr.nx-1,tilestr.nx-1,0],[0,0,tilestr.ny-1,tilestr.ny-1],bvra,bvdec,/deg
+    olap = np.zeros(nchstr,int)
+    vxarr = np.zeros((nchstr,4),float)
+    vyarr = np.zeros((nchstr,4),float)    
     for i in range(nchstr): 
-        if (i mod 100 == 0) and (i > 0): 
+        if (i % 100 == 0) and (i > 0): 
             print(i)
-        hd1 = photred.utils.readfile(chstr['file'][i],header=True)
+        hd1 = io.readfile(chstr['file'][i],header=True)
         nx = hd1['naxis1']
         ny = hd1['naxis2']
-        head_xyad,hd1,[0,nx-1,nx-1,0],[0,0,ny-1,ny-1],vra,vdec,/degree 
-        olap[i] = dln.dopolygonsoverlap(bvra,bvdec,vra,vdec) 
-        head_adxy,tilestr['head'],vra,vdec,vx,vy,/deg 
+        w1 = WCS(hd1)
+        vra,vdec = w1.pixel_to_world([0,nx-1,nx-1,0],[0,0,ny-1,ny-1])
+        #head_xyad,hd1,[0,nx-1,nx-1,0],[0,0,ny-1,ny-1],vra,vdec,/degree 
+        olap[i] = coords.dopolygonsoverlap(bvra,bvdec,vra,vdec) 
+        #head_adxy,tilestr['head'],vra,vdec,vx,vy,/deg
+        vx,vy = tilestr.wcs.world_to_pixel(vra,vdec)
         vxarr[i,:] = vx 
         vyarr[i,:] = vy 
     # Require at least a 2 pixel overlap in X and Y 
-    g, = np.where(olap == 1 and np.max(vxarr,axis=2) >= 2 and np.max(vyarr,axis=2) >= 2 and
-                   min(vxarr,axis=2) <= tilestr.nx-3 and np.min(vyarr,axis=2) <= tilestr.ny-3) 
+    g, = np.where((olap==1) & (np.max(vxarr,axis=2) >= 2) & (np.max(vyarr,axis=2) >= 2) &
+                  (np.min(vxarr,axis=2) <= tilestr['nx']-3) & (np.min(vyarr,axis=2) <= tilestr['ny']-3))
     if len(g) == 0: 
         logger.info('No chips overlap this brick')
         return 
@@ -366,31 +374,35 @@ def forcebrick(brick,scriptsdir=None,irafdir=None,workdir=None,redo=False,
             logger.info('Copying over files for '+chstr['file'][i])
             # New filename 
             #chstr[i].newbase = chstr[i].base 
-            odir = os.path.dirname(chstr['file'][i])+'/' 
-            obase = PHOTRED_GETFITSEXT(chstr['file'][i],/basename) 
-            obase = first_el(obase) 
+            odir = os.path.dirname(chstr['file'][i])+'/'
+            obase = photred.utils.fitsext(chstr['file'][i],basename=True)
+            obase = obase[0]
             # Need symlinks to .psf, .als 
             if os.path.exists(odir+obase+'.psf') == False: 
-                logger.info(odir+obase+'.psf NOT FOUND.  Skipping this chip' 
-                goto,BOMB1 
+                logger.info(odir+obase+'.psf NOT FOUND.  Skipping this chip') 
+                continue
             if os.path.exists(odir+obase+'.als') == False: 
-                logger.info(odir+obase+'.als NOT FOUND.  Skipping this chip' 
-                goto,BOMB1 
-            os.remove(procdir+chstr[i].base+['.psf','.als','.ap','.opt','.als.opt','.log'],/allow 
-            FILE_COPY,odir+obase+['.psf','.als','.ap','.opt','.als.opt','.log'],procdir,/allow_same,/overwrite 
-            FILE_CHMOD,procdir+chstr[i].base+['.psf','.als','.ap','.opt','.als.opt','.log'],'755'o# make sure they are writable 
+                logger.info(odir+obase+'.als NOT FOUND.  Skipping this chip')
+                continue
+            for e in ['.psf','.als','.ap','.opt','.als.opt','.log']:
+                if os.path.exists(procdir+chstr[i].base+e): os.remove(procdir+chstr[i].base+e)
+            for e in ['.psf','.als','.ap','.opt','.als.opt','.log']:
+                if os.path.exists(procdir+'/'+obase+e): os.remove(procdir+'/'+obase+e)
+                shutil.copyfile(odir+obase+e,procdir)
+                os.chmod(procdir+chstr['base'][i]+e,0o755)  # make sure they are writable 
             # Copy the fits, fits resource file and header files locally 
-            if os.path.exists(odir+obase+'.fits') == 0: 
-                logger.info(odir+obase+'.fits NOT FOUND.  Skipping this chip' 
-                goto,BOMB1 
-            FILE_COPY,odir+obase+'.fits',procdir,/over 
-            if os.path.exists(odir+'.'+obase+'.fits') == 1 : 
-                FILE_COPY,odir+'.'+obase+'.fits',procdir,/over 
-            if os.path.exists(odir+obase+'.fits.head') == 1 : 
-                FILE_COPY,odir+obase+'.fits.head',procdir,/over 
-            FILE_CHMOD,procdir+chstr[i].base+'.fits','755'o 
-            BOMB1: 
-         
+            if os.path.exists(odir+obase+'.fits') == False: 
+                logger.info(odir+obase+'.fits NOT FOUND.  Skipping this chip')
+                continue
+            if os.path.exists(odir+obase+'.fits'): os.remove(odir+obase+'.fits')
+            shutil.copyfile(odir+obase+'.fits',procdir)
+            if os.path.exists(odir+'.'+obase+'.fits'):
+                if os.path.exists(procdir+'.'+obase+'.fits'): os.remove(procdir+'.'+obase+'.fits')
+                shutil.copyfile(odir+'.'+obase+'.fits',procdir)
+            if os.path.exists(odir+obase+'.fits.head'):
+                if os.path.exists(procdir+obase+'.fits.head'): os.remove(procdir+obase+'.fits.head')
+                shutil.copyfile(odir+obase+'.fits.head',procdir)
+            os.chmod(procdir+chstr['base'][i]+'.fits',0o755)
          
         # Step 2: Run DAOMATCH_TILE.PRO on the files 
         #-------------------------------------------- 
@@ -399,8 +411,7 @@ def forcebrick(brick,scriptsdir=None,irafdir=None,workdir=None,redo=False,
         os.chdir(procdir)
         groupstr = {'x0':0,'y0':0} 
         daomatch_tile(chstr['base']+'.als',tilestr,groupstr)
-         
-         
+                  
         # Step 3: Run ALLFRAME 
         #---------------------- 
         logger.info('Step 3: Run ALLFRAME')
@@ -408,9 +419,10 @@ def forcebrick(brick,scriptsdir=None,irafdir=None,workdir=None,redo=False,
         # DO I NEED TO HAVE IT TRIM THE COMBINED IMAGE??? 
         mchbase = procdir+chstr[0].base 
         mchfile = mchbase+'.mch'# allframe needs absolute path 
-        ALLFRAME,mchfile,tile=tilestr,setupdir=bdir,scriptsdir=scriptsdir,irafdir=irafdir,         logfile=logfile,catformat='FITS',imager=thisimager,geocoef=0 
-        magfile = chstr[0].base+'.mag' 
-        if os.path.exists(magfile) == 0: 
+        alf.allframe(mchfile,tile=tilestr,setupdir=bdir,scriptsdir=scriptsdir,irafdir=irafdir,
+                     logfile=logfile,catformat='FITS',imager=thisimager,geocoef=0)
+        magfile = chstr['base'][0]+'.mag' 
+        if os.path.exists(magfile) == False: 
             logger.info(magfile+' NOT FOUND')
             return 
          
@@ -419,132 +431,133 @@ def forcebrick(brick,scriptsdir=None,irafdir=None,workdir=None,redo=False,
         logger.info('Step 4: Adding coordinates')
         logger.info(datetime.now().strftime("%a %b %d %H:%M:%S %Y"))                     
         # Load the MCH file
-        alsfiles,trans,magoff = photred.utils.loadmch(mchfile)
+        alsfiles,trans,magoff = io.loadmch(mchfile)
         nalsfiles = len(alsfiles) 
         # Load the photometry file 
-        instphot = PHOTRED_READFILE(magfile) 
+        instphot = io.readfile(magfile) 
         ninstphot = len(instphot) 
         logger.info('Nstars = '+str(ninstphot)) 
         # Converting to IDL X/Y convention, starting at (0,0) 
-        # DAOPHOT has X/Y start at (1,1) 
-        HEAD_XYAD,tilestr.head,instphot.x-1.0,instphot.y-1.0,ra,dec,/degree 
+        # DAOPHOT has X/Y start at (1,1)
+        ra,dec = tilestr['wcs'].pixel_to_world(instphot.x-1.0,instphot.y-1.0)
+        #HEAD_XYAD,tilestr.head,instphot.x-1.0,instphot.y-1.0,ra,dec,/degree 
          
          
         # Step 5: Calibrating photometry with zero-points 
         #------------------------------------------------- 
         logger.info('Step 5: Calibrating photometry with zero-points')
-        logger.info(datetime.now().strftime("%a %b %d %H:%M:%S %Y"))                     
-        cmag = fltarr(ninstphot,nchstr)+99.99 
-        cerr = fltarr(ninstphot,nchstr)+9.99 
+        logger.info(datetime.now().strftime("%a %b %d %H:%M:%S %Y"))
+        cmag = np.zeros((ninstphot,nchstr),float)+99.99
+        cerr = np.zeros((ninstphot,nchstr),float)+9.99        
         # Chip loop 
         for i in range(nchstr): 
             # id, x, y, ra, dec, unsolved magnitudes, chi, sharp 
-            imag = instphot.(2*i+3) 
-            ierr = instphot.(2*i+4) 
-            gdmag , = np.where(imag < 50,ngdmag) 
-            if ngdmag > 0: 
+            imag = instphot['mag'+str(i+1)] 
+            ierr = instphot['err'+str(i+1)]
+            gdmag, = np.where(imag < 50)
+            if len(gdmag) > 0: 
                 # exptime, aperture correction, zero-point 
                 # aperture correction is SUBTRACTIVE, makes it brighter 
                 # ZPTERM is a SUBTRACTIVE constant offset 
-                cmag[gdmag,i] = imag[gdmag] + 2.5*alog10(chstr[i].exptime) - chstr[i].apcor - chstr[i].calib_zpterm 
+                cmag[gdmag,i] = imag[gdmag] + 2.5*np.log10(chstr['exptime'][i]) - chstr['apcor'][i] - chstr['calib_zpterm'][i]
                 # Add zero-point error in quadrature 
-                cerr[gdmag,i] = sqrt(ierr[gdmag]**2+chstr[i].calib_zptermsig**2) 
-        # Calculate average photometry per filter 
-        ufilt = chstr[np.uniq(chstr.filter,np.argsort(chstr.filter))].filter 
-        nufilt = len(ufilt) 
-        avgmag = fltarr(ninstphot,nufilt) 
-        avgerr = fltarr(ninstphot,nufilt) 
-        ndet = lonarr(ninstphot,nufilt) 
+                cerr[gdmag,i] = np.sqrt(ierr[gdmag]**2+chstr['calib_zptermsig'][i]**2) 
+        # Calculate average photometry per filter
+        ufilt = np.unique(chstr['filter'])
+        nufilt = len(ufilt)
+        avgmag = np.zeros((ninstphot,nufilt),float)
+        avgerr = np.zeros((ninstphot,nufilt),float)        
+        ndet = np.zeros((ninstphot,nufilt),int)
         for i in range(nufilt): 
-            gdf , = np.where(chstr.filter == ufilt[i],ngdf) 
+            gdf, = np.where(chstr['filter'] == ufilt[i]) 
             # Single exposure 
-            if ngdf == 1: 
+            if len(gdf) == 1: 
                 avgmag[:,i] = cmag[:,gdf[0]] 
                 avgerr[:,i] = cerr[:,gdf[0]] 
-                ndet[:,i] = (cmag[:,gdf[0]] < 50) 
+                ndet[:,i] = np.sum(cmag[:,gdf[0]] < 50) 
                 # Multiple exposures 
             else: 
-                # Loop through all of the exposures and add up the flux, totalwt, etc. 
-                totalwt = dblarr(ninstphot) 
-                totalfluxwt = dblarr(ninstphot) 
+                # Loop through all of the exposures and add up the flux, totalwt, etc.
+                totalwt = np.zeros(ninstphot,float)
+                totalfluxwt = np.zeros(ninstphot,float)
                 for k in range(ngdf): 
-                    gdmag , = np.where(cmag[:,gdf[k]] < 50,ngdmag) 
-                    if ngdmag > 0: 
-                        totalwt[gdmag] += 1.0d0/cerr[gdmag,gdf[k]]**2 
-                        totalfluxwt[gdmag] += 2.5118864d**cmag[gdmag,gdf[k]] * (1.0d0/cerr[gdmag,gdf[k]]**2) 
-                        ndet[gdmag,i]++ 
+                    gdmag, = np.where(cmag[:,gdf[k]] < 50) 
+                    if len(gdmag) > 0: 
+                        totalwt[gdmag] += 1.0/cerr[gdmag,gdf[k]]**2 
+                        totalfluxwt[gdmag] += 2.5118864**cmag[gdmag,gdf[k]] * (1.0/cerr[gdmag,gdf[k]]**2) 
+                        ndet[gdmag,i] += 1
                 newflux = totalfluxwt/totalwt 
-                newmag = 2.50*alog10(newflux) 
-                newerr = sqrt(1.0/totalwt) 
-                bdmag , = np.where(finite(newmag) == 0,nbdmag) 
-                if nbdmag > 0: 
+                newmag = 2.5*np.log10(newflux) 
+                newerr = np.sqrt(1.0/totalwt) 
+                bdmag, = np.where(~np.isfinite(newmag)) 
+                if len(bdmag) > 0: 
                     newmag[bdmag] = 99.99 
                     newerr[bdmag] = 9.99 
                 avgmag[:,i] = newmag 
                 avgerr[:,i] = newerr 
-        # Measure scatter 
-        scatter = fltarr(ninstphot,nufilt)+99.99 
+        # Measure scatter
+        scatter = np.zeros((ninstphot,nufilt),float)+99.99
         for i in range(nufilt): 
-            gdf , = np.where(chstr.filter == ufilt[i],ngdf) 
-            if ngdf > 1: 
-                totaldiff = fltarr(ninstphot) 
+            gdf, = np.where(chstr['filter'] == ufilt[i]) 
+            if len(gdf) > 1:
+                totaldiff = np.zeros(ninstphot,float)
                 for k in range(ngdf): 
-                    gdmag , = np.where(cmag[:,gdf[k]] < 50,ngdmag) 
-                    if ngdmag > 0 : 
+                    gdmag, = np.where(cmag[:,gdf[k]] < 50) 
+                    if len(gdmag) > 0: 
                         totaldiff[gdmag] += (avgmag[gdmag,i]-cmag[gdmag,gdf[k]])**2 
-                scatter[:,i] = sqrt( totaldiff/(ndet[:,i]>1) ) 
-                bd , = np.where(ndet[:,i] <= 1,nbd) 
-                if nbd > 0 : 
+                scatter[:,i] = np.sqrt( totaldiff/np.maximum(ndet[:,i],1) ) 
+                bd, = np.where(ndet[:,i] <= 1) 
+                if len(bd) > 0 : 
                     scatter[bd,i]=99.99 
-        # Create final catalog schema 
-        newschema = {objid:'',x:0.0,y:0.0,ra:0.0d0,dec:0.0d0} 
+        # Create final catalog schema
+        photdt = [('objid',(np.str,100)),('x',float),('y',float),('ra',float),('dec',float)]
+
         # Add columns for calibrated single-epoch photometry columns 
-        cmagnames = strarr(nchstr) 
-        cerrnames = strarr(nchstr) 
+        cmagnames = np.zeros(nchstr,(np.str,100))
+        cerrnames = np.zeros(nchstr,(np.str,100))        
         for i in range(nufilt): 
-            ind , = np.where(chstr.filter == ufilt[i],nind) 
-            cmagnames[ind] = strupcase(ufilt[i])+str(lindgen(nind)+1,2)+'MAG' 
-            cerrnames[ind] = strupcase(ufilt[i])+str(lindgen(nind)+1,2)+'ERR' 
-        for i in range(nchstr): 
-            newschema = create_struct(newschema,cmagnames[i],0.0,cerrnames[i],0.0) 
+            ind, = np.where(chstr['filter'] == ufilt[i]) 
+            cmagnames[ind] = [ufilt[i].upper()+str(j+1)+'MAG' for j in np.arange(nind)]
+            cerrnames[ind] = [ufilt[i].upper()+str(j+1)+'ERR' for j in np.arange(nind)]            
+        for i in range(nchstr):
+            photdt += [(cmagnames[i],np.float32),(cerrnames[i],np.float32)]
         # Add columns for average photometry per filter 
-        for i in range(nufilt): 
-            newschema = create_struct(newschema,ufilt[i]+'MAG',0.0,ufilt[i]+'ERR',0.0,ufilt[i]+'SCATTER',0.0,'NDET'+ufilt[i],0L) 
-        # Extra columns 
-        newschema = create_struct(newschema,'chi',0.0,'sharp',0.0,'prob',0.0,'ebv',0.0) 
-        # other SE columns 
-        newschema = create_struct(newschema,'mag_auto',0.0,'magerr_auto',0.0,'asemi',0.0,'bsemi',0.0,'theta',0.0,'ellipticity',0.0,'fwhm',0.0) 
-        # in unique brick area 
-        newschema = create_struct(newschema,'brickuniq',0B) 
-        # Create final catalog 
-        phot = replicate(newschema,ninstphot) 
-        struct_assign,instphot,phot,/nozero 
-        phtags = tag_names(phot) 
+        for i in range(nufilt):
+            photdt += [(ufilt[i]+'MAG',np.float32),(ufilt[i]+'ERR',np.float32),(ufilt[i]+'SCATTER',np.float32),('NDET'+ufilt[i],int)]
+        # Extra columns
+        photdt += [('chi',np.float32),('sharp',np.float32),('prob',np.float32),('ebv',np.float32)]
+        # other SE columns
+        photdt += [('mag_auto',np.float32),('magerr_auto',np.float32),('asemi',np.float32),('bsemi',np.float32),
+                   ('theta',np.float32),('ellipticity',np.float32),('fwhm',np.float32)]
+        # in unique brick area
+        dt += [('brickuniq',boolean)]
+        # Create final catalog
+        phot = np.zeros(ninstphot,dtype=np.dtype(photdt))
+        for n in instphot:
+            phot[n] = instphot[n]
+        phtags = phot.colnames
         # object IDs 
-        phot.objid = brick+'.'+str(instphot.id,2) 
+        phot['objid'] = brick+'.'+np.char.array(instphot['id'])
         # Stuff in the coordinates calculated above 
-        phot.ra = ra 
-        phot.dec = dec 
+        phot['ra'] = ra 
+        phot['dec'] = dec 
         # Stuff in the calibrated single-epoch photometry columns 
         for i in range(nchstr): 
-            magind , = np.where(strupcase(phtags) == cmagnames[i],nmagind) 
-            errind , = np.where(strupcase(phtags) == cerrnames[i],nerrind) 
-            phot.(magind) = cmag[:,i] 
-            phot.(errind) = cerr[:,i] 
+            phot[cmagnames[i]] = cmag[:,i] 
+            phot[cerrnames[i]] = cerr[:,i] 
         # Stuff in the average photometry per filter 
         for i in range(nufilt): 
-            magind , = np.where(strupcase(phtags) == strupcase(ufilt[i])+'MAG',nmagind) 
-            errind , = np.where(strupcase(phtags) == strupcase(ufilt[i])+'ERR',nerrind) 
-            scatind , = np.where(strupcase(phtags) == strupcase(ufilt[i])+'SCATTER',nscatind) 
-            detind , = np.where(strupcase(phtags) == 'NDET'+strupcase(ufilt[i]),ndetind) 
-            phot.(magind) = avgmag[:,i] 
-            phot.(errind) = avgerr[:,i] 
-            phot.(scatind) = scatter[:,i] 
-            phot.(detind) = ndet[:,i] 
+            phot[ufilt[i].upper()+'MAG'] = avgmag[:,i] 
+            phot[ufilt[i].upper()+'ERR'] = avgerr[:,i] 
+            phot[ufilt[i].upper()+'SCATTER'] = scatter[:,i] 
+            phot['NDET'+ufilt[i].upper()] = ndet[:,i] 
          
         # Calculate SFD E(B-V) 
-        GLACTC,phot.ra,phot.dec,2000.0,glon,glat,1,/deg 
-        phot.ebv = dust_getval(glon,glat,/noloop,/interp) 
+        #GLACTC,phot.ra,phot.dec,2000.0,glon,glat,1,/deg
+        coords = SkyCoord(phot['ra'], phot['dec'], unit='deg', frame='icrs')
+        coords_gal = coords.transform_to('galactic')
+        sfd = SFDQuery()
+        phot['ebv'] = sfd(coords_gal)
          
         # THIS IS NOW BEING DONE IN DELVERED_FINALCAT.PRO THAT COMBINES ALL CATALOGS 
         # Only include objects that are INSIDE the UNIQUE brick area 
@@ -552,17 +565,18 @@ def forcebrick(brick,scriptsdir=None,irafdir=None,workdir=None,redo=False,
         # Getting objects that are in the UNIQUE brick area 
         if brickstr1.dec == -90: 
             # the brick right at the pole does not have any RA limits 
-            ginside , = np.where(phot.dec < brickstr1.dec2,ninside) 
+            ginside, = np.where(phot['dec'] < brickstr1['dec2']) 
         else: 
-            ginside , = np.where(phot.ra >= brickstr1.ra1 and phot.ra < brickstr1.ra2 and                   phot.dec >= brickstr1.dec1 and phot.dec < brickstr1.dec2,ninside) 
-        if ninside > 0 : 
-            phot[ginside].brickuniq=1B 
+            ginside, = np.where((phot['ra'] >= brickstr1['ra1']) & (phot['ra'] < brickstr1['ra2']) &
+                                (phot['dec'] >= brickstr1['dec1']) & (phot['dec'] < brickstr1['dec2']))
+        if len(ginside)>0: 
+            phot['brickuniq'][ginside] = True
          
         # Get some meta-data 
         for i in range(nchstr): 
-            alffile = chstr[i].base+'.alf' 
-            if os.path.exists(alffile) == 1 : 
-                chstr[i].alf_nsources=file_lines(alffile)-3 
+            alffile = chstr['base'][i]+'.alf' 
+            if os.path.exists(alffile):
+                chstr['alf_nsources'][i] = dln.numlines(alffile)-3 
          
          
         # Make the exposure-level forced photometry catalog 
@@ -570,49 +584,55 @@ def forcebrick(brick,scriptsdir=None,irafdir=None,workdir=None,redo=False,
         # Load the individual ALF files to get chi, sharp 
         # Load TFR file to conver ALF IDs to final object ID 
         tfrfile = mchbase+'_comb.tfr' 
-        LOADTFR,tfrfile,alffiles,tfrstr 
-        schema = {id:'',objid:'',exposure:'',ccdnum:0,filter:'',mjd:0.0d0,x:0.0,y:0.0,ra:0.0d0,dec:0.0d0,          imag:0.0,ierr:0.0,mag:0.0,err:0.0,sky:0.0,chi:0.0,sharp:0.0} 
-        expcat = replicate(schema,int(np.sum(cmag < 50))+10000L) 
-        cnt = 0LL 
+        alffiles,tfrstr = io.loadtfr(tfrfile)
+        expdt = [('id',(np.str,100)),('objid',(np.str,100)),('exposure',(np.str,100)),('ccdnum',int),('filter',(np.str,10)),
+                 ('mjd',float),('x',float),('y',float),('ra',float),('dec',float),('imag',float),('ierr',float),
+                 ('mag',float),('err',float),('sky',float),('chi',float),('sharp',float)]
+        expcat = np.zeros(int(np.sum(cmag < 50))+10000,dtype=np.dtype(expdt))
+        cnt = 0
         for i in range(nchstr): 
-            base1 = chstr[i].base 
+            base1 = chstr['base'][i]
             fitsfile = base1+'.fits' 
-            if os.path.exists(alffiles[i]) == 1 and os.path.exists(fitsfile) == 1: 
-                LOADALS,alffiles[i],alf,count=nalf 
-                if nalf == 0 : 
-                    goto,BOMB2 
+            if os.path.exists(alffiles[i]) and os.path.exists(fitsfile):
+                alf = io.loadals(alffiles[i])
+                if len(alf)==0: 
+                    continue
                 # Sometimes the rows are duplicated in the ALF file 
                 ui = np.uniq(alf.id,np.argsort(alf.id)) 
                 if len(ui) < nalf: 
                     alf = alf[ui] 
                     nalf = len(alf) 
-                head = photred_readfile(fitsfile,/header) 
+                head = io.readfile(fitsfile,header=True) 
                  
                 # Calibrate the photometry 
                 # exptime, aperture correction, zero-point 
                 # aperture correction is SUBTRACTIVE, makes it brighter 
                 # ZPTERM is a SUBTRACTIVE constant offset 
-                cmag1 = alf.mag + 2.5*alog10(chstr[i].exptime) - chstr[i].apcor - chstr[i].calib_zpterm 
+                cmag1 = alf['mag'] + 2.5*np.log10(chstr['exptime'][i]) - chstr['apcor'][i] - chstr['calib_zpterm'][i]
                 # Add zero-point error in quadrature 
-                cerr1 = sqrt(alf.err**2+chstr[i].calib_zptermsig**2) 
+                cerr1 = np.sqrt(alf['err']**2+chstr['calib_zptermsig'][i]**2) 
                  
-                # Coordinates 
-                HEAD_XYAD,head,alf.x-1,alf.y-1,ra1,dec1,/deg 
+                # Coordinates
+                ra1,dec1 = head.pixel_to_world(alf['x']-1,alf['y']-1)
+                #HEAD_XYAD,head,alf.x-1,alf.y-1,ra1,dec1,/deg 
                  
                 # MATCH up ALF IDs to TFR INDEX 
                 # One row per unique object 
-                # the INDEX values are 1-based indices into the ALF files 
-                MATCH,tfrstr.index[i],lindgen(nalf)+1,ind1,ind2,/sort,count=nmatch 
-                objid = brick+'.'+str(tfrstr[ind1].id,2) 
+                # the INDEX values are 1-based indices into the ALF files
+                ind1,ind2 = dln.match(tfrstr.index[i],lindgen(nalf)+1)
+                #MATCH,tfrstr.index[i],lindgen(nalf)+1,ind1,ind2,/sort,count=nmatch 
+                objid = brick+'.'+np.char.array(tfrstr['id'][ind1])
                  
-                # Create the new catalog 
-                newcat = replicate(schema,nalf) 
+                # Create the new catalog
+                newcat = np.zeros(nalf,dtype=np.dtype(dt))
                 newcat['objid'] = objid 
-                newcat['id'] = chstr['expnum'][i]+'_'+str(chstr['chip'][i])+'['+str(alf['id'])
+                newcat['id'] = chstr['expnum'][i]+'_'+chstr['chip'][i]+'.'+np.char.array(alf['id'])
                 newcat['exposure'] = chstr['base'][i]
                 newcat['ccdnum'] = chstr['chip'][i]
-                newcat['filter'] = chstr['filter'][i] 
-                newcat['mjd'] = date2jd(chstr['utdate'][i]+'T'+chstr['uttime'][i],mjd=True)
+                newcat['filter'] = chstr['filter'][i]
+                dateobs = chstr['utdate'][i]+'T'+chstr['uttime'][i]
+                t = Time(dateobs)
+                newcat['mjd'] = t.mjd
                 newcat['x'] = alf['x']
                 newcat['y'] = alf['y']
                 newcat['ra'] = ra1 
@@ -626,41 +646,40 @@ def forcebrick(brick,scriptsdir=None,irafdir=None,workdir=None,redo=False,
                 newcat['sharp'] = alf['sharp']
                  
                 # Add more elements 
-                if cnt+nalf > len(expcat) : 
-                    expcat=add_elements(expcat,100000L>nalf) 
+                if cnt+nalf > len(expcat): 
+                    expcat = add_elements(expcat,100000>nalf) 
                  
                 # Add to global catalog 
                 expcat[cnt:cnt+nalf-1] = newcat 
-                cnt += nalf 
-                 
-                BOMB2: 
-             else:
-                    logger.info(alffile+' NOT FOUND')
-            expcat = expcat[0:cnt-1]# this should not be needed 
+                cnt += nalf
+                
+            else:
+                logger.info(alffile+' NOT FOUND')
+            expcat = expcat[0:cnt]   # this should not be needed 
              
             # Object catalog 
-            #--------------- 
-            lo = first_el(where(phtags == 'DEC',nlo)) 
-            hi = first_el(where(strupcase(phtags) == strupcase(ufilt[0])+'MAG',nhi)) 
-            obj_schema = create_struct(phtags[0],fix('',type=size(phot.(0),/type))) 
-            for i in np.arange(1,lo+1): 
-                obj_schema = create_struct(obj_schema,phtags[i],fix('',type=size(phot.(i),/type))) 
-            for i in np.arange(hi,len(phtags)-2+1): 
-                obj_schema = create_struct(obj_schema,phtags[i],fix('',type=size(phot.(i),/type))) 
-            obj_schema = create_struct(obj_schema,'brickuniq',0B) 
-            obj = replicate(obj_schema,ninstphot) 
-            STRUCT_ASSIGN,phot,obj,/nozero 
-             
+            #---------------
+            # do not want all of the individual epoch photometry
+            #  these are between the DEC and the first unique mean magnitude (e.g. GMAG, and GERR)
+            lo = where(phtags=='DEC')[0][0]
+            hi = where(np.char.array(phtags).upper() == ufilt[0].upper()+'MAG')[0][0]
+            objdt = photdt[0:lo]
+            objdt += photdt[hi:]
+            obj = np.zeros(ninstphot,dtype=np.dtype(objdt))
+            for n in obj.colnames:
+                obj[n] = phot[h]
+            
             # Saving final catalog 
             logger.info(datetime.now().strftime("%a %b %d %H:%M:%S %Y"))                         
-            photfile = bdir+brick+'.fits' 
-            if n_tags(phot) <= 999: 
+            photfile = bdir+brick+'.fits'
+            if len(phot.colnames) <= 999:
                 logger.info('Writing photometry to '+photfile+'.gz')
-                MWRFITS,phot,photfile,/create 
-                spawn,['gzip','-f',photfile],/noshell 
+                phot.writeto(photfile,overwrite=True)
+                out = subprocess.check_output(['gzip','-f',photfile],shell=False)
             else: 
-                logger.info('Too many columns for FITS.  Saving as IDL SAVE file instead. '+bdir+brick+'.dat') 
-                SAVE,phot,file=bdir+brick+'.dat' 
+                logger.info('Too many columns for FITS.  Saving as pickle file instead. '+bdir+brick+'.pkl')
+                with open(bdir+brick+'.pkl','wb') as f:
+                    pickle.dump(phot,f)
              
             # Saving object photometry catalog 
             objfile = bdir+brick+'_object.fits'
@@ -668,14 +687,14 @@ def forcebrick(brick,scriptsdir=None,irafdir=None,workdir=None,redo=False,
             out = subprocess.check_output(['gzip','-f',objfile],shell=False)                            
              
             # Saving exposure-level forced photometry catalog 
-            expfile = bdir+brick+'_expforced.fits' 
-            MWRFITS,expcat,expfile,/create 
+            expfile = bdir+brick+'_expforced.fits'
+            expcat.writeto(expfile,overwrite=True)
             out = subprocess.check_output(['gzip','-f',expfile],shell=False)
              
             # Save metadata 
             metafile = bdir+brick+'_meta.fits' 
             logger.info('Writing meta-data to '+metafile)
-            MWRFITS,chstr,metafile,/create 
+            chstr.writeto(metafile,overwrite=True)
              
              
             # Delete files we don't want to keep 
@@ -701,7 +720,7 @@ def forcebrick(brick,scriptsdir=None,irafdir=None,workdir=None,redo=False,
                    '_sub.fits','_sub.cat','_sub.als','_all.coo','.makemag']
             for e in ext:
                 if os.path.exists(base+e): os.remove(base+e)
-            if os.path.exists('check.fits): os.remove('check.fits')
+            if os.path.exists('check.fits'): os.remove('check.fits')
              
             # fpack _comb.fits and _combs.fits
             for f in [base+'_comb.fits.fz',base+'_combs.fits.fz']:
@@ -714,9 +733,14 @@ def forcebrick(brick,scriptsdir=None,irafdir=None,workdir=None,redo=False,
                       
             # Copy everything left back to the original directory 
             logger.info('Copying files back to '+bdir)
-            allfiles = file_search(procdir+['*','.*.fits'],count=nallfiles) 
-            FILE_MOVE,allfiles,bdir,/allow,/overwrite 
-            os.remove(procdir)  # delete temporary processing directory 
+            allfiles = glob(procdir+'*')
+            allfiles += glob(procdir+'.*.fits')
+            nallfiles = len(allfiles)
+            for f in allfiles:
+                base = os.path.basename(f)
+                if os.path.exists(bdir+'/'+base): os.remove(bdir+'/'+base)
+                shutil.move(f,bdir)
+            os.rmdir(procdir)  # delete temporary processing directory 
              
             logger.info(datetime.now().strftime("%a %b %d %H:%M:%S %Y"))                       
             logger.info('DELVERED_FORCEBRICK:ne after '+str(time.time()-t0,2)+' sec.')
