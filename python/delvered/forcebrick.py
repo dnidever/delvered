@@ -12,7 +12,7 @@ from datetime import datetime
 from dlnpyutils import utils as dln, coords
 import photred
 from photred import io,daomatch
-import photred.allframe as alf
+from photred import allframe as alf
 import dill as pickle
 from astropy.io import fits
 from astropy.wcs import WCS
@@ -58,12 +58,12 @@ def make_brick_wcs(brickstr):
     wcs = WCS(tilehead)
     
     # Create the TILE structure
-    tilestr = {'type':'WCS','naxis':np.array([nx,ny]),'cdelt':np.array([step,step]).astype(float),
-               'crpix':np.array([xref+1,yref+1]).astype(float),
-               'crval':np.array([brickstr['ra'],brickstr['dec']]).astype(float),'ctype':['RA--TAN','DEC--TAN'],
-               'head':tilehead,'wcs':wcs,'xrange':[0,nx],'yrange':[0,ny],'nx':nx,'ny':ny}
+    tile = {'type':'WCS','naxis':np.array([nx,ny]),'cdelt':np.array([step,step]).astype(float),
+            'crpix':np.array([xref+1,yref+1]).astype(float),
+            'crval':np.array([brickstr['ra'],brickstr['dec']]).astype(float),'ctype':['RA--TAN','DEC--TAN'],
+            'head':tilehead,'wcs':wcs,'xrange':[0,nx],'yrange':[0,ny],'nx':nx,'ny':ny}
 
-    return tilestr
+    return tile
 
 def forcebrick(brick,scriptsdir=None,irafdir=None,workdir=None,redo=False,
                update=False,logfile=None,delvedir=None,delvereddir=None):
@@ -265,7 +265,7 @@ def forcebrick(brick,scriptsdir=None,irafdir=None,workdir=None,redo=False,
     logger.info('DEC range = [ %.5f,%.5f ]' % (brickstr1['dec1'],brickstr1['dec2']))                
      
     # Get the Brick WCS information 
-    tilestr = make_brick_wcs(brickstr1)
+    tile = make_brick_wcs(brickstr1)
      
     # Step 1: Get the list of exposures/chips that overlap this brick 
     #---------------------------------------------------------------- 
@@ -301,10 +301,10 @@ def forcebrick(brick,scriptsdir=None,irafdir=None,workdir=None,redo=False,
     #  the brick region with overlap 
     print('Performing more rigorous overlap checking')
 
-    bcoo = tilestr['wcs'].pixel_to_world([0,tilestr['nx']-1,tilestr['nx']-1,0],[0,0,tilestr['ny']-1,tilestr['ny']-1])
+    bcoo = tile['wcs'].pixel_to_world([0,tile['nx']-1,tile['nx']-1,0],[0,0,tile['ny']-1,tile['ny']-1])
     bvra = bcoo.ra.deg
     bvdec = bcoo.dec.deg
-    #HEAD_XYAD,tilestr.head,[0,tilestr.nx-1,tilestr.nx-1,0],[0,0,tilestr.ny-1,tilestr.ny-1],bvra,bvdec,/deg
+    #HEAD_XYAD,tile.head,[0,tile.nx-1,tile.nx-1,0],[0,0,tile.ny-1,tile.ny-1],bvra,bvdec,/deg
     olap = np.zeros(nchstr,bool)
     vxarr = np.zeros((nchstr,4),float)
     vyarr = np.zeros((nchstr,4),float)    
@@ -319,12 +319,12 @@ def forcebrick(brick,scriptsdir=None,irafdir=None,workdir=None,redo=False,
         vra = vcoo.ra.deg
         vdec = vcoo.dec.deg
         olap[i] = coords.doPolygonsOverlap(bvra,bvdec,vra,vdec) 
-        vx,vy = tilestr['wcs'].world_to_pixel(vcoo)
+        vx,vy = tile['wcs'].world_to_pixel(vcoo)
         vxarr[i,:] = vx 
         vyarr[i,:] = vy 
     # Require at least a 2 pixel overlap in X and Y 
     g, = np.where((olap==True) & (np.max(vxarr,axis=1) >= 2) & (np.max(vyarr,axis=1) >= 2) &
-                  (np.min(vxarr,axis=1) <= tilestr['nx']-3) & (np.min(vyarr,axis=1) <= tilestr['ny']-3))
+                  (np.min(vxarr,axis=1) <= tile['nx']-3) & (np.min(vyarr,axis=1) <= tile['ny']-3))
     if len(g) == 0: 
         logger.info('No chips overlap this brick')
         return 
@@ -422,7 +422,6 @@ def forcebrick(brick,scriptsdir=None,irafdir=None,workdir=None,redo=False,
         #chstr[i].newbase = chstr[i].base 
         odir = os.path.dirname(chstr['file'][i])+'/'
         obase = photred.utils.fitsext(chstr['file'][i],basename=True)
-        obase = obase[0]
         # Need symlinks to .psf, .als 
         if os.path.exists(odir+obase+'.psf') == False: 
             logger.info(odir+obase+'.psf NOT FOUND.  Skipping this chip') 
@@ -431,23 +430,23 @@ def forcebrick(brick,scriptsdir=None,irafdir=None,workdir=None,redo=False,
             logger.info(odir+obase+'.als NOT FOUND.  Skipping this chip')
             continue
         for e in ['.psf','.als','.ap','.opt','.als.opt','.log']:
-            if os.path.exists(procdir+chstr[i].base+e): os.remove(procdir+chstr[i].base+e)
+            dln.remove(procdir+str(chstr['base'][i])+e,allow=True)
         for e in ['.psf','.als','.ap','.opt','.als.opt','.log']:
-            if os.path.exists(procdir+'/'+obase+e): os.remove(procdir+'/'+obase+e)
-            shutil.copyfile(odir+obase+e,procdir)
+            dln.remove(procdir+'/'+obase+e,allow=True)
+            shutil.copyfile(odir+obase+e,procdir+obase+e)
             os.chmod(procdir+chstr['base'][i]+e,0o755)  # make sure they are writable 
         # Copy the fits, fits resource file and header files locally 
         if os.path.exists(odir+obase+'.fits') == False: 
             logger.info(odir+obase+'.fits NOT FOUND.  Skipping this chip')
             continue
-        if os.path.exists(odir+obase+'.fits'): os.remove(odir+obase+'.fits')
-        shutil.copyfile(odir+obase+'.fits',procdir)
+        dln.remove(procdir+obase+'.fits',allow=True)
+        shutil.copyfile(odir+obase+'.fits',procdir+obase+'.fits')
         if os.path.exists(odir+'.'+obase+'.fits'):
-            if os.path.exists(procdir+'.'+obase+'.fits'): os.remove(procdir+'.'+obase+'.fits')
-            shutil.copyfile(odir+'.'+obase+'.fits',procdir)
+            dln.remove(procdir+'.'+obase+'.fits',allow=True)
+            shutil.copyfile(odir+'.'+obase+'.fits',procdir+'.'+obase+'.fits')
         if os.path.exists(odir+obase+'.fits.head'):
-            if os.path.exists(procdir+obase+'.fits.head'): os.remove(procdir+obase+'.fits.head')
-            shutil.copyfile(odir+obase+'.fits.head',procdir)
+            dln.remove(procdir+obase+'.fits.head',allow=True)
+            shutil.copyfile(odir+obase+'.fits.head',procdir+obase+'.fits.head')
         os.chmod(procdir+chstr['base'][i]+'.fits',0o755)
          
     # Step 2: Run DAOMATCH_TILE.PRO on the files 
@@ -455,17 +454,18 @@ def forcebrick(brick,scriptsdir=None,irafdir=None,workdir=None,redo=False,
     logger.info('Step 2: Matching up objects with DAOMATCH_TILE')
     logger.info(datetime.now().strftime("%a %b %d %H:%M:%S %Y"))
     os.chdir(procdir)
-    groupstr = {'x0':0,'y0':0} 
-    daomatch_tile(chstr['base']+'.als',tilestr,groupstr)
-                  
+    group = {'x0':0,'y0':0} 
+    daomatch.daomatch_tile(np.char.array(chstr['base'])+'.als',tile,group)
+
     # Step 3: Run ALLFRAME 
     #---------------------- 
     logger.info('Step 3: Run ALLFRAME')
     logger.info(datetime.now().strftime("%a %b %d %H:%M:%S %Y"))                     
     # DO I NEED TO HAVE IT TRIM THE COMBINED IMAGE??? 
-    mchbase = procdir+chstr[0].base 
+    mchbase = procdir+chstr['base'][0]
     mchfile = mchbase+'.mch'# allframe needs absolute path 
-    alf.allframe(mchfile,tile=tilestr,setupdir=bdir,scriptsdir=scriptsdir,irafdir=irafdir,
+    import pdb; pdb.set_trace()
+    alf.allframe(mchfile,tile=tile,setupdir=bdir,scriptsdir=scriptsdir,irafdir=irafdir,
                  logfile=logfile,catformat='FITS',imager=thisimager,geocoef=0)
     magfile = chstr['base'][0]+'.mag' 
     if os.path.exists(magfile) == False: 
@@ -485,8 +485,8 @@ def forcebrick(brick,scriptsdir=None,irafdir=None,workdir=None,redo=False,
     logger.info('Nstars = '+str(ninstphot)) 
     # Converting to IDL X/Y convention, starting at (0,0) 
     # DAOPHOT has X/Y start at (1,1)
-    ra,dec = tilestr['wcs'].pixel_to_world(instphot.x-1.0,instphot.y-1.0)
-    #HEAD_XYAD,tilestr.head,instphot.x-1.0,instphot.y-1.0,ra,dec,/degree 
+    ra,dec = tile['wcs'].pixel_to_world(instphot.x-1.0,instphot.y-1.0)
+    #HEAD_XYAD,tile.head,instphot.x-1.0,instphot.y-1.0,ra,dec,/degree 
               
     # Step 5: Calibrating photometry with zero-points 
     #------------------------------------------------- 
