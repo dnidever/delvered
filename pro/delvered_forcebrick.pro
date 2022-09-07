@@ -272,7 +272,6 @@ for i=0,n_elements(zpstr)-1 do begin
   ind = where(chstr.filter eq zpstr[i].filter,nind)
   if nind gt 0 then zpterm[ind] -= poly(chstr[ind].airmass,zpstr[i].amcoef)
 endfor
-
 fwhmthresh = 2.0                ; seeing 2.0" threshold
 filt = strmid(chstr.filter,0,1)
 gdch = where(chstr.fwhm*chstr.pixscale le fwhmthresh and chstr.exptime ge 90. and zpterm ge -0.5 and $

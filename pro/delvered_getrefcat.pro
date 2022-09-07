@@ -87,9 +87,9 @@ endif else begin
     if refname eq 'TMASS' then begin
       tablename = 'twomass.psc'
       cols = 'designation,ra as raj2000,dec as dej2000,j_m as jmag,j_cmsig as e_jmag,h_m as hmag,h_cmsig as e_hmag,k_m as kmag,k_cmsig as e_kmag,ph_qual as qflg'
-      server = 'db02.datalab.noao.edu'
-      ;server = 'gp04.datalab.noao.edu'
-      ;server = 'dldb1.sdm.noao.edu'
+      server = 'db02.datalab.noirlab.edu'
+      ;server = 'gp04.datalab.noirlab.edu'
+      ;server = 'dldb1.sdm.noirlab.edu'
       user = 'dlquery'
     endif
     racol = 'ra'
@@ -98,9 +98,9 @@ endif else begin
       tablename = 'gaia_dr1.gaia_source'
       cols = 'source_id as source,ra as ra_icrs,ra_error as e_ra_icrs,dec as de_icrs,dec_error as e_de_icrs,'+$
              'phot_g_mean_flux as fg,phot_g_mean_flux_error as e_fg,phot_g_mean_mag as gmag'
-      server = 'db02.datalab.noao.edu'
-      ;server = 'gp04.datalab.noao.edu'
-      ;server = 'dldb1.sdm.noao.edu'
+      server = 'db02.datalab.noirlab.edu'
+      ;server = 'gp04.datalab.noirlab.edu'
+      ;server = 'dldb1.sdm.noirlab.edu'
       user = 'dlquery'
     endif
     if refname eq 'GAIADR2' then begin
@@ -108,23 +108,23 @@ endif else begin
       cols = 'source_id as source,ra,ra_error,dec,dec_error,parallax,parallax_error,pmra,pmra_error,pmdec,pmdec_error,phot_g_mean_flux as fg,'+$
              'phot_g_mean_flux_error as e_fg,phot_g_mean_mag as gmag,phot_bp_mean_mag as bp,phot_bp_mean_flux as fbp,phot_bp_mean_flux_error as e_fbp,'+$
                           'phot_rp_mean_mag as rp,phot_rp_mean_flux as frp,phot_rp_mean_flux_error as e_frp'
-      server = 'db02.datalab.noao.edu'
-      ;server = 'gp04.datalab.noao.edu'
+      server = 'db02.datalab.noirlab.edu'
+      ;server = 'gp04.datalab.noirlab.edu'
       user = 'dlquery'
     endif
     if refname eq 'PS' then begin
       ;tablename = 'cp_calib.ps1'
       tablename = 'public.ps1'
       cols = 'ra, dec, g as gmag, r as rmag, i as imag, z as zmag, y as ymag'
-      server = 'gp02.datalab.noao.edu'
+      server = 'gp02.datalab.noirlab.edu'
       user = 'datalab'
     endif
     if refname eq 'SKYMAPPER' then begin
       tablename = 'skymapper_dr1.master'
       cols = 'raj2000, dej2000, u_psf as sm_umag, e_u_psf as e_sm_umag, g_psf as sm_gmag, e_g_psf as e_sm_gmag, r_psf as sm_rmag, e_r_psf as e_sm_rmag, i_psf as sm_imag, '+$
              'e_i_psf as e_sm_imag, z_psf as sm_zmag, e_z_psf as e_sm_zmag'
-      server = 'db02.datalab.noao.edu'
-      ;server = 'gp04.datalab.noao.edu'
+      server = 'db02.datalab.noirlab.edu'
+      ;server = 'gp04.datalab.noirlab.edu'
       user = 'dlquery'
       racol = 'raj2000'
       deccol = 'dej2000'
@@ -132,8 +132,8 @@ endif else begin
     if refname eq 'ALLWISE' then begin
       tablename = 'allwise.source'
       cols = 'ra, dec, w1mpro as w1mag, w1sigmpro as e_w1mag, w2mpro as w2mag, w2sigmpro as e_w2mag'
-      server = 'db02.datalab.noao.edu'
-      ;server = 'gp04.datalab.noao.edu'
+      server = 'db02.datalab.noirlab.edu'
+      ;server = 'gp04.datalab.noirlab.edu'
       user = 'dlquery'
     endif
     if refname eq 'ATLAS' then begin
@@ -142,7 +142,7 @@ endif else begin
              'bp,dbp as bperr,rp,drp as rperr,teff,agaia,dupvar,ag,rp1,r1,r10,g as gmag,dg as gerr,gchi,gcontrib,'+$
              'r as rmag, dr as rerr,rchi,rcontrib,i as imag,di as ierr,ichi,icontrib,z as zmag,dz as zerr,zchi,zcontrib,nstat,'+$
              'j as jmag,dj as jerr,h as hmag,dh as herr,k as kmag,dk as kerr'
-      server = 'gp10.datalab.noao.edu'
+      server = 'gp10.datalab.noirlab.edu'
       user = 'datalab'
     endif
     

@@ -10,7 +10,9 @@ if n_elements(delvereddir) gt 0 then delvereddir=trailingslash(delvereddir) else
 ;str = mrdfits(nscdir+'decam_instcal_list.fits.gz',1)
 ;str = mrdfits('/net/dl2/dnidever/delve/lists/delvemc_info_20121022_20200216.fits.gz',1)
 ;str = mrdfits('/net/dl2/dnidever/delve/lists/delvemc_info_20121022_20200301.fits.gz',1)
-str = mrdfits('/net/dl2/dnidever/delve/lists/delvemc_info_20121022_20200318.fits.gz',1)
+;str = mrdfits('/net/dl2/dnidever/delve/lists/delvemc_info_20121022_20200318.fits.gz',1)
+;str = mrdfits('/net/dl2/dnidever/delve/lists/delvemc_info_20121022_20210823.fits.gz',1)
+str = mrdfits('/net/dl2/dnidever/delve/lists/delvemc_info_20121022_20220907.fits.gz',1)
 str.prop_id = strtrim(str.prop_id,2)
 nstr = n_elements(str)
 
@@ -39,6 +41,7 @@ gd = where(abs(glat) gt 10 and (lmcrad lt 25 or smcrad lt 15),ngd)
 mc = str[gd]
 print,strtrim(ngd,2),' MC exposures'
 
+stop
 
 jd = systime(/julian)
 caldat,jd,month,day,year,hour

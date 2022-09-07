@@ -103,7 +103,8 @@ setup = ['##### REQUIRED #####',$
 ;expfile = delvereddir+'data/decam_mcs_20181009.fits.gz'
 ;expfile = delvereddir+'data/decam_mcs_20191017.fits.gz'
 ;expfile = delvereddir+'data/decam_mcs_20200218.fits.gz'
-if n_elements(expfile) eq 0 then expfile = delvereddir+'data/decam_mcs_20200320.fits.gz'
+;if n_elements(expfile) eq 0 then expfile = delvereddir+'data/decam_mcs_20200320.fits.gz'
+if n_elements(expfile) eq 0 then expfile = delvereddir+'data/decam_mcs_20220907.fits.gz'
 print,'' & print,'Loading ',expfile
 allexpstr = MRDFITS(expfile,1,/silent)
 nallexp = n_elements(allexpstr)
@@ -158,7 +159,7 @@ nnights = n_elements(night_index.value)
 print,strtrim(nnights,2),' unique nights of data'
 
 ;; SMASH directories
-smashnights = file_search('/net/dl1/users/dnidever/smash/cp/red/photred/20??????/',/test_directory,count=nsmashnights)
+smashnights = file_search('/net/dl2/dnidever/smash/cp/red/photred/20??????/',/test_directory,count=nsmashnights)
 smashnights = file_basename(smashnights)
 
 ;; Only keep NEW nights

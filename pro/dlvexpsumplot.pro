@@ -31,7 +31,7 @@ delvereddir = '/home/dnidever/projects/delvered/'
 ;
 ;23277 exposures
 
-delvedir = '/net/dl1/users/dnidever/delve/'
+delvedir = '/net/dl2/dnidever/delve/'
 dirs = file_search(delvedir+'exposures/201?????',/test_directory,count=ndirs)
 dirs = file_basename(dirs)
 
