@@ -18,7 +18,7 @@
 ; By D.Nidever  Feb 2008
 ;-
 
-pro delvered_daophot,redo=redo,fake=fake,nmulti=nmulti,stp=stp
+pro delvered_daophot,redo=redo,fake=fake,nmulti=nmulti,workdir=workdir,stp=stp
 
 COMMON photred,setup
 
@@ -124,9 +124,11 @@ daofitradfwhm = READPAR(setup,'DAOFITRADFWHM',count=ndaofitradfwhm)
 if ndaofitradfwhm eq 0 then undefine,daofitradfwhm
 
 ; Temporary working directory
-workdir = READPAR(setup,'WORKDIR',count=nworkdir)
-if nworkdir eq 0 then undefine,workdir
-
+if n_elements(workdir) eq 0 then begin
+  workdir = READPAR(setup,'WORKDIR',count=nworkdir)
+  if nworkdir eq 0 then undefine,workdir
+endif
+  
 ; Clean intermediate files at the end
 clean = READPAR(setup,'CLEAN',count=nclean)
 if nclean eq 0 then undefine,clean
