@@ -25,7 +25,7 @@
 ;-
 
 pro delvered_exposures,input,delvedir=delvedir,redo=redo,dozeropoint=dozeropoint,doapcor=doapcor,$
-                       uselocal=uselocal,startfresh=startfresh,stp=stp,nmulti=nmulti
+                       uselocal=uselocal,startfresh=startfresh,stp=stp,nmulti=nmulti,workdir=workdir
 
 ;; Defaults
 ;if n_elements(delvedir) gt 0 then delvedir=trailingslash(delvedir) else delvedir = '/net/dl1/users/dnidever/delve/'
@@ -35,7 +35,8 @@ expdir = trailingslash(delvedir)+'exposures/'
 ;; Logs directory
 logsdir = expdir+'logs/'
 if file_test(logsdir,/directory) eq 0 then file_mkdir,logsdir
-workdir = '/data0/dnidever/delve/'  ;; temporary work directory
+if n_elements(workdir) eq 0 then $
+  workdir = '/data0/dnidever/delve/'  ;; temporary work directory
 
 COMMON photred,setup
 
@@ -262,7 +263,7 @@ FOR i=0,nnights-1 do begin
   endif
 
   if READPAR(setup,'WCS') ne '0' then DELVERED_WCS,redo=redo,nmulti=nmulti
-  if READPAR(setup,'DAOPHOT') ne '0' then DELVERED_DAOPHOT,redo=redo,nmulti=nmulti
+  if READPAR(setup,'DAOPHOT') ne '0' then DELVERED_DAOPHOT,redo=redo,nmulti=nmulti,workdir=workdir
   if READPAR(setup,'MATCH') ne '0' then DELVERED_MATCH,redo=redo,nmulti=nmulti
 
   if n_elements(doapcor) eq 1 then begin
