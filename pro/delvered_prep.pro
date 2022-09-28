@@ -1,5 +1,5 @@
 pro delvered_prep,delvedir,scriptsdir=scriptsdirs,irafdir=irafdir,workdir=workdir,redo=redo,$
-                  nmulti=nmulti,nightmin=nightmin,newonly=newonly,expfile=expfile
+                  nmulti=nmulti,nightmin=nightmin,newonly=newonly,expfile=expfile,add=add
 
 ;; This pre-processing script gets DELVE and community MC data ready
 ;; from the NOAO mass store to be processed with PHOTRED.
@@ -198,8 +198,6 @@ if keyword_set(newonly) then begin
   print,strtrim(nnights,2),' unique nights of data'
 endif
 
-stop
-
 ;; Loop over the nights
 ;;---------------------------
 undefine,cmd,cmddir
@@ -207,7 +205,7 @@ For n=0,nnights-1 do begin
   inight = night_index.value[n]
   ind = night_index.index[night_index.lo[n]:night_index.hi[n]]
   nind = night_index.num[n]
-  expstr1 = expstr[ind]
+  newexpstr = expstr[ind]
   nightdir = expdir+strtrim(inight,2)+'/'
 
   ;; Is this a SMASH night?
@@ -220,9 +218,32 @@ For n=0,nnights-1 do begin
   if file_test(nightdir,/directory) eq 0 then FILE_MKDIR,nightdir
   ;; Has this one already been done before
   expfile = nightdir+inight+'_exposures.fits'
+  sumfile = nightdir+inight+'_summary.fits'
   ;if inight eq '20130319' then stop
-  if (file_test(expfile) eq 0 or file_test(nightdir+'photred.setup') eq 0) or keyword_set(redo) then begin
-    MWRFITS,expstr1,expfile,/create
+  if (file_test(expfile) eq 0 or file_test(nightdir+'photred.setup') eq 0) or keyword_set(redo) or keyword_set(add) then begin
+    ;; Add exposures to an existing _exposures.fits file
+    if file_test(expfile) eq 1 and keyword_set(add) then begin
+      expstr0 = MRDFITS(expfile,1,/silent)
+      ;; check against existing exposures
+      match,expstr0.expnum,newexpstr.expnum,ind1,ind2,/sort,count=nmatch
+      ;; Some exposures to add
+      if nmatch ne n_elements(newexpstr) then begin
+        expstr1 = newexpstr
+        schema = newexpstr[0]
+        struct_assign,{dum:''},schema
+        oldexpstr = replicate(schema,n_elements(expstr0))
+        struct_assign,expstr0,oldexpstr
+        newexpstr = [oldexpstr,newexpstr]
+        ui = uniq(newexpstr.expnum,sort(newexpstr.expnum))  ;; want unique exposures
+        newexpstr = newexpstr[ui]
+        print,'Adding ',strtrim(n_elements(newexpstr)-n_elements(expstr0),2),' exposure(s) to ',expfile
+        MWRFITS,newexpstr,expfile,/create
+      endif
+
+    ;; Make brand-new _exposures.fits file
+    endif else begin
+      MWRFITS,newexpstr,expfile,/create
+    endelse
     print,'Saving exposure structure to ',expfile
     cmd1 = 'delvered_prep_night,"'+expfile+'"'
     if keyword_set(redo) then cmd1+=',/redo'
