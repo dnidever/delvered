@@ -65,12 +65,12 @@ def decam_array_map(coords1, coords2, exptimes, rmin=-33.0, rmax=30.0, res=0.25)
         grid[((xx.flatten()-rmin)/res).astype('int'),((yy.flatten()-rmin)/res).astype('int')] = flags
         if np.isnan(exptimes[i]): continue
         expmap += grid*exptimes[i]
-        if i % 500 == 0: print(f'Added {str(i)}, of {str(len(pointings))}')
+        if i % 500 == 0: print(f'Added {str(i)} of {str(len(pointings))}')
         if i==len(pointings_set)-1: print(f'Added {str(i+1)} of {str(len(pointings))}')
 
     return expmap
 
-def tot_2_eff(exptimes, skybright, transm, fwhm, pix_scale=0.263):
+def tot_2_eff(exptimes, skybright, transm, fwhm, filter='g', pix_scale=0.263):
     '''
     Calculates effective exposure time using atmosferic conditions, using Equation 3 from Neilsen et al. 2019.
 
@@ -83,17 +83,21 @@ def tot_2_eff(exptimes, skybright, transm, fwhm, pix_scale=0.263):
     transm: float or array
         Sky transmission (G-TRANSP for DECam headers).
     fwhm: float or array
-        FWHM in the image expressed in pixels.
+        FWHM in the image, expressed in pixels.
+    filter: str, default='g'
+        Filter of the exposures, used to define the dark sky value at zenith. It only has values for DECam filters.
+        It is based on DELVERED processing figures.
     pix_scale: float, default=0.263
         Pixel scale of the detector. Default value corresponds to a DECam CCD.
 
     Returns:
     --------
     teff: float or array
-        Effective exposure time.
+        Effective exposure time, i.e. tau * exptime.
     '''
+    dark_sky = dict([('u',0.1), ('g',1), ('r',5), ('i',11), ('z',18), ('Y',16)])
     sky = skybright/exptimes # sky rate
-    taus = transm**2/(fwhm*pix_scale/0.9)**2/(sky/3.)
+    taus = transm**2/(fwhm*pix_scale/0.9)**2/(sky/dark_sky[filter])
     return exptimes*taus
 
 if __name__=="__main__":
