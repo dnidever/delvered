@@ -61,13 +61,17 @@ For j=0,nfields-1 do begin
   if file_test(sumfile) eq 1 then begin
     name = fields[j].name
     shname = fields[j].shname
-    expstr1 = MRDFITS(sumfile,1,/silent)
-    add_tag,expstr1,'fieldname',name,expstr1
-    add_tag,expstr1,'field',shname,expstr1
-    PUSH,expstr,expstr1
-    chipstr1 = MRDFITS(sumfile,2,/silent)
-    add_tag,chipstr1,'fieldname',name,chipstr1
-    PUSH,chipstr,chipstr1
+    hd0 = headfits(sumfile,exten=0,errmsg=errmsg0)
+    hd1 = headfits(sumfile,exten=1,errmsg=errmsg1)
+    if errmsg0 eq '' and errmsg1 eq '' then begin
+      expstr1 = MRDFITS(sumfile,1,/silent,error_action=2,status=status)
+      add_tag,expstr1,'fieldname',name,expstr1
+      add_tag,expstr1,'field',shname,expstr1
+      PUSH,expstr,expstr1
+      chipstr1 = MRDFITS(sumfile,2,/silent)
+      add_tag,chipstr1,'fieldname',name,chipstr1
+      PUSH,chipstr,chipstr1
+    endif else print,'PROBLEM loading '+sumfile
   endif else print,sumfile,' NOT FOUND'
 Endfor
 if n_elements(expstr) eq 0 then begin
