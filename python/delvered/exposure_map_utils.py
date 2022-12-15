@@ -1,5 +1,9 @@
 import numpy as np
 from matplotlib.path import Path
+from astropy.coordinates import SkyCoord
+import astropy.units as u
+from gala.coordinates import MagellanicStreamNidever08
+
 
 def decam_array_map(coords1, coords2, exptimes, rmin=-33.0, rmax=30.0, res=0.25):
     '''
@@ -69,6 +73,35 @@ def decam_array_map(coords1, coords2, exptimes, rmin=-33.0, rmax=30.0, res=0.25)
         if i==len(pointings_set)-1: print(f'Added {str(i+1)} of {str(len(pointings))}')
 
     return expmap
+
+def add_exposures(expmap, ra, dec, exptimes, teff=0.2):
+    '''
+    Adds the summed effective exposure time to a DELVE-MC exposure map.
+
+    Parameters:
+    -----------
+    expmap: array
+        Original exposure map.
+    ra: array
+        Contains the RA of the exposures to be added to exposure map, expressed in degrees.
+    dec: array
+        Contains the DEC of the exposures to be added to exposure map, expressed in degrees.
+    exptimes: float or array
+        Array of the exposure times of the given coordinates. NaNs are supported.
+    teff: float or array
+        Effective exposure value, called effective exposure time in DES vocabulary.
+
+    Returns:
+    --------
+    expmap: array
+        2-dimensional array with same shape as input and the added exposures.
+    '''
+
+    ms_coords = SkyCoord(ra*u.deg,dec*u.deg).transform_to(MagellanicStreamNidever08())
+
+    extra_expmap = decam_array_map(ms_coords.L.deg, ms_coords.B.deg, exptimes*teff)
+
+    return expmap+extra_expmap
 
 def tot_2_eff(exptimes, skybright, transm, fwhm, filter='g', pix_scale=0.263):
     '''
