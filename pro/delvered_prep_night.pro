@@ -171,15 +171,17 @@ setup = ['##### REQUIRED #####',$
     ;; Remove the existing exposures
     if n_elements(files) gt 0 then begin
       fbase = PHOTRED_GETFITSEXT(files,/basename)
-      base = reform((strsplitter(fbase,'-',/extract))[0,*])
-      MATCH,base,expstr1.expnum,ind1,ind2,/sort,count=nmatch
+      base = reform((strsplitter(fbase,'-',/extract))[1,*])  ;; F6-00806749_51
+      base = reform((strsplitter(base,'_',/extract))[0,*])
+      ubase = base[uniq(base,sort(base))]
+      MATCH,ubase,expstr1.expnum,ind1,ind2,/sort,count=nmatch
       if nmatch gt 0 then begin
         exptoadd = expstr1
         if nmatch lt nexp then begin
           print,'Removing ',strtrim(nmatch,2),' exposures that already exist'
           REMOVE,ind2,exptoadd
         endif else undefine,exptoadd
-      endif
+      endif else exptoadd=expstr1
     endif else exptoadd=expstr1
     ;; Load the existing "fields" file 
     if file_test(nightdir+'fields') eq 1 then begin
@@ -230,7 +232,6 @@ setup = ['##### REQUIRED #####',$
   print,strtrim(nfields,2),' fields found'
   print,''
 
-
   ;; Loop over the fields
   undefine,outfiles
   outfiles = strarr(62*ntoadd)
@@ -259,6 +260,7 @@ setup = ['##### REQUIRED #####',$
       refcat = DELVERED_GETREFDATA('c4d-'+['u','g','r','i','z','Y','VR'],fexptoadd[0].ra,fexptoadd[0].dec,1.5,savefile=savefile)
       SPAWN,['gzip','-f',savefile],/noshell
     endif
+    if n_elements(refcat) eq 0 then refcat = MRDFITS(savefile+'.gz',1)
 
     ;; coordinates relative to the center of the field
     cendec = mean(minmax(refcat.dec))
@@ -280,7 +282,13 @@ setup = ['##### REQUIRED #####',$
       tmpfile = MKTEMP('tmp',/nodot,outdir=workdir) & TOUCHZERO,tmpfile+'.fits' & FILE_DELETE,[tmpfile,tmpfile+'.fits'],/allow
       tmpfile += '.fits'
       FILE_LINK,filename,tmpfile
-      FITS_OPEN,tmpfile,fcb & FITS_CLOSE,fcb
+      FITS_OPEN,tmpfile,fcb
+      if n_elements(fcb) gt 0 then begin
+        FITS_CLOSE,fcb
+      endif else begin
+        print,'PROBLEMS with ',filebase
+        goto,EXPBOMB
+      endelse
       ;; Get the field longname
       if e eq 0 then begin
         hd0 = HEADFITS(tmpfile,exten=0)
@@ -336,6 +344,7 @@ setup = ['##### REQUIRED #####',$
         SPAWN,['gzip','-f',refcatfile],/noshell
       Endfor  ; chip loop
       FILE_DELETE,tmpfile,/allow  ; delete the temporary symlink
+      EXPBOMB:
     Endfor  ; exposure loop
   Endfor  ; field loop
   outfiles = outfiles[0:ocount-1]  ;; trim outfiles
@@ -356,6 +365,7 @@ setup = ['##### REQUIRED #####',$
     newfieldstr[find[1:*]].name = newfieldstr[find[0]].name + '_'+strtrim(lindgen(nfind-1)+2,2)
   endfor
 
+  file_copy,nightdir+'fields',nightdir+'fields.bak',/over
   WRITELINE,nightdir+'fields',newfieldstr.shname+'   '+newfieldstr.name
 
   ;; Copy scripts into the directory
