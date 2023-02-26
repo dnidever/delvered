@@ -282,7 +282,13 @@ setup = ['##### REQUIRED #####',$
       tmpfile = MKTEMP('tmp',/nodot,outdir=workdir) & TOUCHZERO,tmpfile+'.fits' & FILE_DELETE,[tmpfile,tmpfile+'.fits'],/allow
       tmpfile += '.fits'
       FILE_LINK,filename,tmpfile
-      FITS_OPEN,tmpfile,fcb & FITS_CLOSE,fcb
+      FITS_OPEN,tmpfile,fcb
+      if n_elements(fcb) gt 0 then begin
+        FITS_CLOSE,fcb
+      endif else begin
+        print,'PROBLEMS with ',filebase
+        goto,EXPBOMB
+      endelse
       ;; Get the field longname
       if e eq 0 then begin
         hd0 = HEADFITS(tmpfile,exten=0)
@@ -338,6 +344,7 @@ setup = ['##### REQUIRED #####',$
         SPAWN,['gzip','-f',refcatfile],/noshell
       Endfor  ; chip loop
       FILE_DELETE,tmpfile,/allow  ; delete the temporary symlink
+      EXPBOMB:
     Endfor  ; exposure loop
   Endfor  ; field loop
   outfiles = outfiles[0:ocount-1]  ;; trim outfiles

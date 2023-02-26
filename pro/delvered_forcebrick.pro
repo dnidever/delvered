@@ -384,13 +384,32 @@ if file_test(magfile) eq 0 then begin
   printlog,logfile,magfile+' NOT FOUND'
   return
 endif
+;; Use the final mch from the combination process
+;; sometimes some chips/files are "bad" and removed
+combmch = mchbase+'_comb.mch'
+LOADMCH,combmch,alsfiles
+;; Check for chips that were removed
+alsbase = file_basename(alsfiles,'.als')
+MATCH,alsbase,chstr.base,ind1,ind2,/sort,count=nmatch
+if nmatch lt nchstr then begin
+  si = sort(ind2)
+  ind1 = ind1[si]
+  ind2 = ind2[si]
+  bad = lindgen(nchstr)
+  REMOVE,ind2,bad
+  nbad = n_elements(bad)
+  printlog,logfile,strtrim(nbad,2)+' bad chips removed: '+strjoin(chstr[bad].base,', ')
+  chstr0 = chstr
+  chstr = chstr[ind2]
+  nchstr = n_elements(chstr)
+endif
 
 ;; Step 4: Calculate coordinates
 ;;-------------------------------
 printlog,logfile,'Step 4: Adding coordinates'
 printlog,logfile,systime(0)
 ; Load the MCH file
-LOADMCH,mchfile,alsfiles
+LOADMCH,combmch,alsfiles
 nalsfiles = n_elements(alsfiles)
 ; Load the photometry file
 instphot = PHOTRED_READFILE(magfile)
@@ -415,7 +434,7 @@ for i=0,nchstr-1 do begin
   gdmag = where(imag lt 50,ngdmag)
   if ngdmag gt 0 then begin
     ;; exptime, aperture correction, zero-point
-     ;; aperture correction is SUBTRACTIVE, makes it brighter
+    ;; aperture correction is SUBTRACTIVE, makes it brighter
     ;; ZPTERM is a SUBTRACTIVE constant offset
     cmag[gdmag,i] = imag[gdmag] + 2.5*alog10(chstr[i].exptime) - chstr[i].apcor - chstr[i].calib_zpterm
     ;; Add zero-point error in quadrature
@@ -680,6 +699,8 @@ FILE_DELETE,base+'_comb'+['.lst','.lst1','.lst2','.lst1.chi','.lst2.chi','.grp',
                           '.nei','.als.inp','.cmn.log','.cmn.coo','.cmn.ap','.cmn.lst','a.fits',$
                           'a.fits.fz','_sub.fits','_sub.cat','_sub.als','_all.coo','.makemag'],/allow
 FILE_DELETE,'check.fits',/allow
+;; Delete any remaining rsrc directory
+resourcefiles = FILE_SEARCH('rsrc??????')
 
 ;; fpack _comb.fits and _combs.fits
 FILE_DELETE,base+['_comb.fits.fz','_combs.fits.fz'],/allow
@@ -691,9 +712,9 @@ spawn,['gzip','-f',base+'_comb.bpm.fits'],/noshell
 
 ;; Copy everything left back to the original directory
 printlog,logfile,'Copying files back to '+bdir
-allfiles = file_search(procdir+['*','.*.fits'],count=nallfiles)
+allfiles = FILE_SEARCH(procdir+['*','.*.fits'],count=nallfiles,/test_regular)  ;; only move regular files
 FILE_MOVE,allfiles,bdir,/allow,/overwrite
-FILE_DELETE,procdir  ; delete temporary processing directory
+FILE_DELETE,procdir,/recursive  ; delete temporary processing directory
 
 printlog,logfile,systime(0)
 printlog,logfile,'DELVERED_FORCEBRICK done after '+strtrim(systime(1)-t0,2)+' sec.'

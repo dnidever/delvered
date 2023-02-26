@@ -238,7 +238,7 @@ For n=0,nnights-1 do begin
         newexpstr = newexpstr[ui]
         print,'Adding ',strtrim(n_elements(newexpstr)-n_elements(expstr0),2),' exposure(s) to ',expfile
         MWRFITS,newexpstr,expfile,/create
-      endif
+     endif else print,'No exposures to add'
 
     ;; Make brand-new _exposures.fits file
     endif else begin
