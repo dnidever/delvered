@@ -24,7 +24,7 @@
 ; By D. Nidever  Aug 2019
 ;-
 
-pro delvered_bricks,input,nmulti=nmulti,redo=redo,update=update,delvedir=delvedir,delvereddir=delvereddir,
+pro delvered_bricks,input,nmulti=nmulti,redo=redo,update=update,delvedir=delvedir,delvereddir=delvereddir,$
                     irafdir=irafdir,workdir=workdir,stp=stp
 
 t0 = systime(1)
