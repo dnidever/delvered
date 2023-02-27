@@ -181,7 +181,7 @@ print,'Processing ',strtrim(nbricks,2),' brick(s)'
 ;#  STARTING THE PROCESSING
 ;#########################################
 cmd = "delvered_forcebrick,'"+bricks+"',delvedir='"+delvedir+"'"
-if n_elements(irafdir) gt 0 then cmd += ',irafdir='+irafdir
+if n_elements(irafdir) gt 0 then cmd += ",irafdir='"+irafdir+"'"
 if keyword_set(redo) then cmd += ',/redo'
 if keyword_set(update) then cmd += ',/update'
 cmddirs = strarr(nbricks)+workdir
