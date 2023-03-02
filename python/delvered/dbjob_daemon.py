@@ -21,7 +21,7 @@ import subprocess
 #import logging
 import tempfile
 from datetime import datetime
-from . import utils as dln
+from dlnpyutils import utils as dln
 import psycopg2 as pg
 from psycopg2.extras import execute_values
 
@@ -122,13 +122,14 @@ warnings.filterwarnings("ignore", message="numpy.dtype size changed")
 warnings.filterwarnings("ignore", message="numpy.ufunc size changed")
 
 # Set up the database connection
+db = DBSession()
 
 class DBSession(object):
 
     def __init__(self):
         """ Initialize the database session object. The connection is opened."""
         self.open()
-        self.username = os.login()
+        self.username = os.getlogin()
         self.pid = os.getpid()
         self.hostname = socket.gethostname()
         self.host = self.hostname.split('.')[0]
@@ -170,16 +171,17 @@ class DBSession(object):
             else:
                 continue
             # RunID
-            runid = self.username+'-'+self.host+'-'+str(self.jobid)+'-'+str(self.runcounter)
+            runid = self.username+'-'+self.host+'-'+str(self.pid)+'-'+str(self.runcounter)
             self.runcounter += 1
             # Now update the table to put our RUNID in there
             starttime = datetime.now().isoformat()
-            cmd = "update delvered_processing.bricks set runid='"+runid+"',"
-            cmd += "runstart='"+starttime+",runhost="+self.hostname+",runuser="+self.username
-            cmd += " where priority="+str(nextval))
+            cmd = "update delvered_processing.bricks set status='R',runid='"+runid+"',"
+            cmd += "runstart='"+starttime+"',runhost='"+self.hostname+"',runuser='"+self.username+"'"
+            cmd += " where priority="+str(nextval)
             cur.execute(cmd)
             niter += 1
-        
+
+        cur.close()
         return brickname,brickid,runid
             
     def query(self,sql,verbose=False,fmt='numpy',raw=False):
@@ -249,33 +251,47 @@ class DBSession(object):
         tab[...] = data
         del(data)
         
-    # For string columns change size to maximum length of that column
-    dt2 = []
-    names = dtype.names
-    nplen = np.vectorize(len)
-    needcopy = False
-    for i in range(len(dtype)):
-        type1 = type(tab[names[i]][0])
-        if type1 is str or type1 is np.str_:
-            maxlen = np.max(nplen(tab[names[i]]))
-            dt2.append( (names[i], str, maxlen+10) )
-            needcopy = True
-        else:
-            dt2.append(dt[i])  # reuse dt value
-    # We need to copy
-    if needcopy==True:
-        dtype2 = np.dtype(dt2)
-        tab2 = np.zeros(len(tab),dtype=dtype2)
-        for n in names:
-            tab2[n] = tab[n]
-        tab = tab2
-        del tab2
+        # For string columns change size to maximum length of that column
+        dt2 = []
+        names = dtype.names
+        nplen = np.vectorize(len)
+        needcopy = False
+        for i in range(len(dtype)):
+            type1 = type(tab[names[i]][0])
+            if type1 is str or type1 is np.str_:
+                maxlen = np.max(nplen(tab[names[i]]))
+                dt2.append( (names[i], str, maxlen+10) )
+                needcopy = True
+            else:
+                dt2.append(dt[i])  # reuse dt value
 
-    # Convert to astropy table
-    if fmt=='table':
-        tab = Table(tab)
-                    
-    return tab
+        # We need to copy
+        if needcopy==True:
+            dtype2 = np.dtype(dt2)
+            tab2 = np.zeros(len(tab),dtype=dtype2)
+            for n in names:
+                tab2[n] = tab[n]
+            tab = tab2
+            del tab2
+
+        # Convert to astropy table
+        if fmt=='table':
+            tab = Table(tab)
+            
+        return tab
+
+    def setstatus(self,brickid,status):
+        """ Set the status of a list of bricks."""
+        if type(status) is not str:
+            raise ValueError('Status must be a string')
+        cur = self.connection.cursor()
+        cmd = "update delvered_processing.bricks set status='"+status+"'"
+        if dln.size(brickid)==1:
+            cmd += " where brickid="+brickid
+        else:
+            cmd += " where brickid IN ("+','.join(brickid)+")"
+        cur.execute(cmd)
+        cur.close()
 
 
 def mkstatstr(n=None):
@@ -290,8 +306,10 @@ def mkstatstr(n=None):
 
 def mkjobstr(n=None):
     """ This returns the job structure schema or an instance of the job structure."""
-    dtype = np.dtype([('host',np.str,20),('jobid',(np.str,100)),('input',np.str,1000),('dir',np.str,500),('name',np.str,100),('scriptname',np.str,200),
-                      ('logfile',np.str),('submitted',np.bool),('done',np.bool),('begtime',np.float64),('endtime',np.float64),('duration',float)])
+    dtype = np.dtype([('host',np.str,20),('jobid',(np.str,100)),('input',np.str,1000),('dir',np.str,500),
+                      ('name',np.str,100),('scriptname',np.str,200),('logfile',np.str),
+                      ('submitted',np.bool),('done',np.bool),('begtime',np.float64),('endtime',np.float64),
+                      ('duration',float),('success',bool)])
     if n is None:
         return dtype
     else:
@@ -728,6 +746,22 @@ def checkjobs(jobs=None,hyperthread=True):
             jobs['done'][sub[i]] = True
             jobs['endtime'][sub[i]] = time.time()/3600/24   # in days
             jobs['duration'][sub[i]] = (jobs['endtime'][sub[i]] - jobs['begtime'][sub[i]])*3600*24   # in sec
+            # Check if the job crashed
+            #  there are some non-ascii characters, so we need to ignore the errors
+            with open(jobs['scriptname'][subs[i]]+'.log','r',errors='ignore') as f:
+                lines = f.readlines()
+            # The log files should end with these four lines
+            # Saving joint catalogs
+            # Wed Mar  1 21:03:51 2023
+            # Writing meta-data to /net/dl2/dnidever/delve/bricks/0329/0329m662/0329m662_joint_meta.fits
+            # dt = 78.0 sec.
+            if lines[-1].startswith('dt = ')==False or lines[-2].startswith('Writing meta-data to')==False:
+                jobs['success'][subs[i]] = False
+                print('Job {:} for brick {:} did not complete successfully'.format(jobs['jobid'][subs[i]],
+                                                                                   jobs['brickname'][subs[i]]))
+                db.setstatus(jobs['brickid'][subs[i]],'CRASHED')
+            else:
+                jobs['success'][subs[i]] = True
             nfinished += 1
             # Check for errors as well!! and put in jobs structure
     return jobs
@@ -890,7 +924,7 @@ def daemon(scriptsdir=None,nmulti=4,prefix="job",hyperthread=True,idle=False,
                 print('')
                 # Get new brick from the database
                 brickname,brickid,runid = db.nextbrick()
-                name = 'dlvbrick-'+runid
+                name = 'dlvbrcks-'+runid
                 cmd = "delvered_forcebrick,'"+brickname+"',/update"
                 if idle is True:
                     print('Input '+str(newind[i]+1)+'  Command: >>IDL>'+str(cmd)+'<<')                    
