@@ -755,13 +755,20 @@ def checkjobs(jobs=None,hyperthread=True):
             # Wed Mar  1 21:03:51 2023
             # Writing meta-data to /net/dl2/dnidever/delve/bricks/0329/0329m662/0329m662_joint_meta.fits
             # dt = 78.0 sec.
-            if lines[-1].startswith('dt = ')==False or lines[-2].startswith('Writing meta-data to')==False:
+            # Success
+            if lines[-1].startswith('dt = ') and  lines[-2].startswith('Writing meta-data to'):
+                jobs['success'][subs[i]] = True
+                db.setstatus(jobs['brickid'][subs[i]],'DONE')
+            # No update
+            elif lines[-1].startswith('Nothing to UPDATE'):
+                jobs['success'][subs[i]] = True
+                db.setstatus(jobs['brickid'][subs[i]],'NOUPDATE')            
+            # Crashed
+            else:
                 jobs['success'][subs[i]] = False
                 print('Job {:} for brick {:} did not complete successfully'.format(jobs['jobid'][subs[i]],
                                                                                    jobs['brickname'][subs[i]]))
                 db.setstatus(jobs['brickid'][subs[i]],'CRASHED')
-            else:
-                jobs['success'][subs[i]] = True
             nfinished += 1
             # Check for errors as well!! and put in jobs structure
     return jobs
