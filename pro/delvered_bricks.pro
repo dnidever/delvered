@@ -24,7 +24,8 @@
 ; By D. Nidever  Aug 2019
 ;-
 
-pro delvered_bricks,input,nmulti=nmulti,redo=redo,update=update,delvedir=delvedir,delvereddir=delvereddir,stp=stp
+pro delvered_bricks,input,nmulti=nmulti,redo=redo,update=update,delvedir=delvedir,delvereddir=delvereddir,$
+                    irafdir=irafdir,workdir=workdir,stp=stp
 
 t0 = systime(1)
   
@@ -46,6 +47,7 @@ if n_elements(workdir) eq 0 then begin
   workdir = '/data0/dnidever/delve/'
   if n_elements(workdir) gt 0 then if FILE_TEST(workdir,/directory) eq 0 then FILE_MKDIR,workdir
 endif
+if n_elements(irafdir) eq 0 then irafdir='/home/dnidever/iraf/'
 if n_elements(nmulti) eq 0 then nmulti=10
 
 ;; Not enough inputs
@@ -179,6 +181,7 @@ print,'Processing ',strtrim(nbricks,2),' brick(s)'
 ;#  STARTING THE PROCESSING
 ;#########################################
 cmd = "delvered_forcebrick,'"+bricks+"',delvedir='"+delvedir+"'"
+if n_elements(irafdir) gt 0 then cmd += ",irafdir='"+irafdir+"'"
 if keyword_set(redo) then cmd += ',/redo'
 if keyword_set(update) then cmd += ',/update'
 cmddirs = strarr(nbricks)+workdir
