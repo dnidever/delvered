@@ -150,7 +150,7 @@ class DBSession(object):
     def nextbrick(self):
         """ Get the next brick."""
         cur = self.connection.cursor()
-        # Loop until we have one that is TODO
+        # Loop until we have one that is TODO or REDO
         done = False
         niter = 0
         while (done==False):
@@ -163,7 +163,7 @@ class DBSession(object):
             brickname = row[0]
             brickid = row[1]
             status = row[6]
-            if status=='TODO':
+            if status=='TODO' or status='REDO':
                 done = True
             else:
                 continue
