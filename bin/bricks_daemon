@@ -1,0 +1,51 @@
+#!/usr/bin/env python
+#
+# Script to run doppler.fit() on a spectrum
+
+from __future__ import print_function
+
+import os
+import sys
+import time
+import numpy as np
+from argparse import ArgumentParser
+import traceback
+try:
+    import __builtin__ as builtins # Python 2
+except ImportError:
+    import builtins # Python 3
+
+# Main command-line program
+if __name__ == "__main__":
+    parser = ArgumentParser(description='Run delvered_forcebrick')
+    parser.add_argument('--scriptsdir', type=str, default='', nargs='+', help='scripts directory')
+    parser.add_argument('--nmulti', type=int, nargs=1, default=10, help='Number of jobs to run')
+    parser.add_argument('-k','--kill', action='store_true', help='kill the jobs')
+    args = parser.parse_args()
+    scriptsdir = args.scriptsdir
+    if type(scriptsdir) is list:
+        scriptsdir = scriptsdir[0]
+    if scriptsdir == '':
+        scriptsdir = None
+    nmulti = args.nmulti
+    if type(nmulti) is list:
+        nmulti = nmulti[0]
+    kill = args.kill
+
+    # Killing the bricks_daemon
+    if kill:
+        print('Killing bricks_daemon')
+        killfile = '/tmp/'+os.getlogin()+'/killbricks'
+        if os.path.exists(killfile)==False:
+            open(killfile,'w').close()  # create empoty file
+        sys.exit()
+
+    t0 = time.time()
+
+    # Run bricks_daemon.py
+    from delvered import bricks_daemon
+    jobs = bricks_daemon.daemon(scriptsdir,nmulti)
+
+    print('Done')
+    dt = time.time()-t0
+    print('dt = {:.2f} sec'.format(dt))

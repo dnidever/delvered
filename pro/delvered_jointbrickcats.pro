@@ -116,7 +116,7 @@ endif
 chstr = MRDFITS(tmpfile,1,/silent)
 file_delete,tmpfile,/allow
 nchstr = n_elements(chstr)
-;chstr.file = repstr(chstr.file,'/net/dl1/','/dl1/')   ;; fix /net/dl1 to /dl1
+chstr.file = repstr(chstr.file,'/dl1/users/','/dl2/')   ;; fix /net/dl1 to /dl2/
 printlog,logfile,'Found ',strtrim(nchstr,2),' overlapping chips within 0.5 deg of brick center'
 
 ;; Make sure the chips are unique,  some were duplicated on SMASH nights
@@ -135,14 +135,16 @@ vxarr = fltarr(nchstr,4)
 vyarr = fltarr(nchstr,4)
 for i=0,nchstr-1 do begin
   if (i mod 100 eq 0) and (i gt 0) then print,i
-  hd1 = PHOTRED_READFILE(chstr[i].file,/header)
-  nx = sxpar(hd1,'naxis1')
-  ny = sxpar(hd1,'naxis2')
-  head_xyad,hd1,[0,nx-1,nx-1,0],[0,0,ny-1,ny-1],vra,vdec,/degree
-  olap[i] = dopolygonsoverlap(bvra,bvdec,vra,vdec)
-  head_adxy,tilestr.head,vra,vdec,vx,vy,/deg
-  vxarr[i,*] = vx
-  vyarr[i,*] = vy
+  hd1 = PHOTRED_READFILE(chstr[i].file,/header,error=rderror)
+  if n_elements(rderror) eq 0 then begin
+    nx = sxpar(hd1,'naxis1')
+    ny = sxpar(hd1,'naxis2')
+    head_xyad,hd1,[0,nx-1,nx-1,0],[0,0,ny-1,ny-1],vra,vdec,/degree
+    olap[i] = dopolygonsoverlap(bvra,bvdec,vra,vdec)
+    head_adxy,tilestr.head,vra,vdec,vx,vy,/deg
+    vxarr[i,*] = vx
+    vyarr[i,*] = vy
+  endif else print,'Problems reading '+chstr[i].file
 endfor
 ;; Require at least a 2 pixel overlap in X and Y
 g = where(olap eq 1 and max(vxarr,dim=2) ge 2 and max(vyarr,dim=2) ge 2 and min(vxarr,dim=2) le tilestr.nx-3 and min(vyarr,dim=2) le tilestr.ny-3,ng)
