@@ -808,7 +808,7 @@ def status_update(jobs=None):
     print(('Jobs Summary: %d total, %d finished, %d running, %d left') % (njobs,n_finished,n_inqueue,n_nosubmit))
 
 
-def daemon(scriptsdir=None,nmulti=4,waittime=0.2,statustime=60):
+def daemon(scriptsdir=None,nmulti=4,waittime=0.2,statustime=60,redo=False):
     """
     This program is a job manager run off of a database table.
 
@@ -828,6 +828,8 @@ def daemon(scriptsdir=None,nmulti=4,waittime=0.2,statustime=60):
         Default is 60.
     waittime : float or int, optional
        Time to wait between checking the running jobs.  Default is 0.2 sec.
+    redo : boolean, optional
+       Redo the bricks.  Default is to use update.
 
     Results
     -------
@@ -944,8 +946,11 @@ def daemon(scriptsdir=None,nmulti=4,waittime=0.2,statustime=60):
                 # Get new brick from the database
                 brickname,brickid,runid = db.nextbrick()
                 name = 'dlvbrcks-'+runid
-                #cmd = "delvered_forcebrick,'"+brickname+"',/update"
-                cmd = "print,'Testing for brick: "+brickname+"'"
+                if redo:
+                    cmd = "delvered_forcebrick,'"+brickname+"',/redo"
+                else:
+                    cmd = "delvered_forcebrick,'"+brickname+"',/update"
+                #cmd = "print,'Testing for brick: "+brickname+"'"
                 if idle is True:
                     print('Input '+str(len(jobs))+'  Command: >>IDL>'+str(cmd)+'<<')                    
                 else:
