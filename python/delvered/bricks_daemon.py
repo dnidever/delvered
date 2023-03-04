@@ -399,6 +399,8 @@ def check_killfile(jobs=None,hyperthread=True):
                 except:
                     out = subprocess.run(['kill','-9',jobs['jobid'][sub[i]]],stderr=subprocess.STDOUT,stdout=subprocess.PIPE,
                                          shell=False,check=False).stdout
+            # Change the status back in the database
+            db.setstatus(jobs['brickid'][sub[i]]],'TODO')
         # Also kill any allframes that are running
         print('Killing any dangling allframe and IDL jobs')
         out = subprocess.run(['killall','allframe'],stderr=subprocess.STDOUT,stdout=subprocess.PIPE,
