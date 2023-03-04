@@ -772,16 +772,19 @@ def checkjobs(jobs=None,hyperthread=True):
             # Success
             if lines[-1].startswith('dt = ') and  lines[-2].startswith('Writing meta-data to'):
                 jobs['success'][sub[i]] = True
+                print('Job {:} for brick {:} completed successfully'.format(jobs['jobid'][sub[i]],
+                                                                                   jobs['brickname'][sub[i]]))
                 db.setstatus(jobs['brickid'][sub[i]],'DONE')
             # No update
             elif lines[-1].startswith('Nothing to UPDATE'):
                 jobs['success'][sub[i]] = True
+                print('Job {:} for brick {:} had no new chips'.format(jobs['jobid'][sub[i]],
+                                                                      jobs['brickname'][sub[i]]))
                 db.setstatus(jobs['brickid'][sub[i]],'NOUPDATE')            
             # Crashed
             else:
                 jobs['success'][sub[i]] = False
-                print('Job {:} for brick {:} did not complete successfully'.format(jobs['jobid'][sub[i]],
-                                                                                   jobs['brickname'][sub[i]]))
+                print('Job {:} for brick {:} crasjed'.format(jobs['jobid'][sub[i]],jobs['brickname'][sub[i]]))
                 db.setstatus(jobs['brickid'][sub[i]],'CRASHED')
             # Check if there's a meta file and figure out the number of chips
             brickname = jobs['brickname'][sub[i]]
