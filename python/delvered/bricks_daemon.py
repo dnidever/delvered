@@ -784,7 +784,7 @@ def checkjobs(jobs=None,hyperthread=True):
             # Crashed
             else:
                 jobs['success'][sub[i]] = False
-                print('Job {:} for brick {:} crasjed'.format(jobs['jobid'][sub[i]],jobs['brickname'][sub[i]]))
+                print('Job {:} for brick {:} crashed'.format(jobs['jobid'][sub[i]],jobs['brickname'][sub[i]]))
                 db.setstatus(jobs['brickid'][sub[i]],'CRASHED')
             # Check if there's a meta file and figure out the number of chips
             brickname = jobs['brickname'][sub[i]]
