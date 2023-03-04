@@ -802,12 +802,11 @@ def status_update(jobs=None):
     if jobs is None: raise ValueError("jobs must be input")
     njobs = dln.size(jobs)                                                   # Number of total jobs
     n_inqueue = np.sum((jobs['submitted']==True) & (jobs['done']==False))    # Number of jobs still in queue  
-    n_nosubmit = np.sum(jobs['submitted']==False)                            # Number of jobs left to do 
     n_finished = np.sum(jobs['done']==True)                                  # Number of jobs finished 
     # Print the status
     print('')
     print(time.ctime())
-    print(('Jobs Summary: %d total, %d finished, %d running, %d left') % (njobs,n_finished,n_inqueue,n_nosubmit))
+    print(('Jobs Summary: %d total, %d finished, %d running) % (njobs,n_finished,n_inqueue))
 
 
 def daemon(scriptsdir=None,nmulti=4,waittime=0.2,statustime=60,redo=False):
