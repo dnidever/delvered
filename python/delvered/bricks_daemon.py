@@ -956,7 +956,7 @@ def daemon(scriptsdir=None,nmulti=4,waittime=0.2,statustime=60,redo=False):
                 # Get new brick from the database
                 brickname,brickid,runid,dbstatus = db.nextbrick()
                 name = 'dlvbrcks-'+runid
-                if redo or status=='REDO':
+                if redo or dbstatus=='REDO':
                     cmd = "delvered_forcebrick,'"+brickname+"',/redo"
                 else:
                     cmd = "delvered_forcebrick,'"+brickname+"',/update"
