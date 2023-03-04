@@ -27,7 +27,7 @@ if __name__ == "__main__":
     t0 = time.time()
 
     # Run dbjob_daemon.py
-    dbjob_daemon.daemon(scriptsdir,nmulti)
+    jobs = dbjob_daemon.daemon(scriptsdir,nmulti)
 
     print('Done')
     dt = time.time()-t0

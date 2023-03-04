@@ -121,9 +121,6 @@ def register_date_typecasters(connection):
 warnings.filterwarnings("ignore", message="numpy.dtype size changed")
 warnings.filterwarnings("ignore", message="numpy.ufunc size changed")
 
-# Set up the database connection
-db = DBSession()
-
 class DBSession(object):
 
     def __init__(self):
@@ -139,6 +136,7 @@ class DBSession(object):
         """ Open the database connection."""
         connection = pg.connect(user="datalab",host="gp09.datalab.noirlab.edu",
                                 password="",port = "5432",database = "tapdb")
+        connection.autocommit = True
         self.connection = connection
 
     def close(self):
@@ -287,16 +285,21 @@ class DBSession(object):
         cur = self.connection.cursor()
         cmd = "update delvered_processing.bricks set status='"+status+"'"
         if dln.size(brickid)==1:
-            cmd += " where brickid="+brickid
+            cmd += " where brickid="+str(brickid)
         else:
             cmd += " where brickid IN ("+','.join(brickid)+")"
         cur.execute(cmd)
         cur.close()
 
 
+# Set up the database connection
+db = DBSession()
+
+
 def mkstatstr(n=None):
     """ This returns the stat structure schema or an instance of the stat structure."""
-    dtype = np.dtype([('jobid',np.str,20),('name',np.str,100),('user',np.str,100),('timeuse',np.str,100),('status',np.str,10),('queue',np.str,20)])
+    dtype = np.dtype([('jobid',str,20),('name',str,100),('user',str,100),
+                      ('timeuse',str,100),('status',str,10),('queue',str,20)])
     if n is None:
         return dtype
     else:
@@ -306,10 +309,10 @@ def mkstatstr(n=None):
 
 def mkjobstr(n=None):
     """ This returns the job structure schema or an instance of the job structure."""
-    dtype = np.dtype([('host',np.str,20),('jobid',(np.str,100)),('input',np.str,1000),('dir',np.str,500),
-                      ('name',np.str,100),('scriptname',np.str,200),('logfile',np.str),
-                      ('submitted',np.bool),('done',np.bool),('begtime',np.float64),('endtime',np.float64),
-                      ('duration',float),('success',bool)])
+    dtype = np.dtype([('host',str,20),('jobid',(str,100)),('input',str,1000),('dir',str,500),
+                      ('name',str,100),('scriptname',str,200),('logfile',str),
+                      ('submitted',bool),('done',bool),('begtime',float),('endtime',float),
+                      ('duration',float),('brickname',str,100),('brickid',int),('success',bool)])
     if n is None:
         return dtype
     else:
@@ -324,6 +327,7 @@ def mkrunbatch():
     batchfile = os.path.join(curdir,'runbatch')
     if os.path.exists(batchfile) is False:
         lines = []
+        lines.append("#!/bin/sh\n")
         lines.append("if test $# -eq 0\n")
         lines.append("then\n")
         lines.append("  echo 'Syntax - runbatch program'\n")
@@ -349,6 +353,7 @@ def mkidlbatch():
         if os.path.exists(idlprog) is False:
             raise Exception("IDL program "+idlprog+" not found")
         lines = []
+        lines.append("#!/bin/sh\n")
         lines.append("if test $# -eq 0\n")
         lines.append("then\n")
         lines.append("  echo 'Syntax - idlbatch idl.batch'\n")
@@ -376,7 +381,7 @@ def check_diskspace(indir=None,updatestatus=False):
 def check_killfile(jobs=None,hyperthread=True):
     """ This checks for a kill file and if found kills all the active jobs. """
     if jobs is None: raise ValueError("No jobs structure input")
-    killfile = 'killjobs'
+    killfile = '/tmp/'+os.getlogin()+'/killbricks'
     if os.path.exists(killfile) is True:
         sub, = np.where((jobs['submitted']==1) & (jobs['done']==0))
         nsub = len(sub)
@@ -385,13 +390,16 @@ def check_killfile(jobs=None,hyperthread=True):
             # Killing the job
             print('Killing '+jobs['name'][sub[i]]+'  JobID='+jobs['jobid'][sub[i]])
             if hyperthread is False:
-                out = subprocess.check_output(['qdel',jobs['jobid'][sub[i]]],stdout=sf,stderr=subprocess.STDOUT,shell=False)
+                out = subprocess.run(['qdel',jobs['jobid'][sub[i]]],stderr=subprocess.STDOUT,stdout=subprocess.PIPE,
+                                     shell=False,check=False).stdout
             else:
                 # Using negative PID will also kill subprocesses
                 try:
-                    out = asubprocess.check_output(['kill','-9','-'+jobs['jobid'][sub[i]]],stderr=subprocess.STDOUT,shell=False)
+                    out = subprocess.run(['kill','-9','-'+jobs['jobid'][sub[i]]],stderr=subprocess.STDOUT,stdout=subprocess.PIPE,
+                                         shell=False,check=False).stdout
                 except:
-                    out = asubprocess.check_output(['kill','-9',jobs['jobid'][sub[i]]],stderr=subprocess.STDOUT,shell=False)                    
+                    out = subprocess.run(['kill','-9',jobs['jobid'][sub[i]]],stderr=subprocess.STDOUT,stdout=subprocess.PIPE,
+                                         shell=False,check=False).stdout
         # Remove the kill file
         print('Deleting kill file "'+killfile+'"')
         os.remove(killfile)
@@ -445,6 +453,8 @@ def makescript(inp=None,indir=None,name=None,prefix=None,hyperthread=True,idle=F
     ninp = dln.size(inp)
     ndir = dln.size(indir)
     nname = dln.size(name)
+    if type(name) is not list:
+        name = [name]
 
     # Not enough directories input
     if (ndir>0) & (ndir!=ninp):
@@ -459,7 +469,7 @@ def makescript(inp=None,indir=None,name=None,prefix=None,hyperthread=True,idle=F
 
     # Construct names
     if (nname==0):
-        name = np.zeros(ninp,dtype=(np.str,200))
+        name = np.zeros(ninp,dtype=(str,200))
         if prefix is not None:
             pre = dln.first_el(prefix)
         else:
@@ -470,7 +480,8 @@ def makescript(inp=None,indir=None,name=None,prefix=None,hyperthread=True,idle=F
             name[i] = os.path.basename(tfile)
 
     # Make scriptnames
-    scriptname = np.array(dln.strjoin(dln.pathjoin(indir,name),'.sh'),ndmin=1)
+    scriptname = np.zeros(nname,dtype=np.dtype('U100'))
+    scriptname[:] = np.array(dln.strjoin(dln.pathjoin(indir,name),'.sh'),ndmin=1)
     # Script loop
     for i,input1 in enumerate(np.array(inp,ndmin=1)):
         base = str(name[i])
@@ -603,7 +614,8 @@ def submitjob(scriptname=None,indir=None,hyperthread=True,idle=False):
             batchprog = mkrunbatch()
         if indir is not None: os.chdir(indir)
         try:
-            out = subprocess.check_output(batchprog+' '+scriptname,stderr=subprocess.STDOUT,shell=True)
+            #out = subprocess.check_output(batchprog+' '+scriptname,stderr=subprocess.STDOUT,shell=True)
+            out = subprocess.check_output([batchprog,scriptname],stderr=subprocess.STDOUT)
         except:
             raise Exception("Problem submitting shell job")
         if indir is not None: os.chdir(curdir)
@@ -748,7 +760,7 @@ def checkjobs(jobs=None,hyperthread=True):
             jobs['duration'][sub[i]] = (jobs['endtime'][sub[i]] - jobs['begtime'][sub[i]])*3600*24   # in sec
             # Check if the job crashed
             #  there are some non-ascii characters, so we need to ignore the errors
-            with open(jobs['scriptname'][subs[i]]+'.log','r',errors='ignore') as f:
+            with open(jobs['scriptname'][sub[i]]+'.log','r',errors='ignore') as f:
                 lines = f.readlines()
             # The log files should end with these four lines
             # Saving joint catalogs
@@ -757,18 +769,18 @@ def checkjobs(jobs=None,hyperthread=True):
             # dt = 78.0 sec.
             # Success
             if lines[-1].startswith('dt = ') and  lines[-2].startswith('Writing meta-data to'):
-                jobs['success'][subs[i]] = True
-                db.setstatus(jobs['brickid'][subs[i]],'DONE')
+                jobs['success'][sub[i]] = True
+                db.setstatus(jobs['brickid'][sub[i]],'DONE')
             # No update
             elif lines[-1].startswith('Nothing to UPDATE'):
-                jobs['success'][subs[i]] = True
-                db.setstatus(jobs['brickid'][subs[i]],'NOUPDATE')            
+                jobs['success'][sub[i]] = True
+                db.setstatus(jobs['brickid'][sub[i]],'NOUPDATE')            
             # Crashed
             else:
-                jobs['success'][subs[i]] = False
-                print('Job {:} for brick {:} did not complete successfully'.format(jobs['jobid'][subs[i]],
-                                                                                   jobs['brickname'][subs[i]]))
-                db.setstatus(jobs['brickid'][subs[i]],'CRASHED')
+                jobs['success'][sub[i]] = False
+                print('Job {:} for brick {:} did not complete successfully'.format(jobs['jobid'][sub[i]],
+                                                                                   jobs['brickname'][sub[i]]))
+                db.setstatus(jobs['brickid'][sub[i]],'CRASHED')
             nfinished += 1
             # Check for errors as well!! and put in jobs structure
     return jobs
@@ -787,8 +799,7 @@ def status_update(jobs=None):
     print(('Jobs Summary: %d total, %d finished, %d running, %d left') % (njobs,n_finished,n_inqueue,n_nosubmit))
 
 
-def daemon(scriptsdir=None,nmulti=4,prefix="job",hyperthread=True,idle=False,
-           waittime=0.2,statustime=60):
+def daemon(scriptsdir=None,nmulti=4,waittime=0.2,statustime=60):
     """
     This program is a job manager run off of a database table.
 
@@ -802,14 +813,6 @@ def daemon(scriptsdir=None,nmulti=4,prefix="job",hyperthread=True,idle=False,
        Directory for the scripts.
     nmulti : int, optional
        How many nodes to run these jobs on.  Default is 4.
-    prefix : string
-       The prefix for the script names.  Default is "job".
-    hyperthread : bool, optional
-       Not on a PBS server but one that has multiple processors
-        hyperthreaded.  Run multiple jobs at the same time on
-        the same server.  Default is True.
-    idle : bool, optional
-       This is an IDL command, otherwise a SHELL command.  Default is False.
     statustime : float or int, optional
        The time between status updates.  However, the status
         will always be updated if something has actually changed.
@@ -832,6 +835,9 @@ def daemon(scriptsdir=None,nmulti=4,prefix="job",hyperthread=True,idle=False,
 
     """
 
+    idle = True
+    hyperthread = True
+
     # Current directory
     curdir = os.getcwd()
 
@@ -839,7 +845,7 @@ def daemon(scriptsdir=None,nmulti=4,prefix="job",hyperthread=True,idle=False,
     if scriptsdir is None:
         username = os.getlogin()
         scriptsdir = '/tmp/'+username
-        if os.path.exists(scripts)==False:
+        if os.path.exists(scriptsdir)==False:
             os.makedirs(scriptsdir)
         print('Putting scripts in '+scriptsdir)
     
@@ -861,9 +867,9 @@ def daemon(scriptsdir=None,nmulti=4,prefix="job",hyperthread=True,idle=False,
         if os.path.exists(idlprog) is False:
             raise Exception("IDL program "+idlprog+" not found")
 
-    print('---------------------------------')
-    print(' RUNNING DBJOB_DAEMON for '+str(ninp)+' JOB(S)')
-    print('---------------------------------')
+    print('---------------------')
+    print(' RUNNING DBJOB_DAEMON ')
+    print('---------------------')
     print('Host='+host)
     print('Nmulti='+str(nmulti))
     
@@ -881,16 +887,14 @@ def daemon(scriptsdir=None,nmulti=4,prefix="job",hyperthread=True,idle=False,
 
     # Initialize the "jobs" structure
     # id will be the ID from Pleione
-    jobs = mkjobstr(ninp)
+    jobs = mkjobstr(1)
     jobs['host'] = host
-    jobs['input'] = inp
-    njobs = ninp
 
     # Loop until all jobs are done
-    # On each loop check the pleione queue and figure out what to do
-    count = np.longlong(0)
-    endflag = 0
-    while (endflag==0):
+    # On each loop check the queue and figure out what to do
+    count = 0
+    endflag = False
+    while (endflag==False):
         # Status update
         dtstatus_sec = time.time()-timesincelaststatus
         if (dtstatus_sec>statustime):
@@ -900,7 +904,7 @@ def daemon(scriptsdir=None,nmulti=4,prefix="job",hyperthread=True,idle=False,
             updatestatus = False
   
         # Check disk space
-        check_diskspace(dln.first_el(dirs))
+        check_diskspace('/data0/')
         # Check for kill file
         if check_killfile(jobs) is True: return jobs
 
@@ -915,12 +919,11 @@ def daemon(scriptsdir=None,nmulti=4,prefix="job",hyperthread=True,idle=False,
         # Submit new jobs
         #----------------
         n_inqueue = np.sum((jobs['submitted']==True) & (jobs['done']==False))  # Number of jobs still in queue  
-        n_nosubmit = np.sum(jobs['submitted']==False)                            # Number of jobs left to do 
-        nnew = dln.limit(nmulti-n_inqueue,0,n_nosubmit)
+        nnew = nmulti-n_inqueue
         if (nnew>0):
             # Get the indices of new jobs to be submitted
-            nosubmit, = np.where(jobs['submitted']==False)
-            newind = nosubmit[0:nnew]
+            #nosubmit, = np.where(jobs['submitted']==False)
+            #newind = nosubmit[0:nnew]
             # Update immediately if there are new jobs to submit
             print('')
             print(time.ctime())
@@ -932,32 +935,35 @@ def daemon(scriptsdir=None,nmulti=4,prefix="job",hyperthread=True,idle=False,
                 # Get new brick from the database
                 brickname,brickid,runid = db.nextbrick()
                 name = 'dlvbrcks-'+runid
-                cmd = "delvered_forcebrick,'"+brickname+"',/update"
+                #cmd = "delvered_forcebrick,'"+brickname+"',/update"
+                cmd = "print,'Testing for brick: "+brickname+"'"
                 if idle is True:
-                    print('Input '+str(newind[i]+1)+'  Command: >>IDL>'+str(cmd)+'<<')                    
+                    print('Input '+str(len(jobs))+'  Command: >>IDL>'+str(cmd)+'<<')                    
                 else:
-                    print('Input '+str(newind[i]+1)+'  Command: >>'+str(cmd)+'<<')
+                    print('Input '+str(len(jobs))+'  Command: >>'+str(cmd)+'<<')
                 # Make script
                 scriptname = makescript(cmd,indir=scriptsdir,name=name,
-                                        prefix=prefix,hyperthread=hyperthread,idle=idle)
+                                        hyperthread=hyperthread,idle=idle)
                 name = os.path.basename(os.path.splitext(scriptname)[0])
                 # Submitting the job
                 jobid, logfile = submitjob(scriptname,scriptsdir,hyperthread=hyperthread,idle=idle)
+                newjob = mkjobstr(1)
                 # Updating the jobs structure
-                jobs['submitted'][newind[i]] = True
-                jobs['jobid'][newind[i]] = jobid
-                jobs['brickname'][newind[i]] = brickname
-                jobs['cmd'][newind[i]] = cmd
-                jobs['name'][newind[i]] = name                
-                jobs['dir'][newind[i]] = scriptsdir
-                jobs['scriptname'][newind[i]] = scriptname
-                jobs['logfile'][newind[i]] = logfile
-                jobs['begtime'][newind[i]] = time.time()/3600/24   # in days
+                newjob['submitted'] = True
+                newjob['jobid'] = jobid
+                newjob['brickname'] = brickname
+                newjob['input'] = cmd
+                newjob['name'] = name                
+                newjob['dir'] = scriptsdir
+                newjob['scriptname'] = scriptname
+                newjob['logfile'] = logfile
+                newjob['begtime'] = time.time()/3600/24   # in days
+                jobs = np.hstack((jobs,newjob))
 
         # Are we done?
         #-------------
         ndone = np.sum(jobs['done']==True)
-        if (ndone==njobs): endflag=1
+        #if (ndone==njobs): endflag=True
         # Wait a bit
         #--------------
         if (endflag==0): time.sleep(waittime)
