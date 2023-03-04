@@ -163,7 +163,7 @@ class DBSession(object):
             brickname = row[0]
             brickid = row[1]
             status = row[6]
-            if status=='TODO' or status='REDO':
+            if status=='TODO' or status=='REDO':
                 done = True
             else:
                 continue
