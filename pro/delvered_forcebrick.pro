@@ -209,7 +209,7 @@ endif
 chstr = MRDFITS(tmpfile,1,/silent)
 file_delete,tmpfile,/allow
 nchstr = n_elements(chstr)
-;chstr.file = repstr(chstr.file,'/net/dl1/','/dl1/')   ;; fix /net/dl1 to /dl1
+chstr.file = repstr(chstr.file,'/dl1/users/','/dl2/')   ;; fix /net/dl1 to /dl2/
 printlog,logfile,'Found ',strtrim(nchstr,2),' overlapping chips within 0.5 deg of brick center'
 printlog,logfile,systime(0)
 
