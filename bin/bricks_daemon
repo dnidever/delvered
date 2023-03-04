@@ -20,9 +20,18 @@ if __name__ == "__main__":
     parser = ArgumentParser(description='Run delvered_forcebrick')
     parser.add_argument('--scriptsdir', type=str, nargs='+', help='scripts directory')
     parser.add_argument('--nmulti', type=int, nargs=1, default=10, help='Number of jobs to run')
+    parser.add_argument('-k','--kill', action='store_true', help='kill the jobs')
     args = parser.parse_args()
     scriptsdir = args.scriptsdir
     nmulti = args.nmulti
+    kill = args.kill
+
+    # Killing the bricks_daemon
+    if kill:
+        print('Killing bricks_daemon')
+        killfile = '/tmp/'+os.getlogin()+'/killbricks'
+        if os.path.exists(killfile)==False:
+            open(killfile,'w').close()  # create empoty file
 
     t0 = time.time()
 

@@ -781,6 +781,15 @@ def checkjobs(jobs=None,hyperthread=True):
                 print('Job {:} for brick {:} did not complete successfully'.format(jobs['jobid'][sub[i]],
                                                                                    jobs['brickname'][sub[i]]))
                 db.setstatus(jobs['brickid'][sub[i]],'CRASHED')
+            # Check if there's a meta file and figure out the number of chips
+            brickname = jobs['brickname'][subs[i]]
+            metafile = '/net/dl2/dnidever/delve/bricks/'+strmid(brickname,0,4)+'/'+brickname+'/'+brickname+'_meta.fits'
+            if os.path.exists(metafile):
+                head = fits.getheader(metafile,1)
+                nchips = head['NAXIS2']
+                cur = db.connection.cursor()
+                cur.execute("update delvered_processing.bricks set nchips='"+str(nchips)+"' where brickname='"+brickname+"'")
+                cur.close()
             nfinished += 1
             # Check for errors as well!! and put in jobs structure
     return jobs
