@@ -400,9 +400,11 @@ def check_killfile(jobs=None,hyperthread=True):
                     out = subprocess.run(['kill','-9',jobs['jobid'][sub[i]]],stderr=subprocess.STDOUT,stdout=subprocess.PIPE,
                                          shell=False,check=False).stdout
         # Also kill any allframes that are running
-        print('Killing any dangling allframe jobs')
+        print('Killing any dangling allframe and IDL jobs')
         out = subprocess.run(['killall','allframe'],stderr=subprocess.STDOUT,stdout=subprocess.PIPE,
                              shell=False,check=False).stdout        
+        out = subprocess.run(['killall','idl'],stderr=subprocess.STDOUT,stdout=subprocess.PIPE,
+                             shell=False,check=False).stdout
         # Remove the kill file
         print('Deleting kill file "'+killfile+'"')
         os.remove(killfile)
