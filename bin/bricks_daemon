@@ -14,7 +14,6 @@ try:
     import __builtin__ as builtins # Python 2
 except ImportError:
     import builtins # Python 3
-from delvered import bricks_daemon
 
 # Main command-line program
 if __name__ == "__main__":
@@ -44,6 +43,7 @@ if __name__ == "__main__":
     t0 = time.time()
 
     # Run bricks_daemon.py
+    from delvered import bricks_daemon
     jobs = bricks_daemon.daemon(scriptsdir,nmulti)
 
     print('Done')

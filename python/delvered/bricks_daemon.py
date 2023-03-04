@@ -809,7 +809,7 @@ def status_update(jobs=None):
     # Print the status
     print('')
     print(time.ctime())
-    print(('Jobs Summary: %d total, %d finished, %d running) % (njobs,n_finished,n_inqueue))
+    print('Jobs Summary: %d total, %d finished, %d running' % (njobs,n_finished,n_inqueue))
 
 
 def daemon(scriptsdir=None,nmulti=4,waittime=0.2,statustime=60,redo=False):
