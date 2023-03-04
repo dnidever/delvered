@@ -179,7 +179,7 @@ class DBSession(object):
             niter += 1
 
         cur.close()
-        return brickname,brickid,runid
+        return brickname,brickid,runid,status
             
     def query(self,sql,verbose=False,fmt='numpy',raw=False):
         """ Query the database."""
@@ -954,9 +954,9 @@ def daemon(scriptsdir=None,nmulti=4,waittime=0.2,statustime=60,redo=False):
             for i in range(nnew):
                 print('')
                 # Get new brick from the database
-                brickname,brickid,runid = db.nextbrick()
+                brickname,brickid,runid,dbstatus = db.nextbrick()
                 name = 'dlvbrcks-'+runid
-                if redo:
+                if redo or status=='REDO':
                     cmd = "delvered_forcebrick,'"+brickname+"',/redo"
                 else:
                     cmd = "delvered_forcebrick,'"+brickname+"',/update"
