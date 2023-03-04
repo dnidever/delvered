@@ -16,12 +16,11 @@ import numpy as np
 import warnings
 import socket
 import time
-#import shutil
 import subprocess
-#import logging
 import tempfile
 from datetime import datetime
 from dlnpyutils import utils as dln
+from astropy.io import fits
 import psycopg2 as pg
 from psycopg2.extras import execute_values
 
@@ -614,8 +613,9 @@ def submitjob(scriptname=None,indir=None,hyperthread=True,idle=False):
             batchprog = mkrunbatch()
         if indir is not None: os.chdir(indir)
         try:
-            #out = subprocess.check_output(batchprog+' '+scriptname,stderr=subprocess.STDOUT,shell=True)
-            out = subprocess.check_output([batchprog,scriptname],stderr=subprocess.STDOUT)
+            out = subprocess.check_output(batchprog+' '+scriptname,stderr=subprocess.STDOUT,shell=True)
+            #out = subprocess.run(batchprog+' '+scriptname,stderr=subprocess.STDOUT,stdout=subprocess.PIPE,
+            #                     shell=True,check=False).stdout
         except:
             raise Exception("Problem submitting shell job")
         if indir is not None: os.chdir(curdir)
@@ -630,6 +630,7 @@ def submitjob(scriptname=None,indir=None,hyperthread=True,idle=False):
         nlogfile_ind = len(logfile_ind)
         logfile = out[logfile_ind[0]].split(':')[1]
         logfile = logfile.strip()
+
     # Printing info
     print('Submitted '+scriptname+'  JobID='+jobid)
 
@@ -706,8 +707,8 @@ def getstat(jobid=None,hyperthread=True):
             return mkstatstr(1)
 
         try:
-            out = subprocess.check_output(['ps','-o','pid,user,etime,command','-p',str(dln.first_el(jobid))],
-                                          stderr=subprocess.STDOUT,shell=False)
+            out = subprocess.run(['ps','-o','pid,user,etime,command','-p',str(jobid)],
+                                 stderr=subprocess.STDOUT,stdout=subprocess.PIPE,shell=False,check=False).stdout
         except:
             statstr = mkstatstr(1)
             statstr['jobid'] = jobid
@@ -723,6 +724,7 @@ def getstat(jobid=None,hyperthread=True):
             statlines = np.array(out,ndmin=1)[gd[0]]
         else:
             statlines = None
+
         # Some jobs in queue
         if statlines is not None:
             arr = statlines.split()
@@ -782,8 +784,8 @@ def checkjobs(jobs=None,hyperthread=True):
                                                                                    jobs['brickname'][sub[i]]))
                 db.setstatus(jobs['brickid'][sub[i]],'CRASHED')
             # Check if there's a meta file and figure out the number of chips
-            brickname = jobs['brickname'][subs[i]]
-            metafile = '/net/dl2/dnidever/delve/bricks/'+strmid(brickname,0,4)+'/'+brickname+'/'+brickname+'_meta.fits'
+            brickname = jobs['brickname'][sub[i]]
+            metafile = '/net/dl2/dnidever/delve/bricks/'+brickname[0:4]+'/'+brickname+'/'+brickname+'_meta.fits'
             if os.path.exists(metafile):
                 head = fits.getheader(metafile,1)
                 nchips = head['NAXIS2']
@@ -961,6 +963,10 @@ def daemon(scriptsdir=None,nmulti=4,waittime=0.2,statustime=60,redo=False):
                 name = os.path.basename(os.path.splitext(scriptname)[0])
                 # Submitting the job
                 jobid, logfile = submitjob(scriptname,scriptsdir,hyperthread=hyperthread,idle=idle)
+                # Set the logfile in the database
+                cur = db.connection.cursor()
+                cur.execute("update delvered_processing.bricks set logfile='"+logfile+"' where brickname='"+brickname+"'")
+                cur.close()
                 newjob = mkjobstr(1)
                 # Updating the jobs structure
                 newjob['submitted'] = True
@@ -973,6 +979,10 @@ def daemon(scriptsdir=None,nmulti=4,waittime=0.2,statustime=60,redo=False):
                 newjob['logfile'] = logfile
                 newjob['begtime'] = time.time()/3600/24   # in days
                 jobs = np.hstack((jobs,newjob))
+                # Wait a bit
+                #  the first thing delvered_forcebrick.pro does it query the
+                #  chips database.  we don't want to hammer it too hard.
+                time.sleep(5)
 
         # Are we done?
         #-------------
