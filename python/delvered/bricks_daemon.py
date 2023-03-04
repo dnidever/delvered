@@ -399,6 +399,10 @@ def check_killfile(jobs=None,hyperthread=True):
                 except:
                     out = subprocess.run(['kill','-9',jobs['jobid'][sub[i]]],stderr=subprocess.STDOUT,stdout=subprocess.PIPE,
                                          shell=False,check=False).stdout
+        # Also kill any allframes that are running
+        print('Killing any dangling allframe jobs')
+        out = subprocess.run(['killall','allframe'],stderr=subprocess.STDOUT,stdout=subprocess.PIPE,
+                             shell=False,check=False).stdout        
         # Remove the kill file
         print('Deleting kill file "'+killfile+'"')
         os.remove(killfile)
@@ -974,6 +978,7 @@ def daemon(scriptsdir=None,nmulti=4,waittime=0.2,statustime=60,redo=False):
                 newjob['submitted'] = True
                 newjob['jobid'] = jobid
                 newjob['brickname'] = brickname
+                newjob['brickid'] = brickid
                 newjob['input'] = cmd
                 newjob['name'] = name                
                 newjob['dir'] = scriptsdir
