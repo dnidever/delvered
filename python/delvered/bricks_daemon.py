@@ -405,6 +405,10 @@ def check_killfile(jobs=None,hyperthread=True):
         print('Killing any dangling allframe and IDL jobs')
         out = subprocess.run(['killall','allframe'],stderr=subprocess.STDOUT,stdout=subprocess.PIPE,
                              shell=False,check=False).stdout        
+        out = subprocess.run(['killall','allstar'],stderr=subprocess.STDOUT,stdout=subprocess.PIPE,
+                             shell=False,check=False).stdout        
+        out = subprocess.run(['killall','daophot'],stderr=subprocess.STDOUT,stdout=subprocess.PIPE,
+                             shell=False,check=False).stdout        
         out = subprocess.run(['killall','idl'],stderr=subprocess.STDOUT,stdout=subprocess.PIPE,
                              shell=False,check=False).stdout
         # Remove the kill file
