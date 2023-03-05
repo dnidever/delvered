@@ -8,8 +8,13 @@ import os
 import sys
 import time
 import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib as mpl
 from datetime import datetime
 from astropy.time import Time
+from astropy.coordinates import SkyCoord
+import astropy.units as u
+from astropy.table import Table
 from dlnpyutils import utils as dln
 from argparse import ArgumentParser
 import traceback
@@ -22,8 +27,10 @@ except ImportError:
 if __name__ == "__main__":
     parser = ArgumentParser(description='Run delvered_forcebrick')
     parser.add_argument('-r','--running', action='store_true', help='More details on running processes')
+    parser.add_argument('-p','--plot', action='store_true', help='Make a plot of the current status of jobs')
     args = parser.parse_args()
     running_flag = args.running
+    plot_flag = args.plot
 
     from delvered import bricks_daemon
     db = bricks_daemon.db
@@ -59,6 +66,54 @@ if __name__ == "__main__":
             fmt = '{:3d} {:8s} {:6d} {:6.2f} {:6.2f} {:4.1f} {:4.1f} {:5d} {:23s} {:>4s} {:>6s} {:8s} {:60s}'
             print(fmt.format(*data))
         print('----------------------------------------------------------------------------------------------------------')
+
+    # Plot distribution of jobs and save to file
+    if plot_flag:
+        try:
+            from gala.coordinates import MagellanicStreamNidever08
+        except:
+            print('You need to install the gala library from APW, this is going to crash.')
+        print('Retrieving data...')
+        all_data = Table(db.query(sql="select ra,dec,priority_points from delvered_processing.bricks"))
+        done_data = Table(db.query(sql="select ra,dec from delvered_processing.bricks where status='DONE'"))
+        redo_data = Table(db.query(sql="select ra,dec from delvered_processing.bricks where status='REDO'"))
+        crashed_data = Table(db.query(sql="select ra,dec from delvered_processing.bricks where status='CRASHED'"))
+        running_data = Table(db.query(sql="select ra,dec from delvered_processing.bricks where status='R'"))
+        
+        all_coords = SkyCoord(all_data['ra']*u.deg,all_data['dec']*u.deg).transform_to(MagellanicStreamNidever08())
+
+        print('Making the plot...')
+        
+        mpl.rcParams['font.size'] = 16
+        fig, ax = plt.subplots(figsize=(10,8), facecolor='white')
+
+        bkg_map = ax.scatter(all_coords.L.deg, all_coords.B.deg, s=8, marker='.',c=all_data['priority_points'],cmap='viridis')
+        plt.colorbar(bkg_map,ax=ax,label='Priority')
+
+        if len(done_data)>0:
+            done_coords = SkyCoord(done_data['ra']*u.deg,done_data['dec']*u.deg).transform_to(MagellanicStreamNidever08())
+            ax.scatter(done_coords.L.deg, done_coords.B.deg, s=8, marker='.',c='lime', label='DONE')
+        if len(redo_data)>0:
+            redo_coords = SkyCoord(redo_data['ra']*u.deg,redo_data['dec']*u.deg).transform_to(MagellanicStreamNidever08())
+            ax.scatter(redo_coords.L.deg, redo_coords.B.deg, s=8, marker='.',c='orange', label='REDO')
+        if len(crashed_data)>0:
+            crashed_coords = SkyCoord(crashed_data['ra']*u.deg,crashed_data['dec']*u.deg).transform_to(MagellanicStreamNidever08())
+            ax.scatter(crashed_coords.L.deg, crashed_coords.B.deg, s=8, marker='.',c='red', label='CRASHED')
+        if len(running_data)>0:
+            running_coords = SkyCoord(running_data['ra']*u.deg,running_data['dec']*u.deg).transform_to(MagellanicStreamNidever08())
+            ax.scatter(running_coords.L.deg, running_coords.B.deg, s=8, marker='.',c='dodgerblue', label='R')
+
+        ax.set_xlabel('L_MS (deg)')
+        ax.set_ylabel('B_MS (deg)')
+        ax.set_xlim(26,-39)
+        ax.set_ylim(-30,30)
+        plt.legend(loc='upper right')
+
+        rightnow = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+        plotdir = '/net/dl2/dnidever/delve/bricks/status_plots/'
+        fig.savefig(plotdir+'brick_status_'+rightnow+'.png',bbox_inches='tight')
+        
+        print('Plot saved in: '+plotdir+'brick_status_'+rightnow+'.png')
 
     # Summary information
     else:
