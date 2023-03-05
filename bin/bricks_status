@@ -1,0 +1,90 @@
+#!/usr/bin/env python
+#
+# Script to run doppler.fit() on a spectrum
+
+from __future__ import print_function
+
+import os
+import sys
+import time
+import numpy as np
+from datetime import datetime
+from astropy.time import Time
+from dlnpyutils import utils as dln
+from argparse import ArgumentParser
+import traceback
+try:
+    import __builtin__ as builtins # Python 2
+except ImportError:
+    import builtins # Python 3
+
+# Main command-line program
+if __name__ == "__main__":
+    parser = ArgumentParser(description='Run delvered_forcebrick')
+    parser.add_argument('-r','--running', action='store_true', help='More details on running processes')
+    args = parser.parse_args()
+    running_flag = args.running
+
+    from delvered import bricks_daemon
+    db = bricks_daemon.db
+
+    rtab = db.query(sql="select * from delvered_processing.bricks where status='R'")
+    nrunning = len(rtab)
+
+    # Detailed information on running jobs
+    if running_flag:
+        print('Delvered Brick Processing Status at '+datetime.now().ctime())
+        print('{:d} RUNNING'.format(nrunning))
+        print('--------------------------------------------------------------------------------------------------------------------')
+        print(' IND  BRICK  JOBID    RA    DEC  Rlmc  Rsmc Priority    Start Time      Runtime  Host   User           Logfile')
+        print('--------------------------------------------------------------------------------------------------------------------')
+        for i in range(nrunning):
+            rtab1 = rtab[i]
+            runid = rtab1['runid']
+            jobid = runid.split('-')[2]
+            runstart = rtab1['runstart'][0:21]
+            host = rtab1['runhost'].split('.')[0]
+            dt = (Time(datetime.now())-Time(runstart)).sec
+            if dt < 60:
+                dtime = '{:2d}s'.format(int(np.rint(dt)))
+            elif dt >= 60 and dt < 3600:
+                dtime = '{:4.1f}m'.format(dt/60)
+            elif dt >= 3600 and dt < 24*3600:
+                dtime = '{:4.1f}h'.format(dt/3600)
+            else:
+                dtime = '{:4.1f}d'.format(dt/3600/24.)
+            data = (i+1,rtab1['brickname'],jobid,rtab1['ra'],rtab1['dec'],rtab1['lmc_radius'],
+                    rtab1['smc_radius'],rtab1['priority'],runstart,dtime,host,
+                    rtab1['runuser'],rtab1['logfile'])
+            fmt = '{:3d} {:8s} {:5s} {:6.2f} {:6.2f} {:4.1f} {:4.1f} {:5d} {:23s} {:>4s} {:>6s} {:8s} {:60s}'
+            print(fmt.format(*data))
+        print('----------------------------------------------------------------------------------------------------------')
+
+    # Summary information
+    else:
+        ndone = db.query(sql="select count(*) from delvered_processing.bricks where status='DONE'")
+        ntodo = db.query(sql="select count(*) from delvered_processing.bricks where status='TODO'")
+        nredo = db.query(sql="select count(*) from delvered_processing.bricks where status='REDO'")
+        ncrashed = db.query(sql="select count(*) from delvered_processing.bricks where status='CRASHED'")
+        # Print out the information
+        print('Delvered Brick Processing Status at '+datetime.now().ctime())
+        print('{:6d} DONE'.format(ndone[0][0]))
+        print('{:6d} RUNNING'.format(nrunning))
+        print('{:6d} CRASHED'.format(ncrashed[0][0]))
+        print('{:6d} REDO'.format(nredo[0][0]))
+        print('{:6d} TODO'.format(ntodo[0][0]))
+
+        # Find the groups of processes that are running
+        print(' ')
+        print('Jobs running ('+str(nrunning)+'):')
+        jid = np.char.array(rtab['runhost'])+'-'+np.char.array(rtab['runuser'])
+        index = dln.create_index(jid)
+        for i in range(len(index['value'])):
+            ind = index['index'][index['lo'][i]:index['hi'][i]+1]
+            nind = len(ind)
+            val = index['value'][i]
+            host = val.split('-')[0].split('.')[0]
+            user = val.split('-')[1]
+            print(' {:3d} {:s} {:s} '.format(nind,host,user))
+
+    db.close()

@@ -11,6 +11,7 @@ setup(name='delvered',
       package_dir = {'': 'python'},
       packages=['delvered'],
       scripts=['bin/make_delvered_summary_table','bin/query_delvered_summary_table',
-               'bin/delve_archive_search','bin/parse_archive_search','bin/bricks_daemon'],
+               'bin/delve_archive_search','bin/parse_archive_search',
+               'bin/bricks_daemon','bin/bricks_status'],
       requires=['numpy','astropy','scipy','dlnpyutils']
 )
