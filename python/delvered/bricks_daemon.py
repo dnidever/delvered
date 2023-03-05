@@ -399,9 +399,15 @@ def check_killfile(jobs=None,hyperthread=True):
                 except:
                     out = subprocess.run(['kill','-9',jobs['jobid'][sub[i]]],stderr=subprocess.STDOUT,stdout=subprocess.PIPE,
                                          shell=False,check=False).stdout
+            # Change the status back in the database
+            db.setstatus(jobs['brickid'][sub[i]],'TODO')
         # Also kill any allframes that are running
         print('Killing any dangling allframe and IDL jobs')
         out = subprocess.run(['killall','allframe'],stderr=subprocess.STDOUT,stdout=subprocess.PIPE,
+                             shell=False,check=False).stdout        
+        out = subprocess.run(['killall','allstar'],stderr=subprocess.STDOUT,stdout=subprocess.PIPE,
+                             shell=False,check=False).stdout        
+        out = subprocess.run(['killall','daophot'],stderr=subprocess.STDOUT,stdout=subprocess.PIPE,
                              shell=False,check=False).stdout        
         out = subprocess.run(['killall','idl'],stderr=subprocess.STDOUT,stdout=subprocess.PIPE,
                              shell=False,check=False).stdout
@@ -973,7 +979,9 @@ def daemon(scriptsdir=None,nmulti=4,waittime=0.2,statustime=60,redo=False):
                 jobid, logfile = submitjob(scriptname,scriptsdir,hyperthread=hyperthread,idle=idle)
                 # Set the logfile in the database
                 cur = db.connection.cursor()
-                cur.execute("update delvered_processing.bricks set logfile='"+logfile+"' where brickname='"+brickname+"'")
+                
+                cur.execute("update delvered_processing.bricks set logfile='"+logfile+\
+                            "',jobid="+str(jobid)+" where brickname='"+brickname+"'")
                 cur.close()
                 newjob = mkjobstr(1)
                 # Updating the jobs structure
