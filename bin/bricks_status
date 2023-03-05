@@ -41,7 +41,7 @@ if __name__ == "__main__":
         for i in range(nrunning):
             rtab1 = rtab[i]
             runid = rtab1['runid']
-            jobid = runid.split('-')[2]
+            jobid = rtab1['runjobid']
             runstart = rtab1['runstart'][0:21]
             host = rtab1['runhost'].split('.')[0]
             dt = (Time(datetime.now())-Time(runstart)).sec
@@ -56,7 +56,7 @@ if __name__ == "__main__":
             data = (i+1,rtab1['brickname'],jobid,rtab1['ra'],rtab1['dec'],rtab1['lmc_radius'],
                     rtab1['smc_radius'],rtab1['priority'],runstart,dtime,host,
                     rtab1['runuser'],rtab1['logfile'])
-            fmt = '{:3d} {:8s} {:5s} {:6.2f} {:6.2f} {:4.1f} {:4.1f} {:5d} {:23s} {:>4s} {:>6s} {:8s} {:60s}'
+            fmt = '{:3d} {:8s} {:6d} {:6.2f} {:6.2f} {:4.1f} {:4.1f} {:5d} {:23s} {:>4s} {:>6s} {:8s} {:60s}'
             print(fmt.format(*data))
         print('----------------------------------------------------------------------------------------------------------')
 
