@@ -981,7 +981,7 @@ def daemon(scriptsdir=None,nmulti=4,waittime=0.2,statustime=60,redo=False):
                 cur = db.connection.cursor()
                 
                 cur.execute("update delvered_processing.bricks set logfile='"+logfile+\
-                            "',jobid="+str(jobid)+" where brickname='"+brickname+"'")
+                            "',runjobid="+str(jobid)+" where brickname='"+brickname+"'")
                 cur.close()
                 newjob = mkjobstr(1)
                 # Updating the jobs structure
