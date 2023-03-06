@@ -101,10 +101,10 @@ if __name__ == "__main__":
             ax.scatter(crashed_coords.L.deg, crashed_coords.B.deg, s=8, marker='.',c='red', label='CRASHED')
         if len(running_data)>0:
             running_coords = SkyCoord(running_data['ra']*u.deg,running_data['dec']*u.deg).transform_to(MagellanicStreamNidever08())
-            ax.scatter(running_coords.L.deg, running_coords.B.deg, s=8, marker='.',c='dodgerblue', label='R')
+            ax.scatter(running_coords.L.deg, running_coords.B.deg, s=8, marker='.',c='dodgerblue', label='RUNNING')
 
-        ax.set_xlabel('L_MS (deg)')
-        ax.set_ylabel('B_MS (deg)')
+        ax.set_xlabel(r'$L_{\rm MS}$ (deg)')
+        ax.set_ylabel(r'$B_{\rm MS}$ (deg)')
         ax.set_xlim(26,-39)
         ax.set_ylim(-30,30)
         ax.legend(loc='upper right',markerscale=6)
