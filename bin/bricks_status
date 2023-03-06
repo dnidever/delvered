@@ -92,7 +92,7 @@ if __name__ == "__main__":
 
         if len(done_data)>0:
             done_coords = SkyCoord(done_data['ra']*u.deg,done_data['dec']*u.deg).transform_to(MagellanicStreamNidever08())
-            ax.scatter(done_coords.L.deg, done_coords.B.deg, s=8, marker='.',c='lime', label='DONE')
+            ax.scatter(done_coords.L.deg, done_coords.B.deg, s=8, marker='.',c='purple', label='DONE')
         if len(redo_data)>0:
             redo_coords = SkyCoord(redo_data['ra']*u.deg,redo_data['dec']*u.deg).transform_to(MagellanicStreamNidever08())
             ax.scatter(redo_coords.L.deg, redo_coords.B.deg, s=8, marker='.',c='orange', label='REDO')
@@ -107,7 +107,7 @@ if __name__ == "__main__":
         ax.set_ylabel('B_MS (deg)')
         ax.set_xlim(26,-39)
         ax.set_ylim(-30,30)
-        plt.legend(loc='upper right')
+        ax.legend(loc='upper right',markerscale=6)
 
         rightnow = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
         plotdir = '/net/dl2/dnidever/delve/bricks/status_plots/'
