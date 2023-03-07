@@ -92,16 +92,16 @@ if __name__ == "__main__":
 
         if len(done_data)>0:
             done_coords = SkyCoord(done_data['ra']*u.deg,done_data['dec']*u.deg).transform_to(MagellanicStreamNidever08())
-            ax.scatter(done_coords.L.deg, done_coords.B.deg, s=8, marker='.',c='purple', label='DONE')
+            ax.scatter(done_coords.L.deg, done_coords.B.deg, s=8, marker='.',c='purple', label='DONE '+str(len(done_data))+')')
         if len(redo_data)>0:
             redo_coords = SkyCoord(redo_data['ra']*u.deg,redo_data['dec']*u.deg).transform_to(MagellanicStreamNidever08())
-            ax.scatter(redo_coords.L.deg, redo_coords.B.deg, s=8, marker='.',c='orange', label='REDO')
+            ax.scatter(redo_coords.L.deg, redo_coords.B.deg, s=8, marker='.',c='orange', label='REDO '+str(len(redo_data))+')')
         if len(crashed_data)>0:
             crashed_coords = SkyCoord(crashed_data['ra']*u.deg,crashed_data['dec']*u.deg).transform_to(MagellanicStreamNidever08())
-            ax.scatter(crashed_coords.L.deg, crashed_coords.B.deg, s=8, marker='.',c='red', label='CRASHED')
+            ax.scatter(crashed_coords.L.deg, crashed_coords.B.deg, s=8, marker='.',c='red', label='CRASHED '+str(len(crashed_data))+')')
         if len(running_data)>0:
             running_coords = SkyCoord(running_data['ra']*u.deg,running_data['dec']*u.deg).transform_to(MagellanicStreamNidever08())
-            ax.scatter(running_coords.L.deg, running_coords.B.deg, s=8, marker='.',c='dodgerblue', label='RUNNING')
+            ax.scatter(running_coords.L.deg, running_coords.B.deg, s=8, marker='.',c='dodgerblue', label='RUNNING '+str(len(running_data))+')')
 
         ax.set_xlabel(r'$L_{\rm MS}$ (deg)')
         ax.set_ylabel(r'$B_{\rm MS}$ (deg)')
