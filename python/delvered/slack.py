@@ -9,7 +9,8 @@ import logging
 from datetime import datetime
 import pandas as pd
 
-from obztak.utils.database import Database
+from . import bricks_status
+
 
 def post_message(text, token=None, channel=None):
     """Post text to slack."""
@@ -22,7 +23,6 @@ def post_message(text, token=None, channel=None):
     ret = sc.api_call(**kwargs)
     return ret
 
-#slack_post = post_message
 
 def post_file(filepath, title=None, token=None, channels=None):
     """Post a file to a Slack channel"""

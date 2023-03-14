@@ -23,8 +23,13 @@ try:
 except ImportError:
     import builtins # Python 3
 
-def statusmap():
+def statusmap(db=None):
     # Plot distribution of jobs and save to file
+
+    if db is None:
+        from delvered import bricks_daemon
+        db = bricks_daemon.db
+
     try:
         from gala.coordinates import MagellanicStreamNidever08
     except:
@@ -74,8 +79,13 @@ def statusmap():
 
     return plotfile
 
-def runstatus():
+def runstatus(db=None):
     # Detailed information on running jobs
+
+    if db is None:
+        from delvered import bricks_daemon
+        db = bricks_daemon.db
+
     print('Delvered Brick Processing Status at '+datetime.now().ctime())
     print('{:d} RUNNING'.format(nrunning))
     print('--------------------------------------------------------------------------------------------------------------------')
@@ -113,10 +123,10 @@ def status(running_flag=False,plot_flag=False):
     nrunning = len(rtab)
 
     if plot_flag:
-        mapfile = statusmap()
+        mapfile = statusmap(db)
 
     if running_flag:
-        runstatus()
+        runstatus(db)
 
     # Summary information
     ndone = db.query(sql="select count(*) from delvered_processing.bricks where status='DONE'")
