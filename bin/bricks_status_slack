@@ -14,7 +14,7 @@ try:
 except ImportError:
     import builtins # Python 3
 
-from . import bricks_status,slack
+from delvered import bricks_status,slack
 
 # Main command-line program
 if __name__ == "__main__":
@@ -24,6 +24,6 @@ if __name__ == "__main__":
     #args = parser.parse_args()
 
     mapfile = bricks_status.statusmap()
-    slack.post_file(mapfile, title=None, token=None, channels="mc")
+    slack.post_file(mapfile, title=None, token=None) # channel="mc")
 
 

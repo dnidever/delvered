@@ -14,27 +14,26 @@ from . import bricks_status
 
 def post_message(text, token=None, channel=None):
     """Post text to slack."""
-    from slackclient import SlackClient
+    from slack import WebClient
     slack_token   = os.environ["SLACK_API_TOKEN"] if token is None else token
     slack_channel = os.environ["SLACK_API_CHANNEL"] if channel is None else channel
 
-    sc = SlackClient(slack_token)
-    kwargs = dict(method="chat.postMessage",channel=slack_channel,text=text)
+    sc = WebClient(slack_token)
+    kwargs = dict(api_method="chat.postMessage",channel=slack_channel,text=text)
     ret = sc.api_call(**kwargs)
     return ret
 
 
-def post_file(filepath, title=None, token=None, channels=None):
+def post_file(filepath, title=None, token=None, channel=None):
     """Post a file to a Slack channel"""
-    from slackclient import SlackClient
+    from slack import WebClient
     token    = os.environ["SLACK_API_TOKEN"] if token is None else token
-    channels = os.environ["SLACK_API_CHANNEL"] if channels is None else channels
+    channel = os.environ["SLACK_API_CHANNEL"] if channel is None else channel
 
-    sc = SlackClient(token)
-    kwargs = dict(method="files.upload",channels=channels,title=title)
+    sc = WebClient(token)
     ret = None
     with open(filepath, 'rb') as file_content:
-        ret = sc.api_call(file=file_content,**kwargs)
+        ret = sc.files_upload(file=file_content,channels=channel,title=title)
     return ret
 
 def post_qcinv(token=None, channel=None, propid=None, timedelta=None, debug=False):
