@@ -297,7 +297,20 @@ class DBSession(object):
         else:
             sql = "SELECT status from delvered_processing.bricks where brickid IN ("+','.join(brickid)+")"
         res = self.query(sql)
-        return res
+        status = res['status']
+        if len(status)==1: status=status[0]
+        return status
+
+    def getid(self,brickname):
+        """ Get the brickid for a list of brick names."""
+        if dln.size(brickname)==1:
+            sql = "SELECT brickid from delvered_processing.bricks where brickname='"+str(brickname)+"'"
+        else:
+            sql = "SELECT brickid from delvered_processing.bricks where brickname IN ('"+"','".join(brickname)+"')"
+        res = self.query(sql)
+        brickid = res['brickid']
+        if len(brickid)==1: brickid=brickid[0]
+        return brickid
 
 
 # Set up the database connection
@@ -833,7 +846,7 @@ def status_update(jobs=None):
     print('Jobs Summary: %d submitted, %d finished, %d running' % (njobs,n_finished,n_inqueue))
 
 
-def daemon(scriptsdir=None,nmulti=4,waittime=0.2,statustime=60,redo=False):
+def daemon(bricks=None,scriptsdir=None,nmulti=4,waittime=0.2,statustime=60,redo=False):
     """
     This program is a job manager run off of a database table.
 
@@ -843,6 +856,8 @@ def daemon(scriptsdir=None,nmulti=4,waittime=0.2,statustime=60,redo=False):
 
     Parameters
     ----------
+    bricks : list, optional
+       List of brick names to process.  By defalt, brick names are pulled from the database.
     scriptsdir : str, optional
        Directory for the scripts.
     nmulti : int, optional
@@ -873,6 +888,11 @@ def daemon(scriptsdir=None,nmulti=4,waittime=0.2,statustime=60,redo=False):
 
     idle = True
     hyperthread = True
+    nbricks = 0
+    if bricks is not None:
+        if type(bricks) is not list and type(bricks) not tuple and type(bricks) not np.ndarray:
+            bricks = [bricks]
+        nbricks = len(bricks)
 
     # Current directory
     curdir = os.getcwd()
@@ -925,6 +945,7 @@ def daemon(scriptsdir=None,nmulti=4,waittime=0.2,statustime=60,redo=False):
     # id will be the ID from Pleione
     jobs = mkjobstr(1)
     jobs['host'] = host
+    njobs = 0
 
     # Loop until all jobs are done
     # On each loop check the queue and figure out what to do
@@ -955,7 +976,11 @@ def daemon(scriptsdir=None,nmulti=4,waittime=0.2,statustime=60,redo=False):
         # Submit new jobs
         #----------------
         n_inqueue = np.sum((jobs['submitted']==True) & (jobs['done']==False))  # Number of jobs still in queue  
-        nnew = nmulti-n_inqueue
+        if nbricks==0:
+            nnew = nmulti-n_inqueue
+        else:
+            n_nosubmit = nbricks-njobs
+            nnew = dln.limit(nmulti-n_inqueue,0,n_nosubmit)
         if (nnew>0):
             # Get the indices of new jobs to be submitted
             #nosubmit, = np.where(jobs['submitted']==False)
@@ -969,7 +994,38 @@ def daemon(scriptsdir=None,nmulti=4,waittime=0.2,statustime=60,redo=False):
             for i in range(nnew):
                 print('')
                 # Get new brick from the database
-                brickname,brickid,runid,dbstatus = db.nextbrick()
+                if nbricks==0:
+                    brickname,brickid,runid,dbstatus = db.nextbrick()
+                # Run input list of bricks
+                else:
+                    brickname = bricks[njobs]
+                    brickid = db.getid(brickname)
+                    dbstatus = db.getstatus(brickid)
+                    if dbstatus=='R':
+                        print('ERROR: brick '+brickname+' is already being processed. Skipping')
+                        # add dummy row to jobstr
+                        newjob = mkjobstr(1)
+                        newjob['submitted'] = False
+                        newjob['jobid'] = -999
+                        newjob['brickname'] = brickname
+                        newjob['brickid'] = brickid
+                        newjob['done'] = True
+                        if len(jobs)==1 and jobs['jobid'][0]=='':  # first job
+                            jobs = newjob
+                        else:
+                            jobs = np.hstack((jobs,newjob))          
+                        njobs += 1
+                        continue
+                    runid = db.runid()
+                    db.runcounter += 1
+                    # Now update the table to put our RUNID in there
+                    starttime = datetime.now().isoformat()
+                    cmd = "update delvered_processing.bricks set status='R',runid='"+runid+"',"
+                    cmd += "runstart='"+starttime+"',runhost='"+db.hostname+"',runuser='"+db.username+"'"
+                    cmd += " where brickid="+str(brickid)
+                    cur = db.connection.cursor()
+                    cur.execute(cmd)                    
+                    cur.close()
                 name = 'dlvbrcks-'+runid
                 if redo or dbstatus=='REDO':
                     cmd = "delvered_forcebrick,'"+brickname+"',/redo"
@@ -988,7 +1044,6 @@ def daemon(scriptsdir=None,nmulti=4,waittime=0.2,statustime=60,redo=False):
                 jobid, logfile = submitjob(scriptname,scriptsdir,hyperthread=hyperthread,idle=idle)
                 # Set the logfile in the database
                 cur = db.connection.cursor()
-                
                 cur.execute("update delvered_processing.bricks set logfile='"+logfile+\
                             "',runjobid="+str(jobid)+" where brickname='"+brickname+"'")
                 cur.close()
@@ -1004,7 +1059,11 @@ def daemon(scriptsdir=None,nmulti=4,waittime=0.2,statustime=60,redo=False):
                 newjob['scriptname'] = scriptname
                 newjob['logfile'] = logfile
                 newjob['begtime'] = time.time()/3600/24   # in days
-                jobs = np.hstack((jobs,newjob))
+                if len(jobs)==1 and jobs['jobid'][0]=='':  # first job
+                    jobs = newjob
+                else:
+                    jobs = np.hstack((jobs,newjob))          
+                njobs += 1
                 # Wait a bit
                 #  the first thing delvered_forcebrick.pro does it query the
                 #  chips database.  we don't want to hammer it too hard.
@@ -1013,7 +1072,8 @@ def daemon(scriptsdir=None,nmulti=4,waittime=0.2,statustime=60,redo=False):
         # Are we done?
         #-------------
         ndone = np.sum(jobs['done']==True)
-        #if (ndone==njobs): endflag=True
+        if nbricks>0:
+            if (ndone==nbricks): endflag=True
         # Wait a bit
         #--------------
         if (endflag==0): time.sleep(waittime)
