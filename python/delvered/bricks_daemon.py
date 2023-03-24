@@ -290,6 +290,15 @@ class DBSession(object):
         cur.execute(cmd)
         cur.close()
 
+    def getstatus(self,brickid):
+        """ Get the status of a list of bricks."""
+        if dln.size(brickid)==1:
+            sql = "SELECT status from delvered_processing.bricks where brickid="+str(brickid)
+        else:
+            sql = "SELECT status from delvered_processing.bricks where brickid IN ("+','.join(brickid)+")"
+        res = self.query(sql)
+        return res
+
 
 # Set up the database connection
 db = DBSession()
