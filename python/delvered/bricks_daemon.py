@@ -1090,7 +1090,6 @@ def daemon(bricks=None,scriptsdir=None,nmulti=4,waittime=0.2,statustime=60,redo=
     print('dt = {:.1f} sec'.format(dt))
 
     # Close the database connection
-    cur.close()
-    connection.close()
+    db.close()
     
     return jobs
