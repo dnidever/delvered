@@ -1086,7 +1086,8 @@ def daemon(bricks=None,scriptsdir=None,nmulti=4,waittime=0.2,statustime=60,redo=
         count += 1
 
     print('DONE')
-    print('dt = {:.1f} sec'.format(time.time-t0))
+    dt = time.time()-t0
+    print('dt = {:.1f} sec'.format(dt))
 
     # Close the database connection
     cur.close()
