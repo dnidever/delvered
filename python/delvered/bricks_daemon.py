@@ -147,6 +147,11 @@ class DBSession(object):
         self.close()
         self.open()
 
+    def runid(self):
+        """ Return the runID """
+        runid = self.username+'-'+self.host+'-'+str(self.pid)+'-'+str(self.runcounter)
+        return runid
+
     def nextbrick(self):
         """ Get the next brick."""
         cur = self.connection.cursor()
@@ -168,7 +173,7 @@ class DBSession(object):
             else:
                 continue
             # RunID
-            runid = self.username+'-'+self.host+'-'+str(self.pid)+'-'+str(self.runcounter)
+            runid = self.runid()
             self.runcounter += 1
             # Now update the table to put our RUNID in there
             starttime = datetime.now().isoformat()
@@ -890,7 +895,7 @@ def daemon(bricks=None,scriptsdir=None,nmulti=4,waittime=0.2,statustime=60,redo=
     hyperthread = True
     nbricks = 0
     if bricks is not None:
-        if type(bricks) is not list and type(bricks) not tuple and type(bricks) not np.ndarray:
+        if type(bricks) is not list and type(bricks) is not tuple and type(bricks) is not np.ndarray:
             bricks = [bricks]
         nbricks = len(bricks)
 

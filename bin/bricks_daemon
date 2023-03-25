@@ -18,10 +18,16 @@ except ImportError:
 # Main command-line program
 if __name__ == "__main__":
     parser = ArgumentParser(description='Run delvered_forcebrick')
+    parser.add_argument('bricks', type=str, default='', nargs='+', help='Bricks')
     parser.add_argument('--scriptsdir', type=str, default='/data0/dnidever/delve', nargs='+', help='scripts directory')
     parser.add_argument('--nmulti', type=int, nargs=1, default=10, help='Number of jobs to run')
     parser.add_argument('-k','--kill', action='store_true', help='kill the jobs')
     args = parser.parse_args()
+    bricks = args.bricks
+    if type(bricks) is list:
+        if len(bricks)==1: bricks=bricks[0]
+    else:
+        if bricks == '': bricks=None
     scriptsdir = args.scriptsdir
     if type(scriptsdir) is list:
         scriptsdir = scriptsdir[0]
@@ -44,7 +50,7 @@ if __name__ == "__main__":
 
     # Run bricks_daemon.py
     from delvered import bricks_daemon
-    jobs = bricks_daemon.daemon(scriptsdir,nmulti)
+    jobs = bricks_daemon.daemon(bricks,scriptsdir,nmulti)
 
     print('Done')
     dt = time.time()-t0
