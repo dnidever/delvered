@@ -26,9 +26,15 @@ except ImportError:
 # Main command-line program
 if __name__ == "__main__":
     parser = ArgumentParser(description='Run delvered_forcebrick')
+    parser.add_argument('-s','--status', nargs=1, default='', help='More details on jobs with status')
     parser.add_argument('-r','--running', action='store_true', help='More details on running processes')
     parser.add_argument('-p','--plot', action='store_true', help='Make a plot of the current status of jobs')
     args = parser.parse_args()
+    status = args.status
+    if type(status) is list:
+        status = status[0]
+    else:
+        status = None
     running_flag = args.running
     plot_flag = args.plot
 
@@ -39,18 +45,25 @@ if __name__ == "__main__":
     nrunning = len(rtab)
 
     # Detailed information on running jobs
-    if running_flag:
+    if running_flag or status is not None:
         print('Delvered Brick Processing Status at '+datetime.now().ctime())
-        print('{:d} RUNNING'.format(nrunning))
+        if running_flag is False and status != 'R':
+            stab = db.query(sql="select * from delvered_processing.bricks where status='"+str(status)+"'")
+            nstatus = len(stab)
+            print('{:d} {:s}'.format(nstatus,status))            
+        else:
+            stab = rtab
+            nstatus = nrunning
+            print('{:d} RUNNING'.format(nrunning))
         print('--------------------------------------------------------------------------------------------------------------------')
         print(' IND  BRICK  JOBID    RA    DEC  Rlmc  Rsmc Priority    Start Time      Runtime  Host   User           Logfile')
         print('--------------------------------------------------------------------------------------------------------------------')
-        for i in range(nrunning):
-            rtab1 = rtab[i]
-            runid = rtab1['runid']
-            jobid = rtab1['runjobid']
-            runstart = rtab1['runstart'][0:21]
-            host = rtab1['runhost'].split('.')[0]
+        for i in range(nstatus):
+            stab1 = stab[i]
+            runid = stab1['runid']
+            jobid = stab1['runjobid']
+            runstart = stab1['runstart'][0:21]
+            host = stab1['runhost'].split('.')[0]
             dt = (Time(datetime.now())-Time(runstart)).sec
             if dt < 60:
                 dtime = '{:2d}s'.format(int(np.rint(dt)))
@@ -60,9 +73,9 @@ if __name__ == "__main__":
                 dtime = '{:4.1f}h'.format(dt/3600)
             else:
                 dtime = '{:4.1f}d'.format(dt/3600/24.)
-            data = (i+1,rtab1['brickname'],jobid,rtab1['ra'],rtab1['dec'],rtab1['lmc_radius'],
-                    rtab1['smc_radius'],rtab1['priority_points'],runstart,dtime,host,
-                    rtab1['runuser'],rtab1['logfile'])
+            data = (i+1,stab1['brickname'],jobid,stab1['ra'],stab1['dec'],stab1['lmc_radius'],
+                    stab1['smc_radius'],stab1['priority_points'],runstart,dtime,host,
+                    stab1['runuser'],stab1['logfile'])
             fmt = '{:3d} {:8s} {:6d} {:6.2f} {:6.2f} {:4.1f} {:4.1f} {:5d} {:23s} {:>4s} {:>6s} {:8s} {:60s}'
             print(fmt.format(*data))
         print('----------------------------------------------------------------------------------------------------------')
