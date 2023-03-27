@@ -17,6 +17,7 @@ import astropy.units as u
 from astropy.table import Table
 from dlnpyutils import utils as dln
 from argparse import ArgumentParser
+from matplotlib.colors import LogNorm
 import traceback
 try:
     import __builtin__ as builtins # Python 2
@@ -29,6 +30,7 @@ if __name__ == "__main__":
     parser.add_argument('-s','--status', nargs=1, default='', help='More details on jobs with status')
     parser.add_argument('-r','--running', action='store_true', help='More details on running processes')
     parser.add_argument('-p','--plot', action='store_true', help='Make a plot of the current status of jobs')
+    parser.add_argument('--nchips', action='store_true', help='Make a plot of nchips per bricks')
     args = parser.parse_args()
     status = args.status
     if type(status) is list:
@@ -37,6 +39,7 @@ if __name__ == "__main__":
         status = None
     running_flag = args.running
     plot_flag = args.plot
+    plot_nchips = args.nchips
 
     from delvered import bricks_daemon
     db = bricks_daemon.db
@@ -81,13 +84,13 @@ if __name__ == "__main__":
         print('----------------------------------------------------------------------------------------------------------')
 
     # Plot distribution of jobs and save to file
-    if plot_flag:
+    if plot_flag or plot_nchips:
         try:
             from gala.coordinates import MagellanicStreamNidever08
         except:
             print('You need to install the gala library from APW, this is going to crash.')
         print('Retrieving data...')
-        all_data = Table(db.query(sql="select ra,dec,priority_points from delvered_processing.bricks"))
+        all_data = Table(db.query(sql="select ra,dec,nchips,priority_points from delvered_processing.bricks"))
         done_data = Table(db.query(sql="select ra,dec from delvered_processing.bricks where status='DONE'"))
         redo_data = Table(db.query(sql="select ra,dec from delvered_processing.bricks where status='REDO'"))
         crashed_data = Table(db.query(sql="select ra,dec from delvered_processing.bricks where status='CRASHED'"))
@@ -100,33 +103,43 @@ if __name__ == "__main__":
         mpl.rcParams['font.size'] = 16
         fig, ax = plt.subplots(figsize=(10,8), facecolor='white')
 
-        bkg_map = ax.scatter(all_coords.L.deg, all_coords.B.deg, s=8, marker='.',c=all_data['priority_points'],cmap='viridis')
-        plt.colorbar(bkg_map,ax=ax,label='Priority')
+        if plot_nchips:
+            bkg_map = ax.scatter(all_coords.L.deg, all_coords.B.deg, s=8, marker='.',c=all_data['nchips'],
+                                 cmap='viridis',norm=LogNorm())
+            plt.colorbar(bkg_map,ax=ax,label='Nchips')
+        else:
+            bkg_map = ax.scatter(all_coords.L.deg, all_coords.B.deg, s=8, marker='.',c=all_data['priority_points'],cmap='viridis')
+            plt.colorbar(bkg_map,ax=ax,label='Priority')
 
-        if len(done_data)>0:
-            done_coords = SkyCoord(done_data['ra']*u.deg,done_data['dec']*u.deg).transform_to(MagellanicStreamNidever08())
-            ax.scatter(done_coords.L.deg, done_coords.B.deg, s=8, marker='.',c='purple', label='DONE ('+str(len(done_data))+')')
-        if len(redo_data)>0:
-            redo_coords = SkyCoord(redo_data['ra']*u.deg,redo_data['dec']*u.deg).transform_to(MagellanicStreamNidever08())
-            ax.scatter(redo_coords.L.deg, redo_coords.B.deg, s=8, marker='.',c='orange', label='REDO ('+str(len(redo_data))+')')
-        if len(crashed_data)>0:
-            crashed_coords = SkyCoord(crashed_data['ra']*u.deg,crashed_data['dec']*u.deg).transform_to(MagellanicStreamNidever08())
-            ax.scatter(crashed_coords.L.deg, crashed_coords.B.deg, s=8, marker='.',c='red', label='CRASHED ('+str(len(crashed_data))+')')
-        if len(running_data)>0:
-            running_coords = SkyCoord(running_data['ra']*u.deg,running_data['dec']*u.deg).transform_to(MagellanicStreamNidever08())
-            ax.scatter(running_coords.L.deg, running_coords.B.deg, s=8, marker='.',c='dodgerblue', label='RUNNING ('+str(len(running_data))+')')
+        if plot_nchips==False:
+            if len(done_data)>0:
+                done_coords = SkyCoord(done_data['ra']*u.deg,done_data['dec']*u.deg).transform_to(MagellanicStreamNidever08())
+                ax.scatter(done_coords.L.deg, done_coords.B.deg, s=8, marker='.',c='purple', label='DONE ('+str(len(done_data))+')')
+            if len(redo_data)>0:
+                redo_coords = SkyCoord(redo_data['ra']*u.deg,redo_data['dec']*u.deg).transform_to(MagellanicStreamNidever08())
+                ax.scatter(redo_coords.L.deg, redo_coords.B.deg, s=8, marker='.',c='orange', label='REDO ('+str(len(redo_data))+')')
+            if len(crashed_data)>0:
+                crashed_coords = SkyCoord(crashed_data['ra']*u.deg,crashed_data['dec']*u.deg).transform_to(MagellanicStreamNidever08())
+                ax.scatter(crashed_coords.L.deg, crashed_coords.B.deg, s=8, marker='.',c='red', label='CRASHED ('+str(len(crashed_data))+')')
+            if len(running_data)>0:
+                running_coords = SkyCoord(running_data['ra']*u.deg,running_data['dec']*u.deg).transform_to(MagellanicStreamNidever08())
+                ax.scatter(running_coords.L.deg, running_coords.B.deg, s=8, marker='.',c='dodgerblue', label='RUNNING ('+str(len(running_data))+')')
 
         ax.set_xlabel(r'$L_{\rm MS}$ (deg)')
         ax.set_ylabel(r'$B_{\rm MS}$ (deg)')
         ax.set_xlim(26,-39)
         ax.set_ylim(-30,30)
-        ax.legend(loc='upper right',markerscale=6)
+        if plot_nchips==False:
+            ax.legend(loc='upper right',markerscale=6)
 
         rightnow = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
         plotdir = '/net/dl2/dnidever/delve/bricks/status_plots/'
-        fig.savefig(plotdir+'brick_status_'+rightnow+'.png',bbox_inches='tight')
-        
-        print('Plot saved in: '+plotdir+'brick_status_'+rightnow+'.png')
+        if plot_nchips:
+            plotfile = plotdir+'brick_status_nchips_'+rightnow+'.png'
+        else:
+            plotfile = plotdir+'brick_status_'+rightnow+'.png'
+        fig.savefig(plotfile,bbox_inches='tight')
+        print('Plot saved to: '+plotfile)
 
     # Summary information
     else:

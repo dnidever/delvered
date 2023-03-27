@@ -9,7 +9,7 @@ import time
 from argparse import ArgumentParser
 from dlnpyutils import utils as dln
 from delvered import delvered_db as delvedb
-from astropy.table import Table
+from astropy.table import Table,hstack,vstack
 import numpy as np
 
 # Main command-line program
@@ -44,7 +44,21 @@ if __name__ == "__main__":
     decr = [dec-lim,dec+lim]
     print(rar)
     print(decr)
-    cat = delvedb.getdatadb(dbfile,rar=rar,decr=decr,table='chip')
+    # Wrap across RA=0
+    if ra-ralim < 0 or ra+ralim > 360:
+        # small ra
+        if ra-ralim<0:
+            rar1 = [0,ra+ralim]
+            rar2 = [360+(ra-ralim),360]
+        # large ra
+        else:
+            rar1 = [ra-ralim,360]
+            rar2 = [0,ra+ralim-360]
+        cat1 = delvedb.getdatadb(dbfile,rar=rar1,decr=decr,table='chip')
+        cat2 = delvedb.getdatadb(dbfile,rar=rar2,decr=decr,table='chip')
+        cat = np.hstack((cat1,cat2))
+    else:
+        cat = delvedb.getdatadb(dbfile,rar=rar,decr=decr,table='chip')
     ncat = dln.size(cat)
     print(str(ncat)+' matches found')
     if dln.size(cat)==0:
