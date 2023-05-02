@@ -133,7 +133,8 @@ class DBSession(object):
         
     def open(self):
         """ Open the database connection."""
-        connection = pg.connect(user="datalab",host="gp09.datalab.noirlab.edu",
+        #connection = pg.connect(user="datalab",host="gp09.datalab.noirlab.edu",
+        connection = pg.connect(user="datalab",host="hulk.tuc.noao.edu",
                                 password="",port = "5432",database = "tapdb")
         connection.autocommit = True
         self.connection = connection
