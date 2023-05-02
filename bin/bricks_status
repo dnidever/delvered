@@ -123,7 +123,7 @@ if __name__ == "__main__":
                 ax.scatter(crashed_coords.L.deg, crashed_coords.B.deg, s=8, marker='.',c='red', label='CRASHED ('+str(len(crashed_data))+')')
             if len(running_data)>0:
                 running_coords = SkyCoord(running_data['ra']*u.deg,running_data['dec']*u.deg).transform_to(MagellanicStreamNidever08())
-                ax.scatter(running_coords.L.deg, running_coords.B.deg, s=8, marker='.',c='dodgerblue', label='RUNNING ('+str(len(running_data))+')')
+                ax.scatter(running_coords.L.deg, running_coords.B.deg, s=8, marker='.',c='xkcd:bright aqua', label='RUNNING ('+str(len(running_data))+')')
 
         ax.set_xlabel(r'$L_{\rm MS}$ (deg)')
         ax.set_ylabel(r'$B_{\rm MS}$ (deg)')
