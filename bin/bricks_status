@@ -150,12 +150,14 @@ if __name__ == "__main__":
         ndone = db.query(sql="select count(*) from delvered_processing.bricks where status='DONE'")
         ntodo = db.query(sql="select count(*) from delvered_processing.bricks where status='TODO'")
         nredo = db.query(sql="select count(*) from delvered_processing.bricks where status='REDO'")
+        nnoupdate = db.query(sql="select count(*) from delvered_processing.bricks where status='NOUPDATE'")
         ncrashed = db.query(sql="select count(*) from delvered_processing.bricks where status='CRASHED'")
         # Print out the information
         print('Delvered Brick Processing Status at '+datetime.now().ctime())
         print('{:6d} DONE'.format(ndone[0][0]))
         print('{:6d} RUNNING'.format(nrunning))
         print('{:6d} CRASHED'.format(ncrashed[0][0]))
+        print('{:6d} NOUPDATE'.format(nnoupdate[0][0]))
         print('{:6d} REDO'.format(nredo[0][0]))
         print('{:6d} TODO'.format(ntodo[0][0]))
 

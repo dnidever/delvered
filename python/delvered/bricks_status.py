@@ -23,7 +23,7 @@ try:
 except ImportError:
     import builtins # Python 3
 
-def statusmap(db=None):
+def statusmap(db=None,plot_nchips=False):
     # Plot distribution of jobs and save to file
 
     if db is None:
@@ -39,6 +39,7 @@ def statusmap(db=None):
     done_data = Table(db.query(sql="select ra,dec from delvered_processing.bricks where status='DONE'"))
     redo_data = Table(db.query(sql="select ra,dec from delvered_processing.bricks where status='REDO'"))
     crashed_data = Table(db.query(sql="select ra,dec from delvered_processing.bricks where status='CRASHED'"))
+    noupdate_data = Table(db.query(sql="select ra,dec from delvered_processing.bricks where status='NOUPDATE'"))
     running_data = Table(db.query(sql="select ra,dec from delvered_processing.bricks where status='R'"))
         
     all_coords = SkyCoord(all_data['ra']*u.deg,all_data['dec']*u.deg).transform_to(MagellanicStreamNidever08())
@@ -48,36 +49,47 @@ def statusmap(db=None):
     mpl.rcParams['font.size'] = 16
     fig, ax = plt.subplots(figsize=(10,8), facecolor='white')
 
-    bkg_map = ax.scatter(all_coords.L.deg, all_coords.B.deg, s=8, marker='.',c=all_data['priority_points'],cmap='viridis')
-    plt.colorbar(bkg_map,ax=ax,label='Priority')
+    if plot_nchips:
+        bkg_map = ax.scatter(all_coords.L.deg, all_coords.B.deg, s=8, marker='.',c=all_data['nchips'],
+                             cmap='viridis',norm=LogNorm())
+        plt.colorbar(bkg_map,ax=ax,label='Nchips')
+    else:
+        bkg_map = ax.scatter(all_coords.L.deg, all_coords.B.deg, s=8, marker='.',c=all_data['priority_points'],cmap='viridis')
+        plt.colorbar(bkg_map,ax=ax,label='Priority')
 
-    if len(done_data)>0:
-        done_coords = SkyCoord(done_data['ra']*u.deg,done_data['dec']*u.deg).transform_to(MagellanicStreamNidever08())
-        ax.scatter(done_coords.L.deg, done_coords.B.deg, s=8, marker='.',c='purple', label='DONE ('+str(len(done_data))+')')
-    if len(redo_data)>0:
-        redo_coords = SkyCoord(redo_data['ra']*u.deg,redo_data['dec']*u.deg).transform_to(MagellanicStreamNidever08())
-        ax.scatter(redo_coords.L.deg, redo_coords.B.deg, s=8, marker='.',c='orange', label='REDO ('+str(len(redo_data))+')')
-    if len(crashed_data)>0:
-        crashed_coords = SkyCoord(crashed_data['ra']*u.deg,crashed_data['dec']*u.deg).transform_to(MagellanicStreamNidever08())
-        ax.scatter(crashed_coords.L.deg, crashed_coords.B.deg, s=8, marker='.',c='red', label='CRASHED ('+str(len(crashed_data))+')')
-    if len(running_data)>0:
-        running_coords = SkyCoord(running_data['ra']*u.deg,running_data['dec']*u.deg).transform_to(MagellanicStreamNidever08())
-        ax.scatter(running_coords.L.deg, running_coords.B.deg, s=8, marker='.',c='dodgerblue', label='RUNNING ('+str(len(running_data))+')')
+    if plot_nchips==False:
+        if len(done_data)>0:
+            done_coords = SkyCoord(done_data['ra']*u.deg,done_data['dec']*u.deg).transform_to(MagellanicStreamNidever08())
+            ax.scatter(done_coords.L.deg, done_coords.B.deg, s=8, marker='.',c='purple', label='DONE ('+str(len(done_data))+')')
+        if len(redo_data)>0:
+            redo_coords = SkyCoord(redo_data['ra']*u.deg,redo_data['dec']*u.deg).transform_to(MagellanicStreamNidever08())
+            ax.scatter(redo_coords.L.deg, redo_coords.B.deg, s=8, marker='.',c='orange', label='REDO ('+str(len(redo_data))+')')
+        if len(noupdate_data)>0:
+            noupdate_coords = SkyCoord(noupdate_data['ra']*u.deg,noupdate_data['dec']*u.deg).transform_to(MagellanicStreamNidever08())
+            ax.scatter(noupdate_coords.L.deg, noupdate_coords.B.deg, s=8, marker='.',c='#a00498', label='NOUPDATE ('+str(len(noupdate_data))+')')
+        if len(crashed_data)>0:
+            crashed_coords = SkyCoord(crashed_data['ra']*u.deg,crashed_data['dec']*u.deg).transform_to(MagellanicStreamNidever08())
+            ax.scatter(crashed_coords.L.deg, crashed_coords.B.deg, s=8, marker='.',c='red', label='CRASHED ('+str(len(crashed_data))+')')
+        if len(running_data)>0:
+            running_coords = SkyCoord(running_data['ra']*u.deg,running_data['dec']*u.deg).transform_to(MagellanicStreamNidever08())
+            ax.scatter(running_coords.L.deg, running_coords.B.deg, s=8, marker='.',c='#0bf9ea', label='RUNNING ('+str(len(running_data))+')')
 
     ax.set_xlabel(r'$L_{\rm MS}$ (deg)')
     ax.set_ylabel(r'$B_{\rm MS}$ (deg)')
-    ax.set_xlim(26,-39)
+    ax.set_xlim(26,-42)
     ax.set_ylim(-30,30)
-    ax.legend(loc='upper right',markerscale=6)
+    if plot_nchips==False:
+        ax.legend(loc='upper right',markerscale=6)
 
     rightnow = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
     plotdir = '/net/dl2/dnidever/delve/bricks/status_plots/'
-    plotfile = plotdir+'brick_status_'+rightnow+'.png'
+    if plot_nchips:
+        plotfile = plotdir+'brick_status_nchips_'+rightnow+'.png'
+    else:
+        plotfile = plotdir+'brick_status_'+rightnow+'.png'
     fig.savefig(plotfile,bbox_inches='tight')
-        
-    print('Plot saved in: '+plotfile)
+    print('Plot saved to: '+plotfile)
 
-    return plotfile
 
 def runstatus(db=None):
     # Detailed information on running jobs
