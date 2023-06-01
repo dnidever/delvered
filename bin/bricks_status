@@ -93,6 +93,7 @@ if __name__ == "__main__":
         all_data = Table(db.query(sql="select ra,dec,nchips,priority_points from delvered_processing.bricks"))
         done_data = Table(db.query(sql="select ra,dec from delvered_processing.bricks where status='DONE'"))
         redo_data = Table(db.query(sql="select ra,dec from delvered_processing.bricks where status='REDO'"))
+        noupdate_data = Table(db.query(sql="select ra,dec from delvered_processing.bricks where status='NOUPDATE'"))
         crashed_data = Table(db.query(sql="select ra,dec from delvered_processing.bricks where status='CRASHED'"))
         running_data = Table(db.query(sql="select ra,dec from delvered_processing.bricks where status='R'"))
         
@@ -118,16 +119,19 @@ if __name__ == "__main__":
             if len(redo_data)>0:
                 redo_coords = SkyCoord(redo_data['ra']*u.deg,redo_data['dec']*u.deg).transform_to(MagellanicStreamNidever08())
                 ax.scatter(redo_coords.L.deg, redo_coords.B.deg, s=8, marker='.',c='orange', label='REDO ('+str(len(redo_data))+')')
+            if len(noupdate_data)>0:
+                noupdate_coords = SkyCoord(noupdate_data['ra']*u.deg,noupdate_data['dec']*u.deg).transform_to(MagellanicStreamNidever08())
+                ax.scatter(noupdate_coords.L.deg, noupdate_coords.B.deg, s=8, marker='.',c='#a00498', label='NOUPDATE ('+str(len(noupdate_data))+')')
             if len(crashed_data)>0:
                 crashed_coords = SkyCoord(crashed_data['ra']*u.deg,crashed_data['dec']*u.deg).transform_to(MagellanicStreamNidever08())
                 ax.scatter(crashed_coords.L.deg, crashed_coords.B.deg, s=8, marker='.',c='red', label='CRASHED ('+str(len(crashed_data))+')')
             if len(running_data)>0:
                 running_coords = SkyCoord(running_data['ra']*u.deg,running_data['dec']*u.deg).transform_to(MagellanicStreamNidever08())
-                ax.scatter(running_coords.L.deg, running_coords.B.deg, s=8, marker='.',c='xkcd:bright aqua', label='RUNNING ('+str(len(running_data))+')')
+                ax.scatter(running_coords.L.deg, running_coords.B.deg, s=8, marker='.',c='#0bf9ea', label='RUNNING ('+str(len(running_data))+')')
 
         ax.set_xlabel(r'$L_{\rm MS}$ (deg)')
         ax.set_ylabel(r'$B_{\rm MS}$ (deg)')
-        ax.set_xlim(26,-39)
+        ax.set_xlim(26,-42)
         ax.set_ylim(-30,30)
         if plot_nchips==False:
             ax.legend(loc='upper right',markerscale=6)
