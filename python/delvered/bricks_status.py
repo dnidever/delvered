@@ -90,6 +90,8 @@ def statusmap(db=None,plot_nchips=False):
     fig.savefig(plotfile,bbox_inches='tight')
     print('Plot saved to: '+plotfile)
 
+    return plotfile
+
 
 def runstatus(db=None):
     # Detailed information on running jobs
