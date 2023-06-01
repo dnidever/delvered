@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# DBJOB_DAEMON.PY - Job manager running off of a database table
+# BRICKS_DAEMON.PY - Job manager running off of a database table
 #
 
 from __future__ import print_function
@@ -929,9 +929,9 @@ def daemon(bricks=None,scriptsdir=None,nmulti=4,waittime=0.2,statustime=60,redo=
         if os.path.exists(idlprog) is False:
             raise Exception("IDL program "+idlprog+" not found")
 
-    print('---------------------')
-    print(' RUNNING DBJOB_DAEMON ')
-    print('---------------------')
+    print('-----------------------')
+    print(' RUNNING BRICKS_DAEMON ')
+    print('-----------------------')
     print('Host='+host)
     print('Nmulti='+str(nmulti))
     
