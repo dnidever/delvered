@@ -5,7 +5,18 @@
 ; Process a single DELVE brick and perform ALLFRAME FORCED photometry
 ;
 ; INPUTS:
-;  brick   The DELVE brick name, e.g. 1234m045
+;  brick        The DELVE brick name, e.g. 1234m045
+;  =scriptsdir  Directory for DAOPHOT/DELVE scripts.
+;                   /home/dnidever/projects/PHOTRED/scripts/ by default.
+;  =irafdir     IRAF directory. /home/dnidever/iraf/ by default.
+;  =workdir     The local temporary directory to use for all the processing.
+;                  /data0/dnidever/delve/ by default.
+;  /redo        Reprocess no matter what.
+;  /update      Only reprocess if there are new exposures for this brick.
+;  =logfile     The log filename.  This is constructed by default with
+;                  logsdir+'delvered_brick.'+brick+'.'+hostname+'.'+logtime+'.log'
+;  =delvedir    The main DELVE-MC processing directory.
+;                  /net/dl2/dnidever/delve/ by default.
 ;
 ; By D. Nidever  August 2019
 ;-
@@ -219,9 +230,25 @@ ui = uniq(chid,sort(chid))
 chstr = chstr[ui]
 nchstr = n_elements(chstr)
 
+;; Exclude bad chips
+printlog,logfile,'Checking for excluded chips'
+exclude = MRDFITS(delvedir+'bricks/processingdb/delve_exclude_20230603.fits',1,/silent)
+chid = strtrim(chstr.expnum,2)+'-'+strtrim(chstr.chip,2)
+exid = string(exclude.expnum,format='(i08)')+'-'+strtrim(exclude.ccdnum,2)
+MATCH,chid,exid,ind1,ind2,/sort,count=nmatch
+printlog,logfile,strtrim(nmatch,2)+' excluded chips found'
+if nmatch eq nchstr then begin
+  printlog,logfile,'All chips are excluded'
+  return
+endif
+if nmatch gt 0 then begin
+  REMOVE,ind1,chstr
+  nchstr = n_elements(chstr)
+endif
+
 ;; Do more rigorous overlap checking
 ;;  the brick region with overlap
-print,'Performing more rigorous overlap checking'
+printlog,logfile,'Performing more rigorous overlap checking'
 HEAD_XYAD,tilestr.head,[0,tilestr.nx-1,tilestr.nx-1,0],[0,0,tilestr.ny-1,tilestr.ny-1],bvra,bvdec,/deg
 olap = intarr(nchstr)
 vxarr = fltarr(nchstr,4)
