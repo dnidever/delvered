@@ -61,13 +61,22 @@ def bricks():
         jmeasfile = basedir+name[:4]+'/'+name+'/'+name+'_joint_meas.fits.gz'
         jobjfile = basedir+name[:4]+'/'+name+'/'+name+'_joint_object.fits.gz'
         if os.path.exists(objfile):
-            ohead = fits.getheader(objfile,1)
-            bricks['nobject'][i] = ohead['naxis2']
+            try:
+                ohead = fits.getheader(objfile,1)
+                bricks['nobject'][i] = ohead['naxis2']
+            except:
+                print('problem loading',objfile)
         if os.path.exists(jmeasfile):
-            mhead = fits.getheader(jmeasfile,1)
-            bricks['njmeas'][i] = mhead['naxis2']
+            try:
+                mhead = fits.getheader(jmeasfile,1)
+                bricks['njmeas'][i] = mhead['naxis2']
+            except:
+                print('problem loading',jmeasfile)
         if os.path.exists(jobjfile):
-            ojhead = fits.getheader(jobjfile,1)
-            bricks['njobject'][i] = ojhead['naxis2']
+            try:
+                ojhead = fits.getheader(jobjfile,1)
+                bricks['njobject'][i] = ojhead['naxis2']
+            except:
+                print('problem loading',jobjfile)
 
     return bricks
