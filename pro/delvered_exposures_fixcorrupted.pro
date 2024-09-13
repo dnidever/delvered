@@ -312,7 +312,6 @@ FOR i=0,nnights-1 do begin
   if keyword_set(startfresh) then $
        DELERED_EXPOSURES_DELETE,expdir+inight
 
-
   ;; Check for corrupted files
   ;;--------------------------
   ;; Get the list of all the exposures
@@ -330,7 +329,7 @@ FOR i=0,nnights-1 do begin
   corruptedstr = corrupted[ind2]
   print,strjoin(corrupted_expnum,' ')
 
-  ;; Fix the resources files
+  ;; Fix the resource files
   DELVERED_EXPOSURES_FIXFILES,corruptedstr,fixedfiles
   fixedfields = (strsplitter(fixedfiles,'/',/extract))[0,*]
   fixedfields = fixedfields[uniq(fixedfields,sort(fixedfields))]
@@ -339,6 +338,16 @@ FOR i=0,nnights-1 do begin
 
   ;; Write fixed files list to a file
   WRITELINE,'fixedcorruptedfiles.lst',fixedfiles
+
+  ;; gunzip any compressed ap, raw files
+  print,'Uncompressing gzipped files.  This will take several minutes'
+  ;; the "yes n" will repeatedly print "n" with a carriage return to any
+  ;; questions/prompts that gunzip gives for an existing uncompressed file
+  SPAWN,['find | grep .ap.gz | xargs -L 1 -I % gunzip -f %'],out,errout
+  SPAWN,['find | grep .raw.gz | xargs -L 1 -I % gunzip -f %'],out,errout
+  ;SPAWN,['yes n | gunzip */*/*.ap.gz'],out,errout
+  ;SPAWN,['yes n | gunzip */*/*.raw.gz'],out,errout
+
 
   ;; Copy everything to the work directory
   if keyword_set(uselocal) then begin
@@ -358,25 +367,25 @@ FOR i=0,nnights-1 do begin
   endif
 
   ;; Adding files to WCS.inlist
-  ;;print,'Adding files to WCS.inlist'
-  ;;READLINE,'logs/WCS.inlist',wcslist,count=nwcslist
-  ;;push,wcslist,fixedfiles
-  ;;WRITELINE,'logs/WCS.inlist',wcslist
+  print,'Adding files to WCS.inlist'
+  READLINE,'logs/WCS.inlist',wcslist,count=nwcslist
+  push,wcslist,fixedfiles
+  WRITELINE,'logs/WCS.inlist',wcslist
 
   ;; Make sure the WCS.inlist files are relative
-  ;;READLINE,'logs/WCS.inlist',wcslist,count=nwcslist
-  ;;if nwcslist gt 0 then begin
-  ;;  wcslist = repstr(wcslist,expdir+inight+'/','')
-  ;;  WRITELINE,'logs/WCS.inlist',wcslist
-  ;;endif
+  READLINE,'logs/WCS.inlist',wcslist,count=nwcslist
+  if nwcslist gt 0 then begin
+    wcslist = repstr(wcslist,expdir+inight+'/','')
+    WRITELINE,'logs/WCS.inlist',wcslist
+  endif
 
-  ;;DELVERED_WCS,/redo,nmulti=nmulti
+  DELVERED_WCS,/redo,nmulti=nmulti
 
   ;; DAOPHOT will automatically pick up the output from WCS
-  ;;DELVERED_DAOPHOT,/redo,nmulti=nmulti,workdir=workdir
+  DELVERED_DAOPHOT,/redo,nmulti=nmulti,workdir=workdir
 
   ;; Put all als files of affected fields in MATCH.inlist
-  READLINE,'logs/DAOPHOT.success',daolist,count=nwcslist
+  READLINE,'logs/DAOPHOT.success',daolist,count=ndaolist
   alslist = repstr(daolist,'.fits','.als')
   alsfields = (strsplitter(alslist,'/',/extract))[0,*]
   undefine,gd
@@ -384,26 +393,45 @@ FOR i=0,nnights-1 do begin
     gd1 = where(alsfields eq fixedfields[f],ngd1)
     if ngd1 gt 0 then push,gd,gd1
   endfor
-  READLINE,'logs/MATCH.inlist',matchlist,count=nwcslist
+  READLINE,'logs/MATCH.inlist',matchlist,count=nmatchlist
   push,matchlist,alslist[gd]
+  matchlist = matchlist[uniq(matchlist,sort(matchlist))]
   WRITELINE,'logs/MATCH.inlist',matchlist
 
   DELVERED_MATCH,/redo,nmulti=nmulti
 
-  ;; Run APCOR on exposures that we reran
+  ;; Run APCOR on all exposures
+  READLINE,'logs/DAOPHOT.success',daolist
   READLINE,'logs/APCOR.inlist',apcorlist
-  push,apcorlist,repstr(fixedfiles,'.fits','.als')
+  push,apcorlist,daolist
+  apcorlist = apcorlist[uniq(apcorlist,sort(apcorlist))]
   WRITELINE,'logs/APCOR.inlist',apcorlist
-
+  print,systime()
   PHOTRED_APCOR,/redo
-  PHOTRED_ASTROM,/redo
 
-  ;; Rerun 
-
+  ;; ZEROPOINT, rerun fixed exposures
+  READLINE,'logs/ZEROPOINT.inlist',zerolist
+  push,zerolist,fixedfiles
+  zerolist = zerolist[uniq(zerolist,sort(zerolist))]
+  WRITELINE,'logs/ZEROPOINT.inlist',zerolist
+  print,systime()
   DELVERED_ZEROPOINT,/redo,nmulti=nmulti
+
+
+  ;; Rerun astrom-save on all files/fields
+  READLINE,'logs/ASTROM.inlist',astromlist
+  READLINE,'logs/ASTROM.success',astromsuccess
+  push,astromlist,astromsuccess
+  READLINE,'logs/MATCH.outlist',matchoutlist
+  push,astromlist,matchoutlist
+  astromlist = astromlist[uniq(astromlist,sort(astromlist))]
+  WRITELINE,'logs/ASTROM.inlist',astromlist
+
+  PHOTRED_ASTROM,/redo
   PHOTRED_CALIB,/redo
   PHOTRED_COMBINE,/redo
   PHOTRED_DEREDDEN,/redo
+
   PHOTRED_SAVE,/redo,/sumquick,nmulti=nmulti
 
   print,'DELVERED FINISHED'
@@ -456,8 +484,8 @@ FOR i=0,nnights-1 do begin
   CASE mailprog of
   'sendmail': begin
     undefine,elines
-    push,elines,'From: dnidever@noao.edu'
-    push,elines,'To: dnidever@noao.edu'
+    push,elines,'From: noreply.delvered@noirlab.edu'
+    push,elines,'To: dnidever@montana.edu'
     push,elines,'Subject: delvered_exposures night='+inight+' FINISHED on '+hostname
     push,elines,'Content-Type: text/html'
     push,elines,'MIME-Version: 1.0'
@@ -503,7 +531,7 @@ JOURNAL
 sinput = strtrim(input,2)
 if n_elements(sinput) gt 1 then sinput='['+strjoin(sinput,',')+']'
 body = 'delvered_exposures '+sinput+' FINISHED at '+systime(0)+' on HOST='+hostname
-cmd = 'echo "'+body+'" |  mail -s "delvered_exposures FINISHED on '+hostname+'" dnidever@noao.edu'
+cmd = 'echo "'+body+'" |  mail -s "delvered_exposures FINISHED on '+hostname+'" dnidever@montana.edu'
 spawn,cmd,out,errout
 
 if keyword_set(stp) then stop
