@@ -333,7 +333,7 @@ FOR i=0,nnights-1 do begin
   DELVERED_EXPOSURES_FIXFILES,corruptedstr,fixedfiles
   fixedfields = (strsplitter(fixedfiles,'/',/extract))[0,*]
   fixedfields = fixedfields[uniq(fixedfields,sort(fixedfields))]
-  print,strtrim(n_elements(fixedfields),2),' have corrupted files'
+  print,strtrim(n_elements(fixedfields),2),' fields have corrupted files'
   print,strjoin(fixedfields,' ')
 
   ;; Write fixed files list to a file
@@ -427,10 +427,10 @@ FOR i=0,nnights-1 do begin
   astromlist = astromlist[uniq(astromlist,sort(astromlist))]
   WRITELINE,'logs/ASTROM.inlist',astromlist
 
-  PHOTRED_ASTROM,/redo
-  PHOTRED_CALIB,/redo
-  PHOTRED_COMBINE,/redo
-  PHOTRED_DEREDDEN,/redo
+  PHOTRED_ASTROM,/redo,nmulti=nmulti
+  PHOTRED_CALIB,/redo,nmulti=nmulti
+  PHOTRED_COMBINE,/redo,nmulti=nmulti
+  PHOTRED_DEREDDEN,/redo,nmulti=nmulti
 
   PHOTRED_SAVE,/redo,/sumquick,nmulti=nmulti
 
