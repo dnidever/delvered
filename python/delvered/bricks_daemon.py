@@ -81,7 +81,7 @@ oids_int = (20,21,23)
 def cast_int_none(value, cursor):
     if value is None:
         return -9999
-    return np.int(value)
+    return int(value)
 new_type = pg.extensions.new_type(oids_int, "INT", cast_int_none)
 register_type(new_type)
 # Cast None's for floats
@@ -89,7 +89,7 @@ oids_float = (700,701)
 def cast_float_none(value, cursor):
     if value is None:
         return -999999.
-    return np.float(value)
+    return float(value)
 new_type = pg.extensions.new_type(oids_float, "FLOAT", cast_float_none)
 register_type(new_type)
 
