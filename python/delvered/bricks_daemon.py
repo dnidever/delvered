@@ -51,7 +51,7 @@ register_adapter(np.int16, addapt_np_int16)
 register_adapter(np.int32, addapt_np_int32)
 register_adapter(np.int64, addapt_np_int64)
 register_adapter(np.uint64, addapt_np_uint64)
-register_adapter(np.bool, addapt_np_bool)
+register_adapter(bool, addapt_np_bool)
 register_adapter(np.bool_, addapt_np_bool)
 
 from psycopg2.extensions import register_type
