@@ -40,7 +40,8 @@ def parse_archive_file(filename):
     dt = np.dtype([('instrument',str,10),('base',str,100),('expnum',str,20),('rawname',str,100),
                    ('date_obs',str,50),('mjd_obs',np.float64),('filter',str,50),('prop_id',str,50),
                    ('ra',np.float64),('dec',np.float64),('exposure',float),('release_date',str,50),
-                   ('plver',str,20),('proctype',str,20),('fluxfile',str,200),('maskfile',str,200),('wtfile',str,200)])
+                   ('plver',str,20),('proctype',str,20),('fluxfile',str,200),('maskfile',str,200),
+                   ('wtfile',str,200)])
     cat = np.zeros(ngdim,dtype=dt)
     cat['instrument'] = 'c4d'
     cat['fluxfile'] = imstr['uri']
