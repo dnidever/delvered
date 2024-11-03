@@ -88,7 +88,7 @@ def getdatadb(dbfile,table='meas',cols='*',rar=None,decr=None,verbose=False):
     cur = db.cursor()
 
     # Convert numpy data types to sqlite3 data types
-    d2d = {"TEXT":(np.str,100), "INTEGER":np.int, "REAL":np.float}
+    d2d = {"TEXT":(str,100), "INTEGER":int, "REAL":float}
 
     # Start the SELECT statement
     cmd = 'SELECT '+cols+' FROM '+table
@@ -155,7 +155,7 @@ def createsumtable(dbfile=None,delvedir='/net/dl2/dnidever/delve/'):
     dirs = glob.glob(expdir+'20??????')
     dirs = np.array(dirs)
     ndirs = dln.size(dirs)
-    nights = np.zeros(dirs.size,(np.str,10))
+    nights = np.zeros(dirs.size,(str,10))
     for i,d in enumerate(dirs): nights[i]=os.path.basename(d)
     si = np.argsort(nights)
     nights = nights[si]

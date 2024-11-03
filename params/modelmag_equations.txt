@@ -1,10 +1,10 @@
 # BAND INSTRUMENT DECRANGE       COLOREQN           COLORANGE    MODELMAGEQN                                                    QUALITYCUTS
   u      c4d      [0,90]     GMAG-JMAG-3.27*EJK     [0.80,1.1]   0.2301*NUV+0.7616*GMAG+0.4937*COLOR+0.8327*EJK+0.1344          QFLG='AAA'
   u      c4d      [-90,0]    GMAG-JMAG-3.27*EJK     [0.80,1.1]   SM_UMAG                                                        QFLG='AAA'
-  g      c4d      [-90,-29]  JMAG-KMAG-EJK          [0.25,0.75]  ATLAS_GMAG                                                     ATLAS_GMAG<19.0
-  r      c4d      [-90,-29]  JMAG-KMAG-EJK          [0.25,0.85]  ATLAS_RMAG                                                     ATLAS_RMAG<19.0
-  i      c4d      [-90,-29]  JMAG-KMAG-EJK          [0.25,0.70]  ATLAS_IMAG                                                     ATLAS_IMAG<19.0
-  z      c4d      [-90,-29]  JMAG-KMAG-EJK          [0.15,0.70   ATLAS_ZMAG                                                     ATLAS_ZMAG<19.0
+  g      c4d      [-90,-29]  JMAG-KMAG-EJK          [0.25,0.75]  SM_GMAG                                                     SM_GMAG<19.0
+  r      c4d      [-90,-29]  JMAG-KMAG-EJK          [0.25,0.85]  SM_RMAG                                                     SM_RMAG<19.0
+  i      c4d      [-90,-29]  JMAG-KMAG-EJK          [0.25,0.70]  SM_IMAG                                                     SM_IMAG<19.0
+  z      c4d      [-90,-29]  JMAG-KMAG-EJK          [0.15,0.70   SM_ZMAG                                                     SM_ZMAG<19.0
   Y      c4d      [-90,-29]  JMAG-KMAG-EJK          [0.4,0.7]    JMAG+0.54482*COLOR+0.422*EJK+0.663380                          QFLG='AAA'
   VR     c4d      [-29,90]   PS_GMAG-PS_IMAG        [0.0,3.0]    0.5*PS_RMAG+0.5*GMAG                                           GMAG<20.5
   VR     c4d      [-90,-29]  ATLAS_GMAG-ATLAS_IMAG  [0.0,2.2]    0.5*ATLAS_RMAG+0.5*GMAG                                        GMAG<20.5

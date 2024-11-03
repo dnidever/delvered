@@ -96,7 +96,8 @@ For i=0,n_elements(filter)-1 do begin
   'c4d-u': begin
     ; Use GAIA, 2MASS and GALEX to calibrate
     push,refcat,['2MASS-PSC','II/312/ais']
-    if cendec le 0 then push,refcat,'Skymapper'
+    ;;if cendec le 0 then push,refcat,'Skymapper'
+    if cendec le 0 then push,refcat,'SKYMAPPERDR4'
   end
   ; DECam g-band
   'c4d-g': begin
@@ -105,7 +106,8 @@ For i=0,n_elements(filter)-1 do begin
       push,refcat,['2MASS-PSC','PS']
     endif else begin
       ; Use 2MASS and APASS to calibrate
-      push,refcat,['2MASS-PSC','ATLAS']
+      ;;push,refcat,['2MASS-PSC','ATLAS']
+      push,refcat,['2MASS-PSC','SKYMAPPERDR4']
     endelse
   end
   ; DECam r-band
@@ -115,7 +117,8 @@ For i=0,n_elements(filter)-1 do begin
       push,refcat,['2MASS-PSC','PS']
     endif else begin
       ; Use 2MASS and APASS to calibrate
-      push,refcat,['2MASS-PSC','ATLAS']
+      ;;push,refcat,['2MASS-PSC','ATLAS']
+      push,refcat,['2MASS-PSC','SKYMAPPERDR4']
     endelse
   end
   ; DECam i-band
@@ -125,7 +128,8 @@ For i=0,n_elements(filter)-1 do begin
       push,refcat,['2MASS-PSC','PS']
     endif else begin
       ; Use GAIA and 2MASS to calibrate
-      push,refcat,['2MASS-PSC','ATLAS']
+      ;;push,refcat,['2MASS-PSC','ATLAS']
+      push,refcat,['2MASS-PSC','SKYMAPPERDR4']
     endelse
   end
   ; DECam z-band
@@ -135,7 +139,8 @@ For i=0,n_elements(filter)-1 do begin
       push,refcat,['2MASS-PSC','PS']
     endif else begin
       ; Use GAIA and 2MASS to calibrate  
-      push,refcat,['2MASS-PSC','ATLAS']
+      ;;push,refcat,['2MASS-PSC','ATLAS']
+      push,refcat,['2MASS-PSC','SKYMAPPERDR4']
     endelse
   end
   ; DECam Y-band
@@ -227,6 +232,7 @@ for i=0,nrefcat-1 do begin
   'APASS': push,newtags,['apass_gmag','e_apass_gmag','apass_rmag','e_apass_rmag']
   'II/312/ais': push,newtags,['nuv','e_nuv']  ; Galex
   'Skymapper': push,newtags,['sm_umag','e_sm_umag','sm_gmag','e_sm_gmag','sm_rmag','e_sm_rmag','sm_imag','e_sm_imag','sm_zmag','e_sm_zmag']  ; Skymapper DR1
+  'SKYMAPPERDR4': push,newtags,['sm_umag','e_sm_umag','sm_gmag','e_sm_gmag','sm_rmag','e_sm_rmag','sm_imag','e_sm_imag','sm_zmag','e_sm_zmag']  ; Skymapper DR4
   'ALLWISE': push,newtags,['w1mag','e_w1mag','w2mag','e_w2mag']
   'GLIMPSE': push,newtags,['gl_36mag','e_gl_36mag','gl_45mag','e_gl_45mag']
   'SAGE': push,newtags,['sage_36mag','e_sage_36mag','sage_45mag','e_sage_45mag']
@@ -350,6 +356,18 @@ for i=0,nrefcat-1 do begin
        ref[ind1].sm_zmag = ref1[ind2].sm_zmag
        ref[ind1].e_sm_zmag = ref1[ind2].e_sm_zmag
     end
+    'SKYMAPPERDR4': begin
+       ref[ind1].sm_umag = ref1[ind2].sm_umag
+       ref[ind1].e_sm_umag = ref1[ind2].e_sm_umag
+       ref[ind1].sm_gmag = ref1[ind2].sm_gmag
+       ref[ind1].e_sm_gmag = ref1[ind2].e_sm_gmag
+       ref[ind1].sm_rmag = ref1[ind2].sm_rmag
+       ref[ind1].e_sm_rmag = ref1[ind2].e_sm_rmag
+       ref[ind1].sm_imag = ref1[ind2].sm_imag
+       ref[ind1].e_sm_imag = ref1[ind2].e_sm_imag
+       ref[ind1].sm_zmag = ref1[ind2].sm_zmag
+       ref[ind1].e_sm_zmag = ref1[ind2].e_sm_zmag
+    end
     'ATLAS': begin
        ref[ind1].atlas_gmag = ref1[ind2].gmag
        ref[ind1].e_atlas_gmag = ref1[ind2].gerr
@@ -382,7 +400,7 @@ for i=0,nrefcat-1 do begin
        ref[ind1].sage_45mag = ref1[ind2].__4_5_
        ref[ind1].e_sage_45mag = ref1[ind2].e__4_5_
     end
-    else: stop,catname+' NOT SUPPORTED'
+    else: stop,refcat[i]+' NOT SUPPORTED'
     endcase
   endif
 
@@ -446,6 +464,18 @@ for i=0,nrefcat-1 do begin
        new.sm_zmag = left1.sm_zmag
        new.e_sm_zmag = left1.e_sm_zmag
     end
+    'SKYMAPPERDR4': begin
+       new.sm_umag = left1.sm_umag
+       new.e_sm_umag = left1.e_sm_umag
+       new.sm_gmag = left1.sm_gmag
+       new.e_sm_gmag = left1.e_sm_gmag
+       new.sm_rmag = left1.sm_rmag
+       new.e_sm_rmag = left1.e_sm_rmag
+       new.sm_imag = left1.sm_imag
+       new.e_sm_imag = left1.e_sm_imag
+       new.sm_zmag = left1.sm_zmag
+       new.e_sm_zmag = left1.e_sm_zmag
+    end
     'ATLAS': begin
        new.atlas_gmag = left1.gmag
        new.e_atlas_gmag = left1.gerr
@@ -478,7 +508,7 @@ for i=0,nrefcat-1 do begin
        new.sage_45mag = left1.__4_5_
        new.e_sage_45mag = left1.e__4_5_
     end      
-    else: stop,catname+' NOT SUPPORTED'
+    else: stop,refcat[i]+' NOT SUPPORTED'
     endcase
       
     ; Combine the two
@@ -494,7 +524,7 @@ endfor
 
 ;; Get extinction
 ;;----------------
-GETREDDENING,ref,ext_type
+DELVERED_GETREDDENING,ref,ext_type
 
 ;; Save the file
 if n_elements(savefile) gt 0 then begin

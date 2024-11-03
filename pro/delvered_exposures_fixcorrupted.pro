@@ -345,9 +345,6 @@ FOR i=0,nnights-1 do begin
   ;; questions/prompts that gunzip gives for an existing uncompressed file
   SPAWN,['find | grep .ap.gz | xargs -L 1 -I % gunzip -f %'],out,errout
   SPAWN,['find | grep .raw.gz | xargs -L 1 -I % gunzip -f %'],out,errout
-  ;SPAWN,['yes n | gunzip */*/*.ap.gz'],out,errout
-  ;SPAWN,['yes n | gunzip */*/*.raw.gz'],out,errout
-
 
   ;; Copy everything to the work directory
   if keyword_set(uselocal) then begin

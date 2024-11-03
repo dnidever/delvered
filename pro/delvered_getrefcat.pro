@@ -62,6 +62,7 @@ if refname eq '2MASS-PSC' then refname='TMASS'
 if refname eq '2MASS' then refname='TMASS'
 if refname eq 'GAIA/GAIA' then refname='GAIA'
 if refname eq 'Skymapper' then refname='SKYMAPPER'
+if refname eq 'skymapperdr4' then refname='SKYMAPPERDR4'
 if refname eq 'GLIMPSE' then refname='II/293/glimpse'
 if refname eq 'SAGE' then refname='II/305/archive'
 if refname eq 'ATLASREFCAT2' then refname='ATLAS'
@@ -83,7 +84,7 @@ endif else begin
 
   ; Use DataLab database search for Gaia and 2MASS if density is high                                                                                                              
   if (refname eq 'TMASS' or refname eq 'GAIA' or refname eq 'GAIADR2' or refname eq 'PS' or refname eq 'SKYMAPPER' or $
-      refname eq 'ALLWISE' or refname eq 'ATLAS') then begin
+      refname eq 'SKYMAPPERDR4' or refname eq 'ALLWISE' or refname eq 'ATLAS') then begin
     if refname eq 'TMASS' then begin
       tablename = 'twomass.psc'
       cols = 'designation,ra as raj2000,dec as dej2000,j_m as jmag,j_cmsig as e_jmag,h_m as hmag,h_cmsig as e_hmag,k_m as kmag,k_cmsig as e_kmag,ph_qual as qflg'
@@ -129,6 +130,16 @@ endif else begin
       racol = 'raj2000'
       deccol = 'dej2000'
     endif
+    if refname eq 'SKYMAPPERDR4' then begin
+      tablename = 'skymapper_dr4.master'
+      cols = 'raj2000, dej2000, u_psf as sm_umag, e_u_psf as e_sm_umag, g_psf as sm_gmag, e_g_psf as e_sm_gmag, r_psf as sm_rmag, e_r_psf as e_sm_rmag, i_psf as sm_imag, '+$
+             'e_i_psf as e_sm_imag, z_psf as sm_zmag, e_z_psf as e_sm_zmag'
+      server = 'db02.datalab.noirlab.edu'
+      ;server = 'gp04.datalab.noirlab.edu'
+      user = 'dlquery'
+      racol = 'raj2000'
+      deccol = 'dej2000'
+    endif
     if refname eq 'ALLWISE' then begin
       tablename = 'allwise.source'
       cols = 'ra, dec, w1mpro as w1mag, w1sigmpro as e_w1mag, w2mpro as w2mag, w2sigmpro as e_w2mag'
@@ -145,7 +156,7 @@ endif else begin
       server = 'gp10.datalab.noirlab.edu'
       user = 'datalab'
     endif
-    
+
     ;; Use Postgres command with q3c cone search                             
     ;; you need the password for user dlquery on db01/db02.  I use a .pgpass file.
     refcattemp = repstr(file,'.fits','.txt')
