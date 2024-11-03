@@ -376,7 +376,22 @@ for i=0,nchstr-1 do begin
     goto,BOMB1
   endif
   FILE_DELETE,procdir+chstr[i].base+['.psf','.als','.ap','.opt','.als.opt','.log'],/allow
-  FILE_COPY,odir+obase+['.psf','.als','.ap','.opt','.als.opt','.log'],procdir,/allow_same,/overwrite
+  ;; Some of the files are gzipped
+  exten = ['.psf','.als','.ap','.opt','.als.opt','.log']
+  for j=0,n_elements(exten)-1 do begin
+    if file_test(odir+obase+exten[j]) eq 1 then begin
+      FILE_COPY,odir+obase+exten[j],procdir,/allow_same,/overwrite
+    endif else begin
+       if file_test(odir+obase+exten[j]+'.gz') eq 1 then begin
+         ;;print,'gunziping ',procdir+obase+exten[j]+'.gz'
+         FILE_COPY,odir+obase+exten[j]+'.gz',procdir,/allow_same,/overwrite
+         SPAWN,['gunzip',procdir+obase+exten[j]],out,errout,/noshell
+       endif else begin
+         stop,odir+obase+exten[j]+'/gz not found'
+       endelse 
+    endelse
+  endfor
+  ;;FILE_COPY,odir+obase+['.psf','.als','.ap','.opt','.als.opt','.log'],procdir,/allow_same,/overwrite
   FILE_CHMOD,procdir+chstr[i].base+['.psf','.als','.ap','.opt','.als.opt','.log'],'755'o   ; make sure they are writable
   ;; Copy the fits, fits resource file and header files locally
   if file_test(odir+obase+'.fits') eq 0 then begin
