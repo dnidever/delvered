@@ -7,6 +7,7 @@ from glob import glob
 from astropy.table import Table
 from astropy.io import fits
 from dlnpyutils import utils as dln
+import subprocess
 
 # get rid of annoying warnings
 import warnings
@@ -95,14 +96,27 @@ def checkexposures(files):
     results = np.zeros(len(files),dtype=np.dtype(dt))
     for i in range(len(files)):
         results['filename'][i] = files[i]
-        okay1,error1 = fitscheck(files[i])
+        res = subprocess.run(['checkfits',files[i]],capture_output=True,shell=False)
+        returncode = res.returncode
+        out = res.stdout.decode().strip()
+        err = res.stderr.decode().strip()
+        okay1 = True
+        if returncode==0:
+            if out.split()[0]=='BAD':
+                okay1 = False
+            error1 = out
+        else:
+            okay1 = False
+            error1 = 'checkfits failed'
+        #okay1,error1 = fitscheck(files[i])
         results['okay'][i] = okay1
         if okay1:
             cmt = 'OK'
             ecmt = ''
         else:
             cmt = 'BAD'
-            ecmt = ','.join(error1)
+            #ecmt = ','.join(error1)
+            ecmt = error1
         print(i,cmt,"'"+files[i]+"'",ecmt)
 
     return results
