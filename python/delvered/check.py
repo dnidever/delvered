@@ -102,21 +102,24 @@ def checkexposures(files):
         err = res.stderr.decode().strip()
         okay1 = True
         if returncode==0:
-            if out.split()[0]=='BAD':
+            if out != '':
+                if out.split()[0]=='BAD':
+                    okay1 = False
+                error1 = out
+            else:
                 okay1 = False
-            error1 = out
+                error1 = ['Unknown problem']
         else:
             okay1 = False
             error1 = 'checkfits failed'
-        #okay1,error1 = fitscheck(files[i])
         results['okay'][i] = okay1
         if okay1:
             cmt = 'OK'
             ecmt = ''
+            print(i,cmt,"'"+files[i]+"'",ecmt)
         else:
             cmt = 'BAD'
-            #ecmt = ','.join(error1)
             ecmt = error1
-        print(i,cmt,"'"+files[i]+"'",ecmt)
+            print(i,ecmt)
 
     return results

@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
-#import os
+import os
 #import sys
 #import numpy as np
-#from glob import glob
+from glob import glob
 #from astropy.io import fits
 from argparse import ArgumentParser
 #from dlnpyutils import utils as dln
@@ -25,15 +25,21 @@ if __name__ == "__main__":
         files = args.files
     else:
         files = [args.files]
+    # One input, try globbing
     if len(files)==1:
         infiles = files[0]
-        files = glob(infiles)
+        globfiles = glob(infiles)
+        if len(globfiles)>0:
+            files = globfiles
     if len(files)>1:
         print('Checking',len(files),'files')
 
     for i in range(len(files)):
-        #okay,error = utils.fitscheck(files[i])
-        okay,error = check.fitscheck(files[i])
+        if os.path.exists(files[i]):
+            okay,error = check.fitscheck(files[i])
+        else:
+            okay = False
+            error = ['FILE NOT FOUND']
         if okay:
             cmt = 'OK'
             ecmt = ''
