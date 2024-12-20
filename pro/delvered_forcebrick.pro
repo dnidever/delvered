@@ -762,7 +762,7 @@ FILE_MOVE,allfiles,bdir,/allow,/overwrite
 FILE_DELETE,procdir,/recursive  ; delete temporary processing directory
 
 printlog,logfile,systime(0)
-printlog,logfile,'DELVERED_FORCEBRICK done after '+strtrim(systime(1)-t0,2)+' sec.'
+printlog,logfile,'DELVERED_FORCEBRICK main component done after '+strtrim(systime(1)-t0,2)+' sec.'
 
 CD,curdir  ;; back to original directory
 
@@ -774,6 +774,11 @@ printlog,logfile,systime(0)
 
 if keyword_set(redo) or keyword_set(update) then jntredo=1 else jntredo=0
 DELVERED_JOINTBRICKCATS,brick,logfile=logfile,redo=jntredo
+
+
+printlog,logfile,systime(0)
+printlog,logfile,'DELVERED_FORCEBRICK completely done after '+strtrim(systime(1)-t0,2)+' sec.'
+
 
 JOURNAL
 
