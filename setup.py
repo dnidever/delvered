@@ -13,6 +13,6 @@ setup(name='delvered',
       scripts=['bin/make_delvered_summary_table','bin/query_delvered_summary_table',
                'bin/delve_archive_search','bin/parse_archive_search',
                'bin/bricks_daemon','bin/bricks_status','bin/bricks_status_slack',
-               'bin/checkfits']
+               'bin/checkfits'],
       requires=['numpy','astropy','scipy','dlnpyutils']
 )
