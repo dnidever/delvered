@@ -306,7 +306,7 @@ fwhmthresh = 2.0                ; seeing 2.0" threshold
 filt = strmid(chstr.filter,0,1)
 gdch = where(chstr.fwhm*chstr.pixscale le fwhmthresh and chstr.exptime ge 90. and zpterm ge -0.5 and $
              finite(zpterm) eq 1 and finite(chstr.apcor) eq 1 and $
-             (filt eq 'u' or filt eq 'g' or filt eq 'r' or filt eq 'i' or filt eq 'z' or filt eq 'Y'),ngdch)
+             (filt eq 'g' or filt eq 'r' or filt eq 'i' or filt eq 'z' or filt eq 'Y'),ngdch)
 
 if ngdch eq 0 then begin
   printlog,logfile,'No chips passed the cuts'
