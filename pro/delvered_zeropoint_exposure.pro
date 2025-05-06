@@ -268,7 +268,7 @@ endif
 ;; Matched catalogs
 cat1 = cat[ind2]
 ref1 = ref[ind1]
-  
+
 ;; Get the model magnitudes
 instfilt = 'c4d-'+filter
 mmags = DELVERED_GETMODELMAG(ref1,instfilt,cendec,modeleqnfile)

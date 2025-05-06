@@ -310,7 +310,7 @@ FOR i=0,nnights-1 do begin
 
   ;; Delete old files
   if keyword_set(startfresh) then $
-       DELERED_EXPOSURES_DELETE,expdir+inight
+       DELVERED_EXPOSURES_DELETE,expdir+inight
 
   ;; Check for corrupted files
   ;;--------------------------
