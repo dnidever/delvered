@@ -251,8 +251,8 @@ endif
 printlog,logfile,'Performing more rigorous overlap checking'
 HEAD_XYAD,tilestr.head,[0,tilestr.nx-1,tilestr.nx-1,0],[0,0,tilestr.ny-1,tilestr.ny-1],bvra,bvdec,/deg
 olap = intarr(nchstr)
-vxarr = fltarr(nchstr,4)
-vyarr = fltarr(nchstr,4)
+add_tag,chstr,'vx',fltarr(4),chstr
+add_tag,chstr,'vy',fltarr(4),chstr
 for i=0,nchstr-1 do begin
   if (i mod 100 eq 0) and (i gt 0) then print,i
   hd1 = PHOTRED_READFILE(chstr[i].file,/header,error=rderror)
@@ -262,12 +262,14 @@ for i=0,nchstr-1 do begin
     head_xyad,hd1,[0,nx-1,nx-1,0],[0,0,ny-1,ny-1],vra,vdec,/degree
     olap[i] = dopolygonsoverlap(bvra,bvdec,vra,vdec)
     head_adxy,tilestr.head,vra,vdec,vx,vy,/deg
-    vxarr[i,*] = vx
-    vyarr[i,*] = vy
+    chstr[i].vx = vx
+    chstr[i].vy = vy
   endif else print,'Problems reading '+chstr[i].file
 endfor
 ;; Require at least a 2 pixel overlap in X and Y
-g = where(olap eq 1 and max(vxarr,dim=2) ge 2 and max(vyarr,dim=2) ge 2 and min(vxarr,dim=2) le tilestr.nx-3 and min(vyarr,dim=2) le tilestr.ny-3,ng)
+g = where(olap eq 1 and $
+          max(chstr.vx,dim=1) ge 2 and min(chstr.vx,dim=1) le tilestr.nx-3 and $
+          max(chstr.vy,dim=1) ge 2 and min(chstr.vy,dim=1) le tilestr.ny-3,ng)
 if ng eq 0 then begin
   printlog,logfile,'No chips overlap this brick'
   return
@@ -312,13 +314,17 @@ if ngdch eq 0 then begin
   printlog,logfile,'No chips passed the cuts'
   return
 endif
+
+;; Pick subset of exposures
+origchstr = chstr
+chstr = delvered_pickexposures(chstr)
+
 printlog,logfile,strtrim(ngdch,2),' chips passed the cuts'
 chstr = chstr[gdch]
 nchstr = ngdch
 chstr.file = strtrim(chstr.file,2)
 chstr.base = strtrim(chstr.base,2)
 ;add_tag,chstr,'newbase','',chstr
-
 
 ;; Check if we need to update
 if keyword_set(update) and not keyword_set(redo) then begin

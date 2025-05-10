@@ -56,6 +56,7 @@ endfor
 ;; positive deltazpterm is "bad"
 
 eta = exp(-deltazpterm)
+;; this is almost identical to doing 10**(-deltazpterm/2.5)
 fwhm_arcsec_fiducial = 0.9
 background_fiducial = 1.0
 fwhm_arcsec = chstr.fwhm * 0.235

@@ -43,6 +43,7 @@ chstr = delvered_getteff(chstr)
 nchips = n_elements(chstr)
 tilenx = 3600
 tileny = 3600
+add_tag,chstr,'fracoverlap',0.0,chstr
 for i=0,nchips-1 do begin
   vx = chstr[i].vx
   vy = chstr[i].vy
@@ -194,6 +195,18 @@ for i=0,n_elements(ind1)-1 do begin
   push,chind,ind
 endfor
 finalchstr = chstr[chind]
+
+;; Print information about the final picked exposures
+gd = where(expstr.picked eq 1,npicked)
+print,strtrim(npicked,2),' exposures picked'
+uf = uniq(expstr[gd].filter,sort(expstr[gd].filter))
+ufilters = expstr[gd[uf]].filter
+nfilters = n_elements(ufilters)
+;; Loop over the filters
+for f=0,nfilters-1 do begin
+  ind = where(expstr[gd].filter eq ufilters[f],nexp)
+  print,strtrim(f+1,2),' ',ufilters[f],' ',strtrim(nexp,2)
+endfor
 
 return,finalchstr
 
