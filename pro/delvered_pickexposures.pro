@@ -208,6 +208,11 @@ for f=0,nfilters-1 do begin
   print,strtrim(f+1,2),' ',ufilters[f],' ',strtrim(nexp,2)
 endfor
 
+;; Delete the extra tags that we added
+;;  otherwise this causes problems in delvered_jointbrickcats.pro
+todel = ['DEPTH','ETA','BACKGROUND','TAU','TEFF','FRACOVERLAP','MNX','MNY']
+finalchstr = remove_tags(finalchstr,todel)
+
 return,finalchstr
 
 end
