@@ -362,7 +362,6 @@ FILE_CHMOD,procdir,/a_execute
 printlog,logfile,'Working in temporary directory '+procdir
 printlog,logfile,systime(0)
 
-stop
 
 ;; Copy the files
 ;;----------------
