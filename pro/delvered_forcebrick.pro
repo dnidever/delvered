@@ -315,16 +315,17 @@ if ngdch eq 0 then begin
   return
 endif
 
-;; Pick subset of exposures
-origchstr = chstr
-chstr = delvered_pickexposures(chstr)
-
 printlog,logfile,strtrim(ngdch,2),' chips passed the cuts'
 chstr = chstr[gdch]
 nchstr = ngdch
 chstr.file = strtrim(chstr.file,2)
 chstr.base = strtrim(chstr.base,2)
 ;add_tag,chstr,'newbase','',chstr
+
+;; Pick subset of exposures
+origchstr = chstr
+chstr = delvered_pickexposures(chstr)
+nchstr = n_elements(chstr)
 
 ;; Check if we need to update
 if keyword_set(update) and not keyword_set(redo) then begin
@@ -360,6 +361,8 @@ procdir = repstr(procdir,'//','/')
 FILE_CHMOD,procdir,/a_execute
 printlog,logfile,'Working in temporary directory '+procdir
 printlog,logfile,systime(0)
+
+stop
 
 ;; Copy the files
 ;;----------------
