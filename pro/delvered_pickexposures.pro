@@ -97,6 +97,10 @@ for i=0,nexposures-1 do begin
   expstr[i].fracoverlap = total([chstr[ind].fracoverlap])  
 endfor
 
+;; If we already have less than maxexposure, then just return
+;; all of the chips
+if n_elements(expstr) le maxexposures then return,chstr
+
 ;; use a low-resolution map
 ;; for each pixel sum up the "depth metric" for all exposures
 ;; only add exposures that increase this by a decent amount
@@ -179,7 +183,7 @@ WHILE (flag eq 0) do begin
 
   npicked = total(expstr.picked eq 1,/integer)
   ;;print,count,npicked
-  if npicked ge maxexposures then flag=1
+  if npicked ge maxexposures or total(expstr.picked eq 0) eq 0 then flag=1
 
   count += 1
 ENDWHILE
