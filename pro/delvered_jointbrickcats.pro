@@ -827,6 +827,11 @@ if mcount lt n_elements(meas) then meas=meas[0:mcount-1]
 if ocount lt n_elements(obj) then obj=obj[0:ocount-1]
 
 ;; Add NEWMETA to META
+;; kludge
+if n_tags(meta) ne n_tags(newmeta) then begin
+  todel = ['DEPTH','ETA','BACKGROUND','TAU','TEFF','FRACOVERLAP','MNX','MNY']
+  meta = remove_tags(meta,todel)
+endif
 meta = [meta,newmeta]
 
 
