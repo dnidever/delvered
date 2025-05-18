@@ -99,8 +99,13 @@ endfor
 
 ;; If we already have less than maxexposure, then just return
 ;; all of the chips
-if n_elements(expstr) le maxexposures then return,chstr
-
+if n_elements(expstr) le maxexposures then begin
+  ;; Delete the extra tags that we added
+  ;;  otherwise this causes problems in delvered_jointbrickcats.pro
+  todel = ['DEPTH','ETA','BACKGROUND','TAU','TEFF','FRACOVERLAP','MNX','MNY']
+  chstr = remove_tags(chstr,todel)
+  return,chstr
+endif
 ;; use a low-resolution map
 ;; for each pixel sum up the "depth metric" for all exposures
 ;; only add exposures that increase this by a decent amount
