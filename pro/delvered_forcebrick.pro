@@ -783,7 +783,7 @@ printlog,logfile,''
 printlog,logfile,systime(0)
 
 if keyword_set(redo) or keyword_set(update) then jntredo=1 else jntredo=0
-if not keyword_set(nojoint) $
+if not keyword_set(nojoint) then $
   DELVERED_JOINTBRICKCATS,brick,logfile=logfile,redo=jntredo
 
 

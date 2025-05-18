@@ -10,7 +10,8 @@
 ; By D. Nidever  August 2019
 ;-
 
-pro delvered_jointbrickcats,brick,scriptsdir=scriptsdirs,irafdir=irafdir,workdir=workdir,redo=redo,logfile=logfile
+pro delvered_jointbrickcats,brick,scriptsdir=scriptsdirs,irafdir=irafdir,$
+                            workdir=workdir,redo=redo,logfile=logfile
 
 ;; This bricks pre-processing script gets DELVE and community MC data ready
 ;; to run PHOTRED ALLFRAME on it.
@@ -753,7 +754,7 @@ For e=0,nuexpnum-1 do begin
     printlog,logfile,' '
     BOMB2:
   endfor
-  ;; No new measurments to add
+  ;; No new measurements to add
   if mexpcount eq 0 then begin
     printlog,logfile,'NO new measurements from this exposure to add'
     goto,ENDBOMB2
@@ -808,7 +809,7 @@ For e=0,nuexpnum-1 do begin
   endif
 
   ;; Add to MEAS
-  ;;  add elemeents
+  ;;  add elements
   if mexpcount+mcount gt n_elements(meas) then meas=add_elements(meas,100000L>mexpcount)
   meas[mcount:mcount+mexpcount-1] = measexpnew
   mcount += mexpcount
