@@ -17,12 +17,14 @@
 ;                  logsdir+'delvered_brick.'+brick+'.'+hostname+'.'+logtime+'.log'
 ;  =delvedir    The main DELVE-MC processing directory.
 ;                  /net/dl2/dnidever/delve/ by default.
+;  /nojoint     Do not generate the joint catalogs.
 ;
 ; By D. Nidever  August 2019
 ;-
 
-pro delvered_forcebrick,brick,scriptsdir=scriptsdirs,irafdir=irafdir,workdir=workdir,redo=redo,update=update,$
-                        logfile=logfile,delvedir=delvedir
+pro delvered_forcebrick,brick,scriptsdir=scriptsdirs,irafdir=irafdir,workdir=workdir,$
+                        redo=redo,update=update,logfile=logfile,delvedir=delvedir,$
+                        nojoint=nojoint
 
 
 ;; Limit the number of threads
@@ -781,7 +783,8 @@ printlog,logfile,''
 printlog,logfile,systime(0)
 
 if keyword_set(redo) or keyword_set(update) then jntredo=1 else jntredo=0
-DELVERED_JOINTBRICKCATS,brick,logfile=logfile,redo=jntredo
+if not keyword_set(nojoint) $
+  DELVERED_JOINTBRICKCATS,brick,logfile=logfile,redo=jntredo
 
 
 printlog,logfile,systime(0)

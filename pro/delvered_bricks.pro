@@ -13,6 +13,7 @@
 ;  /update  Check for updates and rerun if there are.
 ;  =delvedir  The main delve directory.  Default is /net/dl2/dnidever/delve/
 ;  =delvereddir  The main delvered software directory.  Default is /home/dnidever/projects/delvered/'.
+;  /nojoint  Do not create the joint catalogs.
 ;
 ; OUTPUTS:
 ;  PHOTRED_ALLFRAME will be run on each brick and a final catalog and
@@ -24,8 +25,9 @@
 ; By D. Nidever  Aug 2019
 ;-
 
-pro delvered_bricks,input,nmulti=nmulti,redo=redo,update=update,delvedir=delvedir,delvereddir=delvereddir,$
-                    irafdir=irafdir,workdir=workdir,stp=stp
+pro delvered_bricks,input,nmulti=nmulti,redo=redo,update=update,delvedir=delvedir,$
+                    delvereddir=delvereddir,irafdir=irafdir,workdir=workdir,$
+                    nojoint=nojoint,stp=stp
 
 t0 = systime(1)
   
@@ -184,6 +186,7 @@ cmd = "delvered_forcebrick,'"+bricks+"',delvedir='"+delvedir+"'"
 if n_elements(irafdir) gt 0 then cmd += ",irafdir='"+irafdir+"'"
 if keyword_set(redo) then cmd += ',/redo'
 if keyword_set(update) then cmd += ',/update'
+if keyword_set(nojoint) then cmd += ',/nojoint'
 cmddirs = strarr(nbricks)+workdir
 PBS_DAEMON,cmd,cmddirs,jobs=jobs,prefix='dlvbrcks',/idle,/hyperthread,nmulti=nmulti,wait=5
 
