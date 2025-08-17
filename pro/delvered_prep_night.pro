@@ -365,7 +365,8 @@ setup = ['##### REQUIRED #####',$
     newfieldstr[find[1:*]].name = newfieldstr[find[0]].name + '_'+strtrim(lindgen(nfind-1)+2,2)
   endfor
 
-  file_copy,nightdir+'fields',nightdir+'fields.bak',/over
+  if file_test(nightdir+'fields') eq 1 then $
+    file_copy,nightdir+'fields',nightdir+'fields.bak',/over
   WRITELINE,nightdir+'fields',newfieldstr.shname+'   '+newfieldstr.name
 
   ;; Copy scripts into the directory
