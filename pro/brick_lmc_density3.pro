@@ -135,6 +135,7 @@ for i=0,n_elements(bands)-1 do begin
     magind = where(tags eq strupcase(bands[i])+'MAG',nmagind)
     errind = where(tags eq strupcase(bands[i])+'ERR',nerrind)
     rmsind = where(tags eq strupcase(bands[i])+'SCATTER',nrmsind)
+    ndetind = where(tags eq 'NDET'+strupcase(bands[i]),nndetind)
     depthind = where(brktags eq strupcase(bands[i])+'DEPTH95',ndepthind)
     depth10ind = where(brktags eq strupcase(bands[i])+'DEPTH10',ndepth10ind)
     brkrmsind = where(brktags eq strupcase(bands[i])+'RMS',nbrkrmsind)
@@ -162,13 +163,15 @@ for i=0,n_elements(bands)-1 do begin
       endelse    
       brkstr.(depth10ind[0]) = depth10sig
       ;; Get RMS of bright stars
-      gdmag = where(obj.(magind[0]) lt 50 and obj.(rmsind[0]) lt 10)
-      bindata,obj[gdmag].(magind[0]),obj[gdmag].(rmsind[0]),magbin,rmsbin,binsize=0.5,min=14.0,max=21.0,/med
-      bestind = where(finite(rmsbin) eq 1 and rmsbin eq min(rmsbin))
-      ;;minrms = median(rmsbin[(bestind-1)>0:(bestind+1)<(n_elements(rmsbin)-1)])
-      si = sort(rmsbin)
-      minrms = median(rmsbin[si[0:2]])
-      brkstr.(brkrmsind[0]) = minrms
+      gdmag = where(obj.(magind[0]) lt 50 and obj.(rmsind[0]) lt 10 and obj.(ndetind[0]) gt 2,ngdmag)
+      if ngdmag gt 10 then begin
+        bindata,obj[gdmag].(magind[0]),obj[gdmag].(rmsind[0]),magbin,rmsbin,binsize=0.5,min=14.0,max=21.0,/med
+        bestind = where(finite(rmsbin) eq 1 and rmsbin eq min(rmsbin))
+        ;;minrms = median(rmsbin[(bestind-1)>0:(bestind+1)<(n_elements(rmsbin)-1)])
+        si = sort(rmsbin)
+        minrms = median(rmsbin[si[0:2]])
+        brkstr.(brkrmsind[0]) = minrms
+      endif
     endif
     BOMB3:
   endif
@@ -177,6 +180,7 @@ for i=0,n_elements(bands)-1 do begin
     magind = where(jtags eq strupcase(bands[i])+'MAG',nmagind)
     errind = where(jtags eq strupcase(bands[i])+'ERR',nerrind)
     rmsind = where(jtags eq strupcase(bands[i])+'RMS',nrmsind)
+    ndetind = where(jtags eq 'NDET'+strupcase(bands[i]),nndetind)
     depthind = where(brktags eq 'J'+strupcase(bands[i])+'DEPTH95',ndepthind)
     depth10ind = where(brktags eq 'J'+strupcase(bands[i])+'DEPTH10',ndepth10ind)
     brkrmsind = where(brktags eq 'J'+strupcase(bands[i])+'RMS',nbrkrmsind)
@@ -204,13 +208,15 @@ for i=0,n_elements(bands)-1 do begin
       endelse    
       brkstr.(depth10ind[0]) = depth10sig
       ;; Get RMS of bright stars
-      gdmag = where(jobj.(magind[0]) lt 50 and jobj.(rmsind[0]) lt 10)
-      bindata,jobj[gdmag].(magind[0]),jobj[gdmag].(rmsind[0]),magbin,rmsbin,binsize=0.5,min=14.0,max=21.0,/med
-      bestind = where(finite(rmsbin) eq 1 and rmsbin eq min(rmsbin))
-      ;;minrms = median(rmsbin[(bestind-1)>0:(bestind+1)<(n_elements(rmsbin)-1)])
-      si = sort(rmsbin)
-      minrms = median(rmsbin[si[0:2]])
-      brkstr.(brkrmsind[0]) = minrms
+      gdmag = where(jobj.(magind[0]) lt 50 and jobj.(rmsind[0]) lt 10 and jobj.(ndetind[0]) gt 2,ngdmag)
+      if ngdmag gt 10 then begin
+        bindata,jobj[gdmag].(magind[0]),jobj[gdmag].(rmsind[0]),magbin,rmsbin,binsize=0.5,min=14.0,max=21.0,/med
+        bestind = where(finite(rmsbin) eq 1 and rmsbin eq min(rmsbin))
+        ;;minrms = median(rmsbin[(bestind-1)>0:(bestind+1)<(n_elements(rmsbin)-1)])
+        si = sort(rmsbin)
+        minrms = median(rmsbin[si[0:2]])
+        brkstr.(brkrmsind[0]) = minrms
+      endif
     endif
     BOMB4:
   endif  ; jnobj gt 0
