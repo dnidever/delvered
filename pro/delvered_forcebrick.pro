@@ -97,7 +97,7 @@ brickstr = MRDFITS(delvereddir+'data/delvemc_bricks_0.25deg.fits.gz',1,/silent)
 ;; Get the brick information
 bind = where(brickstr.brickname eq brick,nbind)
 if nbind eq 0 then begin
-  printlog,logfile,ibrick+' not in DELVE-MC brick list'
+  printlog,logfile,brick+' not in DELVE-MC brick list'
   return
 endif
 brickstr1 = brickstr[bind[0]]
