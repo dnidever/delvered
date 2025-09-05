@@ -248,10 +248,18 @@ if nmatch gt 0 then begin
   nchstr = n_elements(chstr)
 endif
 
+;; exclude corrupted exposure 00260897
+bd = where(chstr.expnum eq '00260897',nbd)
+if nbd gt 0 then REMOVE,bd,chstr
+nchstr = n_elements(chstr)
+
 ;; Do more rigorous overlap checking
 ;;  the brick region with overlap
+;;  convert to lon/lat brick-centric tangent plane, fixed issues at
+;;    the poles and near RA=0
 printlog,logfile,'Performing more rigorous overlap checking'
 HEAD_XYAD,tilestr.head,[0,tilestr.nx-1,tilestr.nx-1,0],[0,0,tilestr.ny-1,tilestr.ny-1],bvra,bvdec,/deg
+ROTSPHCEN,bvra,bvdec,brickstr1.ra,brickstr1.dec,blon,blat,/gnomic
 olap = intarr(nchstr)
 add_tag,chstr,'vx',fltarr(4),chstr
 add_tag,chstr,'vy',fltarr(4),chstr
@@ -261,8 +269,10 @@ for i=0,nchstr-1 do begin
   if n_elements(rderror) eq 0 then begin
     nx = sxpar(hd1,'naxis1')
     ny = sxpar(hd1,'naxis2')
-    head_xyad,hd1,[0,nx-1,nx-1,0],[0,0,ny-1,ny-1],vra,vdec,/degree
-    olap[i] = dopolygonsoverlap(bvra,bvdec,vra,vdec)
+    head_xyad,hd1,[0,nx-1,nx-1,0],[0,0,ny-1,ny-1],vra,vdec,/degre
+    ROTSPHCEN,vra,vdec,brickstr1.ra,brickstr1.dec,lon,lat,/gnomic
+    olap[i] = dopolygonsoverlap(blon,blat,lon,lat)
+    ;;olap[i] = dopolygonsoverlap(bvra,bvdec,vra,vdec)
     head_adxy,tilestr.head,vra,vdec,vx,vy,/deg
     chstr[i].vx = vx
     chstr[i].vy = vy
@@ -352,8 +362,6 @@ if keyword_set(update) and not keyword_set(redo) then begin
   endif
   printlog,logfile,'There are new exposures to include.  UPDATING'
 endif
-
-
 
 ;; Create temporary local directory to perform the work/processing
 ;;  copy everything to it

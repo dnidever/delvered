@@ -128,9 +128,12 @@ nchstr = n_elements(chstr)
 
 ;; Do more rigorous overlap checking
 ;;  the brick region with overlap
+;;  convert to lon/lat brick-centric tangent plane, fixed issues at
+;;    the poles and near RA=0
 printlog,logfile,'Performing more rigorous overlap checking'
 printlog,logfile,systime(0)
 HEAD_XYAD,tilestr.head,[0,tilestr.nx-1,tilestr.nx-1,0],[0,0,tilestr.ny-1,tilestr.ny-1],bvra,bvdec,/deg
+ROTSPHCEN,bvra,bvdec,brickstr1.ra,brickstr1.dec,blon,blat,/gnomic
 olap = intarr(nchstr)
 add_tag,chstr,'vx',fltarr(4),chstr
 add_tag,chstr,'vy',fltarr(4),chstr
@@ -141,7 +144,9 @@ for i=0,nchstr-1 do begin
     nx = sxpar(hd1,'naxis1')
     ny = sxpar(hd1,'naxis2')
     head_xyad,hd1,[0,nx-1,nx-1,0],[0,0,ny-1,ny-1],vra,vdec,/degree
-    olap[i] = dopolygonsoverlap(bvra,bvdec,vra,vdec)
+    ROTSPHCEN,vra,vdec,brickstr1.ra,brickstr1.dec,lon,lat,/gnomic
+    olap[i] = dopolygonsoverlap(blon,blat,lon,lat)
+    ;;olap[i] = dopolygonsoverlap(bvra,bvdec,vra,vdec)
     head_adxy,tilestr.head,vra,vdec,vx,vy,/deg
     chstr[i].vx = vx
     chstr[i].vy = vy
