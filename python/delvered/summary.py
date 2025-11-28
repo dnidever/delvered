@@ -209,7 +209,7 @@ def allepochscollate():
     import pdb; pdb.set_trace()
     #tab = vstack(tab)
     #tab.write('/net/dl2/dnidever/delve/bricks/summary/bricks_epochs.fits',overwrite=True)
-    np.save('/net/dl2/dnidever/delve/bricks/summary/hist_ndet.py',hist_ndet)
-    np.save('/net/dl2/dnidever/delve/bricks/summary/hist_dt.py',hist_dt)
+    np.save('/net/dl2/dnidever/delve/bricks/summary/hist_ndet.npy',hist_ndet)
+    np.save('/net/dl2/dnidever/delve/bricks/summary/hist_dt.npy',hist_dt)
     return hist_ndet,hist_dt
 
