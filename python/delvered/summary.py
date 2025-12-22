@@ -330,7 +330,8 @@ def photerrsummary(brickname,clobber=False):
     bands = ['u','g','r','i','z','y']
     dt = [('band',str,20),('count',np.int32,(169,119))]
     res = np.zeros(len(bands),dtype=np.dtype(dt))
-    xbins = np.arange(10,27,0.1)
+    #xbins = np.arange(10,27,0.1)
+    xbins = np.arange(10,30,0.1)
     ybins = np.arange(-4,2,0.05)
     for i in range(len(bands)):
         band = bands[i]
@@ -437,7 +438,8 @@ def cmdsummary(brickname,clobber=False):
     bdir = '/net/dl2/dnidever/delve/bricks/'
     bdir = os.path.join(bdir,brickname[:4],brickname)
 
-    outfile = os.path.join(bdir,brickname+'_cmdsummary.fits')
+    outfile = os.path.join(bdir,brickname+'_cmdforcedsummary.fits')
+    #outfile = os.path.join(bdir,brickname+'_cmdsummary.fits')
     if os.path.exists(outfile) and clobber==False:
         print(outfile,'already exists and clobber not set')
         return
@@ -453,17 +455,19 @@ def cmdsummary(brickname,clobber=False):
         #print(files)
         #import pdb; pdb.set_trace()
         return
+    objfile = mfile
     print('Loading',objfile)
     obj = Table.read(objfile)
     for c in obj.colnames: obj[c].name = c.lower()
     print(len(obj),'objects')
 
-    dt = [('count',np.int32,(159,179)),('stars',np.int32,(159,179)),
-          ('variables',np.int32,(159,179)),('variables10',np.int32,(159,179))]
+    xbins = np.arange(-4,6,0.05)
+    ybins = np.arange(10,30,0.1)
+    shape = (len(xbins)-1,len(ybins)-1)
+    dt = [('count',np.int32,shape),('stars',np.int32,shape),
+          ('variables',np.int32,shape),('variables10',np.int32,shape)]
     res = np.zeros(1,dtype=np.dtype(dt))
 
-    xbins = np.arange(-2,6,0.05)
-    ybins = np.arange(10,28,0.1)
     gd, = np.where((obj['gmag']>5) & (obj['gmag']<50) &
                    (obj['imag']>5) & (obj['imag']<50))
     if len(gd)>0:
