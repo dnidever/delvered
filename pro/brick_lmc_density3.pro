@@ -50,12 +50,17 @@ if file_test(bdir+brick+'_joint_meta.fits') eq 1 then begin
 endif
 
 brkstr = {brick:brick,ra:0.0d0,dec:0.0d0,area:0.0,$
+          udepth95:99.99,$
           gdepth95:99.99,rdepth95:99.99,idepth95:99.99,zdepth95:99.99,ydepth95:99.99,$
+          udepth10:99.99,$
           gdepth10:99.99,rdepth10:99.99,idepth10:99.99,zdepth10:99.99,ydepth10:99.99,$
-          grms:99.99,rrms:99.99,irms:99.99,zrms:99.99,yrms:99.99,$
+          urms:99.99,grms:99.99,rrms:99.99,irms:99.99,zrms:99.99,yrms:99.99,$
           nchips:-1L,nobj:0L,nlmc:-1L,nback:-1L,$
+          judepth95:99.99,$
           jgdepth95:99.99,jrdepth95:99.99,jidepth95:99.99,jzdepth95:99.99,jydepth95:99.99,$
+          judepth10:99.99,$
           jgdepth10:99.99,jrdepth10:99.99,jidepth10:99.99,jzdepth10:99.99,jydepth10:99.99,$
+          jurms:99.99,$
           jgrms:99.99,jrrms:99.99,jirms:99.99,jzrms:99.99,jyrms:99.99,$
           jnchips:-1L,jnobj:0L,jnlmc:-1L,jnback:-1L}
 brkstr.nobj = nobj
@@ -129,7 +134,7 @@ endif
 
 
 ;; depths in each band
-bands = ['g','r','i','z','y']
+bands = ['u','g','r','i','z','y']
 for i=0,n_elements(bands)-1 do begin
   if nobj gt 0 then begin
     magind = where(tags eq strupcase(bands[i])+'MAG',nmagind)
