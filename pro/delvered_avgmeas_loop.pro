@@ -41,7 +41,7 @@ for i=0,nobj-1 do measobj_index[oindex.index[oindex.lo[i]:oindex.hi[i]]] = i
 
 
 ;; Initialize the final object table, with ALL BANDS
-obj_schema = {objid:'',brick:'',depthflag:0,nalfdetiter:0,neimerged:0,ra:0.0d0,dec:0.0d0,rarms:0.0,decrms:0.0,ndet:0,ndetall:0,$
+obj_schema = {objid:'',brick:'',depthflag:0,nalfdetiter:0,neimerged:0,ra:0.0d0,dec:0.0d0,rarms:0.0,decrms:0.0,ndet:0,$
               mlon:0.0d0,mlat:0.0d0,$
               umag:99.99,uerr:9.99,urms:99.99,ndetu:0,$
               gmag:99.99,gerr:9.99,grms:99.99,ndetg:0,$
@@ -51,8 +51,7 @@ obj_schema = {objid:'',brick:'',depthflag:0,nalfdetiter:0,neimerged:0,ra:0.0d0,d
               ymag:99.99,yerr:9.99,yrms:99.99,ndety:0,$
               chi:99.99,sharp:99.99,prob:99.99,ebv:99.99,mag_auto:99.99,magerr_auto:9.99,$
               asemi:999999.0,bsemi:999999.0,theta:999999.0,ellipticity:999999.0,fwhm:999999.0,$
-              rmsvar:999999.0,madvar:999999.0,iqrvar:999999.0,etavar:999999.0,jvar:999999.0,$
-              kvar:999999.0,chivar:999999.0,romsvar:999999.0,variable10sig:-1,nsigvar:999999.0,$
+              rmsvar:999999.0,chivar:999999.0,variable10sig:-1,nsigvar:999999.0,$
               gaia_match:0,gaia_xdist:999999.0,gaia_sourceid:0LL,gaia_ra:999999.0d0,gaia_ra_error:999999.0,$
               gaia_dec:999999.0d0,gaia_dec_error:999999.0,gaia_parallax:999999.0,gaia_parallax_error:999999.0,gaia_pmra:999999.0,$
               gaia_pmra_error:999999.0,gaia_pmdec:999999.0,gaia_pmdec_error:999999.0,gaia_gmag:999999.0,$
@@ -298,8 +297,6 @@ chivar = sqrt((sumrelresidsq > 0.0))/nresid
 ;obj.kvar = kvar
 obj.chivar = chivar
 ;obj.romsvar = romsvar
-
-stop
 
 ;; Fiducial magnitude
 tempmag = newmag
