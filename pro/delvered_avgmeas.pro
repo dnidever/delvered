@@ -151,7 +151,6 @@ For f=0,nufilter-1 do begin
 
 Endfor  ;; unique filter loop
 
-
 ;; Compute "best" photometry
 ;;--------------------------------
 

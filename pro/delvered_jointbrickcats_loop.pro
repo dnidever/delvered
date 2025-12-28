@@ -1,6 +1,6 @@
 ;+
 ;
-; DELVERED_JOINTBRICKCATS
+; DELVERED_JOINTBRICKCATS_LOOP
 ;
 ; Process a single DELVE brick and perform ALLFRAME FORCED photometry
 ;
@@ -10,8 +10,8 @@
 ; By D. Nidever  August 2019
 ;-
 
-pro delvered_jointbrickcats,brick,scriptsdir=scriptsdirs,irafdir=irafdir,$
-                            workdir=workdir,redo=redo,logfile=logfile
+pro delvered_jointbrickcats_loop,brick,scriptsdir=scriptsdirs,irafdir=irafdir,$
+                                 workdir=workdir,redo=redo,logfile=logfile
 
 ;; This bricks pre-processing script gets DELVE and community MC data ready
 ;; to run PHOTRED ALLFRAME on it.
@@ -24,7 +24,7 @@ CD,current=curdir
 
 ;; Not enough inputs
 if n_elements(brick) eq 0 then begin
-  print,'Syntax - delvered_forcebrick,brick,scriptsdir=scriptsdirs,irafdir=irafdir,workdir=workdir,redo=redo,logfile=logfile'
+  print,'Syntax - delvered_forcebrick_loop,brick,scriptsdir=scriptsdirs,irafdir=irafdir,workdir=workdir,redo=redo,logfile=logfile'
   return
 endif
 
@@ -221,7 +221,6 @@ endif
 mchfile = mchfile[0]
 mchbase = file_basename(mchfile,'_comb.mch')
 combbase = mchbase+'_comb'
-
 
 ;; Load the forced photometry object catalog
 objfile = bdir+brick+'_object.fits.gz'
@@ -434,7 +433,7 @@ endif
 
 
 
-;; Check the ALLFRAME astrometric solutions and removing data from
+;; Check the ALLFRAME astrometric solutions and remove data from
 ;;   bad chips from the forced measurements catalog
 ;;----------------------------------------------------------------
 printlog,logfile,'--- Removing chips with bad ALLFRAME astrometric solutions ---'
@@ -508,13 +507,31 @@ endif
 
 
 ;; Initialize the final measurement table
+measfiles = []
 meas_schema = {id:'',objid:'',brick:'',exposure:'',ccdnum:0,filter:'',mjd:0.0d0,forced:0B,x:0.0,y:0.0,ra:0.0d0,dec:0.0d0,$
-               imag:0.0,ierr:0.0,mag:0.0,err:0.0,sky:0.0,chi:0.0,sharp:0.0}
-meas = replicate(meas_schema,n_elements(fmeas))
-struct_assign,fmeas,meas
-meas.brick = brick
-meas.forced = 1B
-mcount = long64(n_elements(meas))
+               imag:0.0,ierr:0.0,mag:0.0,err:0.0,sky:0.0,chi:0.0,sharp:0.0,count:0LL}
+measforce = replicate(meas_schema,n_elements(fmeas))
+struct_assign,fmeas,measforce
+measforce.brick = brick
+measforce.forced = 1B
+measforce.count = lindgen(n_elements(measforce))
+;; break into exposure files
+dum = reform((strsplitter(measforce.exposure,'_',/extract))[0,*])
+mfexpnum = reform((strsplitter(dum,'-',/extract))[1,*])
+mfeindex = create_index(mfexpnum)
+for i=0,n_elements(mfeindex.value)-1 do begin
+  ind = mfeindex.index[mfeindex.lo[i]:mfeindex.hi[i]]
+  measforcefile = bdir+'/'+brick+'_joint_meas_force_'+strtrim(mfeindex.value[i],2)+'.fits'
+  printlog,logfile,'  Saving forced measurements to ',measforcefile
+  MWRFITS,measforce[ind],measforcefile,/create
+  push,measfiles,measforcefile
+endfor
+
+measid_schema = {id:'',objid:''}
+measid = replicate(measid_schema,n_elements(fmeas))
+struct_assign,fmeas,measid
+mcount = long64(n_elements(measid))
+
 
 ;; Initialize the final object table, with ALL BANDS
 obj_schema = {objid:'',brick:'',forced:0B,x:999999.0,y:999999.0,ra:0.0d0,dec:0.0d0,nalfdetiter:0L,neimerged:0,$
@@ -687,10 +704,21 @@ For e=0,nuexpnum-1 do begin
     ocount += nleft
   endif
 
+  ;; Save new exposure measurements to a temporary file
+  measexpnew.count = lindgen(n_elements(measexpnew))+mcount
+  measexpnewfile = bdir+'/'+brick+'_joint_meas_'+strtrim(uexpnum[e],2)+'.fits'
+  printlog,logfile,''
+  printlog,logfile,'  Saving exposure measurements to ',measexpnewfile
+  MWRFITS,measexpnew,measexpnewfile,/create
+  push,measfiles,measexpnewfile
+
   ;; Add to MEAS
-  ;;  add elemeents
-  if mexpcount+mcount gt n_elements(meas) then meas=add_elements(meas,100000L>mexpcount)
-  meas[mcount:mcount+mexpcount-1] = measexpnew
+  ;;  add elements
+  ;;if mexpcount+mcount gt n_elements(meas) then meas=add_elements(meas,100000L>mexpcount)
+  ;;meas[mcount:mcount+mexpcount-1] = measexpnew
+  if mexpcount+mcount gt n_elements(measid) then measid=add_elements(measid,100000L>mexpcount)
+  measid[mcount:mcount+mexpcount-1].id = measexpnew.id
+  measid[mcount:mcount+mexpcount-1].objid = measexpnew.objid
   mcount += mexpcount
 
   ENDBOMB1:
@@ -699,11 +727,9 @@ For e=0,nuexpnum-1 do begin
 Endfor ;; exposure loop
 
 ;; trim MEAS
-if mcount lt n_elements(meas) then meas=meas[0:mcount-1]
+if mcount lt n_elements(measid) then measid=measid[0:mcount-1]
 ;; trim OBJ
 if ocount lt n_elements(obj) then obj=obj[0:ocount-1]
-
-;stop
 
 
 ;; Step 2: Add in completely new exposures
@@ -831,10 +857,21 @@ For e=0,nuexpnum-1 do begin
     ocount += nleft
   endif
 
+  ;; Save new exposure measurements to a temporary file
+  measexpnew.count = lindgen(n_elements(measexpnew))+mcount
+  measexpnewfile = bdir+'/'+brick+'_joint_meas_'+strtrim(uexpnum[e],2)+'.fits'
+  printlog,logfile,''
+  printlog,logfile,'  Saving new exposures measurements to ',measexpnewfile
+  MWRFITS,measexpnew,measexpnewfile,/create
+  push,measfiles,measexpnewfile
+
   ;; Add to MEAS
   ;;  add elements
-  if mexpcount+mcount gt n_elements(meas) then meas=add_elements(meas,100000L>mexpcount)
-  meas[mcount:mcount+mexpcount-1] = measexpnew
+  ;;if mexpcount+mcount gt n_elements(meas) then meas=add_elements(meas,100000L>mexpcount)
+  ;;meas[mcount:mcount+mexpcount-1] = measexpnew
+  if mexpcount+mcount gt n_elements(measid) then measid=add_elements(measid,100000L>mexpcount)
+  measid[mcount:mcount+mexpcount-1].id = measexpnew.id
+  measid[mcount:mcount+mexpcount-1].objid = measexpnew.objid
   mcount += mexpcount
 
   ENDBOMB2:
@@ -846,7 +883,7 @@ printlog,logfile,'Finished adding new exposures'
 printlog,logfile,systime(0)
 
 ;; trim MEAS
-if mcount lt n_elements(meas) then meas=meas[0:mcount-1]
+if mcount lt n_elements(measid) then measid=measid[0:mcount-1]
 ;; trim OBJ
 if ocount lt n_elements(obj) then obj=obj[0:ocount-1]
 
@@ -870,11 +907,11 @@ ui = uniq(meta.expnum,sort(meta.expnum))
 expstr = meta[ui]
 si = sort(expstr.expnum)   ;; sort by exposure
 expstr = expstr[si]
-dum = reform((strsplitter(meas.exposure,'_',/extract))[0,*])
-expnum = reform((strsplitter(dum,'-',/extract))[1,*])
-eindex = create_index(expnum)
-match,expstr.expnum,eindex.value,ind1,ind2,/sort,count=nmatch
-expstr[ind1].nmeas = eindex.num[ind2]
+;dum = reform((strsplitter(meas.exposure,'_',/extract))[0,*])
+;expnum = reform((strsplitter(dum,'-',/extract))[1,*])
+;eindex = create_index(expnum)
+;match,expstr.expnum,eindex.value,ind1,ind2,/sort,count=nmatch
+;expstr[ind1].nmeas = eindex.num[ind2]
 
 
 ;; Average all of the measurements
@@ -883,7 +920,7 @@ oldobj = obj
 undefine,obj
 printlog,logfile,'--- AVERAGING THE PHOTOMETRY ---'
 printlog,logfile,systime(0)
-DELVERED_AVGMEAS,expstr,meas,obj
+DELVERED_AVGMEAS_LOOP,meta,measfiles,measid,oldobj,obj
 
 
 ;; Copy over SExtractor information for the forced objects
@@ -904,9 +941,9 @@ if tag_exist(fobj,'NEIMERGED') then obj[ind1].neimerged = fobj[ind2].neimerged
 obj.brick = brick
 
 ;; Calculate photometric variability metrics
-printlog,logfile,'--- Calculating photometric variability metrics ---'
-printlog,logfile,systime(0)
-DELVERED_PHOTVAR,meas,obj
+;;printlog,logfile,'--- Calculating photometric variability metrics ---'
+;;printlog,logfile,systime(0)
+;;DELVERED_PHOTVAR,meas,obj
 
 ;; Fill in mlon/mlat
 glactc,obj.ra,obj.dec,2000.0,glon,glat,1,/deg
@@ -926,11 +963,12 @@ endif else begin
 endelse
 if ninside gt 0 then obj[ginside].brickuniq=1B
 
-;; Get Gaia DR2 data
+;; Get Gaia DR3 data
 ;; bricks are 0.25 x 0.25 deg, so half the diagonal is 0.177 deg
-printlog,logfile,'Crossmatching with Gaia DR2'
+printlog,logfile,'Crossmatching with Gaia DR3'
 printlog,logfile,systime(0)
-gaia = DELVERED_GETREFCAT(brickstr1.ra,brickstr1.dec,0.2,'gaiadr2')
+;;gaia = DELVERED_GETREFCAT(brickstr1.ra,brickstr1.dec,0.2,'gaiadr2')
+gaia = DELVERED_GETREFCAT(brickstr1.ra,brickstr1.dec,0.2,'gaiadr3')
 srcmatch,obj.ra,obj.dec,gaia.ra,gaia.dec,1.0,ind1,ind2,/sph,count=nmatch
 printlog,logfile,strtrim(nmatch,2)+' Gaia DR2 matches'
 if nmatch gt 0 then begin
@@ -956,7 +994,7 @@ if nmatch gt 0 then begin
   obj[ind1].gaia_rpmag = gaia[ind2].rp
   rpmag_error = 2.5*alog10(1.0+gaia[ind2].e_frp/gaia[ind2].frp)
   obj[ind1].gaia_rpmag_error = rpmag_error
-endif else print,'NO Gaia DR2 matches'
+endif else print,'NO Gaia DR3 matches'
 
 ;stop
 
@@ -972,9 +1010,9 @@ MWRFITS,obj,objfile,/create
 spawn,['gzip','-f',objfile],/noshell
 
 ;; Saving measurement catalog
-expfile = bdir+brick+'_joint_meas.fits'
-MWRFITS,meas,expfile,/create
-spawn,['gzip','-f',expfile],/noshell
+;expfile = bdir+brick+'_joint_meas.fits'
+;MWRFITS,meas,expfile,/create
+;spawn,['gzip','-f',expfile],/noshell
 
 ;; Save metadata
 metafile = bdir+brick+'_joint_meta.fits'

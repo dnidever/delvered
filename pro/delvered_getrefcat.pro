@@ -82,8 +82,8 @@ if file_test(file) eq 1 then begin
 ;--------------
 endif else begin
 
-  ; Use DataLab database search for Gaia and 2MASS if density is high                                                                                                              
-  if (refname eq 'TMASS' or refname eq 'GAIA' or refname eq 'GAIADR2' or refname eq 'PS' or refname eq 'SKYMAPPER' or $
+  ; Use DataLab database search for Gaia and 2MASS if density is high
+  if (refname eq 'TMASS' or refname eq 'GAIA' or refname eq 'GAIADR2' or refname eq 'GAIADR3' or refname eq 'PS' or refname eq 'SKYMAPPER' or $
       refname eq 'SKYMAPPERDR4' or refname eq 'ALLWISE' or refname eq 'ATLAS') then begin
     if refname eq 'TMASS' then begin
       tablename = 'twomass.psc'
@@ -106,6 +106,15 @@ endif else begin
     endif
     if refname eq 'GAIADR2' then begin
       tablename = 'gaia_dr2.gaia_source'
+      cols = 'source_id as source,ra,ra_error,dec,dec_error,parallax,parallax_error,pmra,pmra_error,pmdec,pmdec_error,phot_g_mean_flux as fg,'+$
+             'phot_g_mean_flux_error as e_fg,phot_g_mean_mag as gmag,phot_bp_mean_mag as bp,phot_bp_mean_flux as fbp,phot_bp_mean_flux_error as e_fbp,'+$
+                          'phot_rp_mean_mag as rp,phot_rp_mean_flux as frp,phot_rp_mean_flux_error as e_frp'
+      server = 'db02.datalab.noirlab.edu'
+      ;server = 'gp04.datalab.noirlab.edu'
+      user = 'dlquery'
+    endif
+    if refname eq 'GAIADR3' then begin
+      tablename = 'gaia_dr3.gaia_source'
       cols = 'source_id as source,ra,ra_error,dec,dec_error,parallax,parallax_error,pmra,pmra_error,pmdec,pmdec_error,phot_g_mean_flux as fg,'+$
              'phot_g_mean_flux_error as e_fg,phot_g_mean_mag as gmag,phot_bp_mean_mag as bp,phot_bp_mean_flux as fbp,phot_bp_mean_flux_error as e_fbp,'+$
                           'phot_rp_mean_mag as rp,phot_rp_mean_flux as frp,phot_rp_mean_flux_error as e_frp'

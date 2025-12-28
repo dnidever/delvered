@@ -70,7 +70,7 @@ for i=0L,nobj-1 do begin
       resid[findx[gph]] = meas1[findx[gph]].mag-obj[i].(magind)
       ;; Residual mag relative to the uncertainty
       ;;  set a lower threshold of 0.02 in the uncertainty
-      relresid[findx[gph]] = sqrt(ngph/(ngph-1.0)) * (meas[findx[gph]].mag-obj[i].(magind))/(meas[findx[gph]].err > 0.02)
+      relresid[findx[gph]] = sqrt(ngph/(ngph-1.0)) * (meas1[findx[gph]].mag-obj[i].(magind))/(meas1[findx[gph]].err > 0.02)
     endif
   endfor ; filter loop
 
@@ -127,6 +127,7 @@ for i=0L,nobj-1 do begin
     gfid = where(magarr lt 50,ngfid)
     if ngfid gt 0 then fidmag[i]=magarr[gfid[0]]
   endif
+
 endfor  ; object loop
 
 

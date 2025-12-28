@@ -19,7 +19,7 @@
 ;
 ;-
 
-pro delvered_avgmeas_loop,expstr,measfiles,measid,obj
+pro delvered_avgmeas_loop,expstr,measfiles,measid,obj0,obj
 
 ;; Not enough inputs
 nmeas = n_elements(measid)
@@ -43,12 +43,12 @@ for i=0,nobj-1 do measobj_index[oindex.index[oindex.lo[i]:oindex.hi[i]]] = i
 ;; Initialize the final object table, with ALL BANDS
 obj_schema = {objid:'',brick:'',depthflag:0,nalfdetiter:0,neimerged:0,ra:0.0d0,dec:0.0d0,rarms:0.0,decrms:0.0,ndet:0,ndetall:0,$
               mlon:0.0d0,mlat:0.0d0,$
-              umag:99.99,uerr:9.99,urms:99.99,ndetu:0,umagall:99.99,uerrall:9.99,urmsall:99.99,ndetallu:0,$
-              gmag:99.99,gerr:9.99,grms:99.99,ndetg:0,gmagall:99.99,gerrall:9.99,grmsall:99.99,ndetallg:0,$
-              rmag:99.99,rerr:9.99,rrms:99.99,ndetr:0,rmagall:99.99,rerrall:9.99,rrmsall:99.99,ndetallr:0,$
-              imag:99.99,ierr:9.99,irms:99.99,ndeti:0,imagall:99.99,ierrall:9.99,irmsall:99.99,ndetalli:0,$
-              zmag:99.99,zerr:9.99,zrms:99.99,ndetz:0,zmagall:99.99,zerrall:9.99,zrmsall:99.99,ndetallz:0,$
-              ymag:99.99,yerr:9.99,yrms:99.99,ndety:0,ymagall:99.99,yerrall:9.99,yrmsall:99.99,ndetally:0,$
+              umag:99.99,uerr:9.99,urms:99.99,ndetu:0,$
+              gmag:99.99,gerr:9.99,grms:99.99,ndetg:0,$
+              rmag:99.99,rerr:9.99,rrms:99.99,ndetr:0,$
+              imag:99.99,ierr:9.99,irms:99.99,ndeti:0,$
+              zmag:99.99,zerr:9.99,zrms:99.99,ndetz:0,$
+              ymag:99.99,yerr:9.99,yrms:99.99,ndety:0,$
               chi:99.99,sharp:99.99,prob:99.99,ebv:99.99,mag_auto:99.99,magerr_auto:9.99,$
               asemi:999999.0,bsemi:999999.0,theta:999999.0,ellipticity:999999.0,fwhm:999999.0,$
               rmsvar:999999.0,madvar:999999.0,iqrvar:999999.0,etavar:999999.0,jvar:999999.0,$
@@ -60,17 +60,17 @@ obj_schema = {objid:'',brick:'',depthflag:0,nalfdetiter:0,neimerged:0,ra:0.0d0,d
               gaia_rpmag_error:999999.0,$
               brickuniq:0B}
 tot_schema = {objid:'',ra0:0.0d0,dec0:0.0d0,drawt:0.0d0,ddecwt:0.0d0,coowt:0.0d0,$
-              dra:0.0d0,ddec:0.0d0,dra2:0.0d0,ddec2:0.0d0,ndet:0L,ndetall:0L,$
-              mag:dblarr(6),mag2:dblarr(6),relmag:dblarr(6),relmag2:dblarr(6),relmagwt:0.0d0,$
+              dra:0.0d0,ddec:0.0d0,dra2:0.0d0,ddec2:0.0d0,ndet:0L,$
+              mag:dblarr(6),mag2:dblarr(6),relmag:dblarr(6),relmag2:dblarr(6),relmagwt:dblarr(6),$
               magfluxwt:dblarr(6),magwt:dblarr(6),nmag:dblarr(6),$
               chi:0.0d0,sharp:0.0d0,sharpwt:0.0d0,$
               rmsvar:0.0,madvar:0.0,iqrvar:0.0,etavar:0.0,jvar:0.0,$
               kvar:0.0,chivar:0.0,romsvar:0.0,depthflag:0}
 totstr = replicate(tot_schema,nobj)
 totstr.objid = oindex.value
-match,totstr.objid,obj.objid,ind1,ind2,/sort
-totstr[ind1].ra0 = obj[ind2].ra
-totstr[ind1].dec0 = obj[ind2].dec
+match,totstr.objid,obj0.objid,ind1,ind2,/sort
+totstr[ind1].ra0 = obj0[ind2].ra
+totstr[ind1].dec0 = obj0[ind2].dec
 
 ; depthflag: 1-allstar, single processing; 2-forced photometry; 3-both
 ;obj = replicate(obj_schema,nobj)
@@ -92,7 +92,7 @@ for i=0,n_elements(measfiles)-1 do begin
   band = meas[0].filter
   bandind = where(bands eq band)
 
-  totstr[ind2].ndetall += 1
+  totstr[ind2].ndet += 1
 
   ;; Filter mean magnitudes
   totstr[ind2].magfluxwt[bandind] += 2.5118864d^meas[ind1].mag * (1.0d0/meas[ind1].err^2)   
@@ -108,7 +108,6 @@ for i=0,n_elements(measfiles)-1 do begin
   totstr[ind2].relmag[bandind] += meas[ind1].mag/(meas[ind1].err > 0.02)^2
   totstr[ind2].relmag2[bandind] += meas[ind1].mag^2/(meas[ind1].err > 0.02)^2
   totstr[ind2].relmagwt[bandind] += 1.0d0/(meas[ind1].err > 0.02)^2
-
 
   ;; Best photometry
 
@@ -127,10 +126,10 @@ for i=0,n_elements(measfiles)-1 do begin
   totstr[ind2].dra2 += dra^2
   totstr[ind2].ddec2 += ddec^2
   ;; S/N weighted coordinates
-  wt = 1.0d0/meas[ind1].err^2
-  totstr[ind2].wt += wt
-  totstr[ind2].drawt += dra*wt
-  totstr[ind2].ddecwt += ddec*wt
+  coowt = 1.0d0/meas[ind1].err^2
+  totstr[ind2].coowt += coowt
+  totstr[ind2].drawt += dra*coowt
+  totstr[ind2].ddecwt += ddec*coowt
 
   ;; CHI
   totstr[ind2].chi += meas[ind1].chi
@@ -168,15 +167,15 @@ endfor
 ;; weighted coordinates
 ra = totstr.drawt/3600.0/totstr.coowt + totstr.ra0
 dec = totstr.ddecwt/3600.0/totstr.coowt + totstr.dec0
-;ra = totstr.dra/3600.0/totstr.ndetall + totstr.ra0
-;dec = totstr.ddec/3600.0/totstr.ndetall + totstr.dec0
+;ra = totstr.dra/3600.0/totstr.ndet + totstr.ra0
+;dec = totstr.ddec/3600.0/totstr.ndet + totstr.dec0
 wtra = totstr.drawt/totstr.coowt
 wtdec = totstr.ddecwt/totstr.coowt
-rarms = sqrt( (totstr.dra2 - 2*wtra*totstr.dra + totstr.ndetall*wtra^2)/totstr.ndetall )
+rarms = sqrt( (totstr.dra2 - 2*wtra*totstr.dra + totstr.ndet*wtra^2)/totstr.ndet )
 rarms *= cos(dec/!radeg)
-decrms = sqrt( (totstr.ddec2 - 2*wtdec*totstr.ddec + totstr.ndetall*wtdec^2)/totstr.ndetall )
-;rarms = sqrt( (totstr.ra2 - 2*ra*totstr.ra + totstr.ndetall*ra^2)/totstr.ndetall )
-;decrms = sqrt( (totstr.dec2 - 2*dec*totstr.dec + totstr.ndetall*dec^2)/totstr.ndetall )
+decrms = sqrt( (totstr.ddec2 - 2*wtdec*totstr.ddec + totstr.ndet*wtdec^2)/totstr.ndet )
+;rarms = sqrt( (totstr.ra2 - 2*ra*totstr.ra + totstr.ndet*ra^2)/totstr.ndet )
+;decrms = sqrt( (totstr.dec2 - 2*dec*totstr.dec + totstr.ndet*dec^2)/totstr.ndet )
 
 ;; mean photometry
 newmag = dblarr(nobj,6)
@@ -210,7 +209,7 @@ for i=0,5 do begin
 endfor
 
 ;; Make average CHI
-avgchi = totstr.chi/totstr.ndetall
+avgchi = totstr.chi/totstr.ndet
 ;gdchi = where(numchi gt 0,ngdchi)
 ;avgchi = fltarr(nobj)+99.99
 ;if ngdchi gt 0 then avgchi[gdchi]=totchi[gdchi]/numchi[gdchi]
@@ -227,55 +226,188 @@ avgsharp = totstr.sharp/totstr.sharpwt
 totstr.ndet = total(totstr.nmag,1)
  
 ;; depthflag: 1-allstar, single processing; 2-forced photometry; 3-both
-newobj = replicate(obj_schema,nobj)
-struct_assign,totstr,newobj
-otags = tag_names(newobj)
-newobj.ra = ra
-newobj.dec = dec
-newobj.rarms = rarms
-newobj.decrms = decrms
-newobj.sharp = avgsharp
-newobj.chi = avgchi
-newobj.depthflag = depthflag
+obj = replicate(obj_schema,nobj)
+struct_assign,totstr,obj,/nozero
+otags = tag_names(obj)
+obj.ra = ra
+obj.dec = dec
+obj.rarms = rarms
+obj.decrms = decrms
+obj.sharp = avgsharp
+obj.chi = avgchi
 for i=0,5 do begin
   magind = where(otags eq strupcase(bands[i])+'MAG')
   errind = where(otags eq strupcase(bands[i])+'ERR')
   rmsind = where(otags eq strupcase(bands[i])+'RMS')
   numind = where(otags eq 'NDET'+strupcase(bands[i]))
-  newobj.(magind) = newmag[*,i]
-  newobj.(errind) = newerr[*,i]
-  newobj.(rmsind) = magrms[*,i]
-  newobj.(numind) = totstr.nmag[i]
+  obj.(magind) = newmag[*,i]
+  obj.(errind) = newerr[*,i]
+  obj.(rmsind) = magrms[*,i]
+  obj.(numind) = totstr.nmag[i]
 endfor
 
-stop
-
 ;; Variables
-
+newmag0 = newmag
+bd = where(newmag0 gt 50)
+newmag0[bd] = 0.0
+sumresid = dblarr(nobj)
+nresid = lonarr(nobj)
 sumresidsq = dblarr(nobj)
 sumrelresidsq = dblarr(nobj)
 for i=0,5 do begin
+  nresid += totstr.nmag[i]
+
+  ;; Sum(m1-avgm)
+  ;; = Sum(m1)-N*avgm
+  sumresid1 = totstr.mag[i]-totstr.nmag[i]*newmag0[*,i]
+  sumresid += sumresid1
+
   ;; Sum( (m1-avgm)^2 )
   ;; = Sum( m1^2 - 2*avgm*m1 + avgm^2 )
   ;; = Sum(m1^2) - 2*avgm*Sum(m1) + N*avgm^2
-  sumresidsq1 = totstr.mag2[i] - 2*newmag[*,i]*totstr.mag[i] + totstr.ndetall*newmag[*,i]^2
+  sumresidsq1 = totstr.mag2[i] - 2*newmag0[*,i]*totstr.mag[i] + totstr.nmag[i]*newmag0[*,i]^2
   sumresidsq += sumresidsq1
 
   ;; Sum( (m1-avgm)^2/err1^2 )
   ;; = Sum( (m1/err1)^2 - 2*avgm*m1/err1^2 + (avgm/err1)^2 )
   ;; = Sum((m1/err1)^2) - 2*avgm*Sum(m1/err1^2) + avgm^2 * Sum(1/err1^2)
-  sumrelresidsq1 = totstr.relmag2[i] - 2*newmag[*,i]*totstr.relmag[i] + newrelmag[*,i]^2 * totstr.relmagwt
+  sumrelresidsq1 = totstr.relmag2[i] - 2*newmag0[*,i]*totstr.relmag[i] + newmag0[*,i]^2 * totstr.relmagwt[i]
   sumrelresidsq += sumrelresidsq1
   ;; (totstr.mag2[i] - 2*newmag[*,i]*totstr.mag[i] + totstr.nmag[i]*newmag[*,i]^2)
 endfor
 
-;    relresid[findx[gph]] = sqrt(ngph/(ngph-1.0)) * (meas[findx[gph]].mag-obj[i].(magind))/(meas[findx[gph]].err > 0.02)
+;; RMS
+rmsvar = sqrt((sumresidsq > 0.0)/nresid)
+obj.rmsvar = rmsvar
+
+;; Relative variability metrics
+chivar = sqrt((sumrelresidsq > 0.0))/nresid
+;relresid2 = relresid[gdrelresid]
+;pk = relresid2^2-1
+;jvar = total( sign(pk)*sqrt(abs(pk)) )/ngdrelresid
+;chivar = sqrt(total(relresid2^2))/ngdrelresid
+;kdenom = sqrt(total(relresid2^2)/ngdrelresid)
+;if kdenom ne 0 then begin
+;  kvar = (total(abs(relresid2))/ngdrelresid) / kdenom
+;endif else begin
+;  kvar = !values.f_nan
+;endelse
+;; RoMS                                                                                                                                                                                  
+;romsvar = total(abs(relresid2))/(ngdrelresid-1)
+;obj.jvar = jvar
+;obj.kvar = kvar
+obj.chivar = chivar
+;obj.romsvar = romsvar
+
+stop
+
+;; Fiducial magnitude
+tempmag = newmag
+tempmag[*,0] = newmag[*,2]  ;; rmag
+tempmag[*,1] = newmag[*,1]  ;; gmag
+tempmag[*,2] = newmag[*,3]  ;; imag
+tempmag[*,3] = newmag[*,4]  ;; zmag
+tempmag[*,4] = newmag[*,5]  ;; ymag
+tempmag[*,5] = newmag[*,0]  ;; umag
+fidmag = fltarr(nobj)
+for i=0,nobj-1 do begin
+  ind = where(tempmag[i,*] lt 50)
+  fidmag[i] = tempmag[i,ind[0]]
+endfor
+
+;; Select variables using photometric variability indices.
+
+;; Select Variables
+;;  1) Construct fiducial magnitude (done in loop above)
+;;  2) Construct median VAR and sigma VAR versus magnitude
+;;  3) Find objects that Nsigma above the median VAR line
+si = sort(fidmag)   ; NaNs are at end
+;;varcol = 'madvar'
+varcol = 'rmsvar'
+gdvar = where(finite(obj.rmsvar) eq 1 and finite(fidmag) eq 1,ngdvar,comp=bdvar,ncomp=nbdvar)
+obj.variable10sig = 0
+if ngdvar gt 0 then begin
+  binsize = 0.25
+  BINDATA,fidmag[gdvar],fidmag[gdvar],fidmagmed_bins,fidmagmed,binsize=binsize,/med
+  BINDATA,fidmag[gdvar],fidmag[gdvar],xbin2,numhist,binsize=binsize,/hist
+  ;; Fix NaNs in fidmagmed
+  bdfidmagmed = where(finite(fidmagmed) eq 0,nbdfidmagmed)
+  if nbdfidmagmed gt 0 then fidmagmed[bdfidmagmed] = fidmagmed_bins[bdfidmagmed]
+  ;; Median metric
+  BINDATA,fidmag[gdvar],obj[gdvar].rmsvar,xbin,varmed,binsize=binsize,/med
+  ;; Smooth, it handles NaNs well
+  smlen = 5
+  smvarmed = gsmooth(varmed,smlen)
+  bdsmvarmed = where(finite(smvarmed) eq 0,nbdsmvarmed)
+  if nbdsmvarmed gt 0 then smvarmed[bdsmvarmed] = median(smvarmed)
+  ;; Interpolate to all the objects
+  gv = where(finite(smvarmed) eq 1,ngv,comp=bv,ncomp=nbv)
+  if ngv le 1 then begin
+    print,'Not enough good RMSVAR values to detect variables'
+    obj.variable10sig = 0
+    obj.nsigvar = !values.f_nan
+    return
+  endif
+  INTERP,fidmagmed[gv],smvarmed[gv],fidmag[gdvar],objvarmedgd
+  objvarmed = dblarr(nobj)
+  objvarmed[gdvar] = objvarmedgd
+  objvarmed[gdvar] = min(smvarmed[gv]) > objvarmed[gdvar]   ; lower limit
+  if nbdvar gt 0 then objvarmed[bdvar]=smvarmed[gv[ngv-1]]  ; objects with bad fidmag, set to last value
+  ;; Scatter in metric around median
+  ;;  calculate MAD ourselves so that it's around our computed
+  ;;  median metric line
+  BINDATA,fidmag[gdvar],abs(obj[gdvar].rmsvar-objvarmed[gdvar]),xbin3,varsig,binsize=binsize,/med
+  ;;varsig *= 1.4826  ; scale MAD to stddev
+  ;; Fix values for bins with few points
+  bdhist = where(numhist lt 3,nbdhist,comp=gdhist,ncomp=ngdhist)
+  if nbdhist gt 0 then begin
+    if ngdhist gt 0 then begin
+      varsig[bdhist] = median(varsig[gdhist])
+   endif else begin
+      varsig[*] = 0.02
+   endelse
+  endif
+  ;; Smooth
+  smvarsig = gsmooth(varsig,smlen)
+  ;; Interpolate to all the objects
+  gv = where(finite(smvarsig) eq 1,ngv,comp=bv,ncomp=nbv)
+  if ngv le 1 then begin
+    print,'Not enough good RMSVAR values to detect variables'
+    obj.variable10sig = 0
+    obj.nsigvar = !values.f_nan
+    return
+  endif
+  INTERP,fidmagmed[gv],smvarsig[gv],fidmag[gdvar],objvarsiggd
+  objvarsig = dblarr(nobj)
+  objvarsig[gdvar] = objvarsiggd
+  objvarsig[gdvar] = min(smvarsig[gv]) > objvarsig[gdvar]   ; lower limit
+  if nbdvar gt 0 then objvarsig[bdvar]=smvarsig[gv[ngv-1]]  ; objects with bad fidmag, set to last value
+  ;; Detect positive outliers
+  nsigvarthresh = 10.0
+  nsigvar = (obj.rmsvar-objvarmed)/objvarsig
+  obj[gdvar].nsigvar = nsigvar[gdvar]
+  isvar = where(nsigvar[gdvar] gt nsigvarthresh,nisvar)
+  print,strtrim(nisvar,2)+' variables detected'
+  if nisvar gt 0 then obj[gdvar[isvar]].variable10sig = 1
+endif
+
 
 ;; EBV
 glactc,obj.ra,obj.dec,2000.0,glon,glat,1,/deg
 obj.ebv = dust_getval(glon,glat,/noloop,/interp)
 
+return
 
+
+
+;bd = where(tempmag gt 50)
+;tempmag[bd] = !values.f_nan
+;magarr = [newobj.rmag,newobj.gmag,newobj.imag,newobj.zmag,newobj.ymag,newobj.umag]
+;gfid = where(magarr lt 50,ngfid)
+;if ngfid gt 0 then fidmag[i]=magarr[gfid[0]]
+
+
+stop
 
 ;filtindex = create_index(meas1.filter)
 ;nfilters = n_elements(filtindex.value)
