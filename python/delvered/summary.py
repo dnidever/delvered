@@ -328,7 +328,7 @@ def photerrsummary(brickname,clobber=False):
     print(len(obj),'objects')
 
     bands = ['u','g','r','i','z','y']
-    dt = [('band',str,20),('count',np.int32,(169,119))]
+    dt = [('band',str,20),('count',np.int32,(199,119))]
     res = np.zeros(len(bands),dtype=np.dtype(dt))
     #xbins = np.arange(10,27,0.1)
     xbins = np.arange(10,30,0.1)

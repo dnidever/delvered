@@ -125,6 +125,14 @@ dcr = fwhm
 matches = MATCHALL_2D(nmg.x,nmg.y,nmg.x,nmg.y,dcr,nmatches)
 dupind = where(nmatches gt 1,ndupind)
 
+
+if ndupind eq 0 then begin
+  print,'No close neighbors'
+  newobj = obj
+  newmeas = meas
+  return
+endif
+
 ;; We can't just choose the iter=1 objects that have iter=2
 ;; close neighbors, because sometimes ALLSTAR eliminated the original
 ;; iter=1 detection.
