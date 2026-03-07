@@ -265,7 +265,6 @@ for i=0,n_elements(fmeta)-1 do begin
   endif else print,'Problems reading '+fmeta[i].file
 endfor
 
-
 ;; Add ALLFRAME detection iteration number
 ;;----------------------------------------
 ;; restore the SExtractor file
