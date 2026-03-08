@@ -91,7 +91,7 @@ frankfiles2.base = file_basename(frankfiles2.filename)
 temp = replicate({filename:'',base:'',basehead:''},n_elements(frankfiles2))
 struct_assign,frankfiles2,temp
 push,frankfiles,temp
-
+;mwrfits,frankfiles,'frankfiles.fits',/create
 
 ;; go through the nights
 nnights = n_elements(nights)
@@ -110,7 +110,8 @@ expdt = allexp[0]
 struct_assign,{dum:''},expdt
 
 ;; Night loop
-For n=0,nnights-1 do begin
+;;For n=0,nnights-1 do begin
+For n=477,nnights-1 do begin
   inight = nights[n]
   ;;print,strtrim(n+1,2),' ',inight
 
@@ -262,6 +263,7 @@ For n=0,nnights-1 do begin
         endif else begin
           newind = where(newstr.basehead eq basehead,nnewind)
           if nnewind eq 0 then stop,'no new filename'
+          newind = newind[0]
           newfluxfile = newstr[newind].filename
         endelse
 

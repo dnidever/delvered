@@ -112,8 +112,48 @@ setup = ['##### REQUIRED #####',$
   expstr1.fluxfile = strtrim(expstr1.fluxfile,2)
   expstr1.maskfile = strtrim(expstr1.maskfile,2)
   expstr1.wtfile = strtrim(expstr1.wtfile,2)
+  if tag_exist(expstr1,'base') eq 0 then begin
+    add_tag,expstr1,'base','',expstr1
+    expstr1.base = file_basename(expstr1.fluxfile,'.fits.fz')
+  endif
   nexp = n_elements(expstr1)
   inight = file_basename(file_dirname(expfile))
+  print,strtrim(nexp,2),' exposures'
+
+  ;; check that all exposures exist in the mass store
+  okay = file_test(expstr1.fluxfile) and file_test(expstr1.maskfile) and file_test(expstr1.wtfile)
+  bad = where(okay eq 0,nbad)
+  print,strtrim(nbad,2),' exposures are missing'
+
+  ;; get new filenames
+  if nbad gt 0 then begin
+    newstr = mrdfits('/net/dl2/dnidever/nsc/instcal/v4/lists/decam_instcal_01302026.fits',1)
+    add_tag,newstr,'basehead','',newstr
+    for i=0,n_elements(newstr)-1 do newstr[i].basehead=strmid(newstr[i].base,0,17)
+    frankfiles = mrdfits('/home/dnidever/projects/delvered/pro/frankfiles.fits',1)
+
+    expstr1.base = file_basename(expstr1.fluxfile,'.fits.fz')
+    add_tag,expstr1,'basehead','',expstr1
+    expstr1.basehead = strmid(expstr1.base,0,17)
+    match,expstr1[bad].basehead,newstr.basehead,ind1,ind2,count=nmatch,/sort
+    if nmatch gt 0 then begin
+      expstr1[bad[ind1]].fluxfile = newstr[ind2].filename
+      expstr1[bad[ind1]].maskfile = repstr(newstr[ind2].filename,'ooi','ood')
+      expstr1[bad[ind1]].wtfile = repstr(newstr[ind2].filename,'ooi','oow')
+    endif
+    match,expstr1[bad].basehead,frankfiles.basehead,ind1,ind2,count=nmatch,/sort
+    if nmatch gt 0 then begin
+      expstr1[bad[ind1]].fluxfile = frankfiles[ind2].filename
+      expstr1[bad[ind1]].maskfile = repstr(frankfiles[ind2].filename,'ooi','ood')
+      expstr1[bad[ind1]].wtfile = repstr(frankfiles[ind2].filename,'ooi','oow')
+    endif
+
+    okay2 = file_test(expstr1.fluxfile) and file_test(expstr1.maskfile) and file_test(expstr1.wtfile)
+    bad2 = where(okay2 eq 0,nbad2)
+    if nbad2 gt 0 then stop,'STILL '+strtrim(nbad2,2)+' exposures are missing!!'
+    print,'Saving fixed exposure table'
+    MWRFITS,expstr1,expfile,/create
+  endif
 
   ;; Check that all of the exposures are for the same night
   observatory,'ctio',obs

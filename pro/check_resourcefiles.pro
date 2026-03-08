@@ -44,6 +44,7 @@ For n=0,nnights-1 do begin
   expstr.wtfile = strtrim(expstr.wtfile,2)
 
   undefine,missingfiles1
+  undefine,allexposures1
 
   fdir = file_search(delvedir+'exposures/'+inight+'/F*',/test_directory,count=nfdir)
 
