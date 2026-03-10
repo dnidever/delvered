@@ -148,6 +148,21 @@ setup = ['##### REQUIRED #####',$
       expstr1[bad[ind1]].wtfile = repstr(frankfiles[ind2].filename,'ooi','oow')
     endif
 
+    ;; New Frank exposures
+    okay2 = file_test(expstr1.fluxfile) and file_test(expstr1.maskfile) and file_test(expstr1.wtfile)
+    bad2 = where(okay2 eq 0,nbad2)
+    if nbad2 gt 0 then begin
+      frankfiles2 = importascii('/home/dnidever/frankfiles3.txt',fieldnames=['base','expnum','filename'])
+      add_tag,frankfiles2,'basehead','',frankfiles2
+      frankfiles2.basehead = strmid(frankfiles2.base,0,17)
+      match,expstr1[bad2].basehead,frankfiles2.basehead,ind1,ind2,count=nmatch,/sort
+      if nmatch gt 0 then begin
+        expstr1[bad2[ind1]].fluxfile = frankfiles[ind2].filename
+        expstr1[bad2[ind1]].maskfile = repstr(frankfiles[ind2].filename,'ooi','ood')
+        expstr1[bad2[ind1]].wtfile = repstr(frankfiles[ind2].filename,'ooi','oow')
+      endif
+    endif
+
     okay2 = file_test(expstr1.fluxfile) and file_test(expstr1.maskfile) and file_test(expstr1.wtfile)
     bad2 = where(okay2 eq 0,nbad2)
     if nbad2 gt 0 then stop,'STILL '+strtrim(nbad2,2)+' exposures are missing!!'
