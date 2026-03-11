@@ -218,10 +218,17 @@ if nmchfile eq 0 then begin
   printlog,logfile,'No comb.mch file found for '+brick
   return
 endif
-mchfile = mchfile[0]
+if nmchfile gt 0 then begin
+  mchinfo = file_info(mchfile)
+  si = reverse(sort(mchinfo.mtime))
+  mchinfo = mchinfo[si]
+  mchfile = mchinfo[0].name
+  print,'More than one mchfile found. Using the most recent one'
+endif
+;;mchfile = mchfile[0]
+print,'mchfile = ',mchfile
 mchbase = file_basename(mchfile,'_comb.mch')
 combbase = mchbase+'_comb'
-
 
 ;; Load the forced photometry object catalog
 objfile = bdir+brick+'_object.fits.gz'
@@ -439,13 +446,14 @@ endif
 ;;----------------------------------------------------------------
 printlog,logfile,'--- Removing chips with bad ALLFRAME astrometric solutions ---'
 printlog,logfile,systime(0)
-mchfile = file_search(bdir+'*_comb.mch',count=nmchfile)
-if nmchfile eq 0 then begin
-  printlog,logfile,'No comb.mch file found for '+brick
-  return
-endif
-mchfile = mchfile[0]
-mchbase = file_basename(mchfile,'_comb.mch')
+;;mchfile = file_search(bdir+'*_comb.mch',count=nmchfile)
+;;if nmchfile eq 0 then begin
+;;  printlog,logfile,'No comb.mch file found for '+brick
+;;  return
+;;endif
+;;mchfile = mchfile[0]
+;;mchbase = file_basename(mchfile,'_comb.mch')
+
 astcheck = CHECK_ALLFRAME_COORDTRANS(mchfile,/silent)
 bdchip = where(astcheck.decstd gt 1.0 or finite(astcheck.decstd) eq 0,nbdchip)
 if nbdchip eq 0 then begin

@@ -110,8 +110,8 @@ expdt = allexp[0]
 struct_assign,{dum:''},expdt
 
 ;; Night loop
-;;For n=0,nnights-1 do begin
-For n=477,nnights-1 do begin
+For n=0,nnights-1 do begin
+;;For n=477,nnights-1 do begin
   inight = nights[n]
   ;;print,strtrim(n+1,2),' ',inight
 
@@ -138,7 +138,7 @@ For n=477,nnights-1 do begin
   missing = where(exists eq 0,nmissing)
   if nmissing eq 0 then begin
     print,strtrim(n+1,2),' ',inight,n_elements(expstr),nmissing
-    continue
+    ;;continue
   endif
   ;;if nmissing gt 0 then begin
   ;;  push,missingfiles,expstr[missing].fluxfile
@@ -173,7 +173,7 @@ For n=477,nnights-1 do begin
 
       ;; Check if the file exists in the mass store
       ;;if file_test(expstr1.fluxfile) and file_test(expstr1.maskfile) and file_test(expstr1.wtfile) then continue
-      if file_test(expstr1.fluxfile) then continue
+      ;;if file_test(expstr1.fluxfile) then continue
       base = file_basename(expstr1.fluxfile,'.fits.fz')
       basehead = strmid(base,0,17)
 
@@ -195,8 +195,6 @@ For n=477,nnights-1 do begin
       if n_elements(missingexp) eq 0 then missingexp=temp else push,missingexp,temp
       push,missingfiles1,base
       ;;continue
-
-;;stop
 
       ;;if nind eq 0 then push,missingfiles1,base
       ;;if nind gt 0 then push,fixablefiles1,base
