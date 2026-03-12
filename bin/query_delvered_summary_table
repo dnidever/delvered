@@ -57,9 +57,12 @@ if __name__ == "__main__":
             rar1 = [ra-ralim,ra+ralim]         # some chip ra's are greater than 360
             #rar1 = [ra-ralim,360]
             rar2 = [0,ra+ralim-360]
+        cat = []
         cat1 = delvedb.getdatadb(dbfile,rar=rar1,decr=decr,table='chip')
+        if len(cat1)>0: cat=[cat1]
         cat2 = delvedb.getdatadb(dbfile,rar=rar2,decr=decr,table='chip')
-        cat = np.hstack((cat1,cat2))
+        if len(cat2)>0: cat=cat.append(cat2)
+        cat = np.hstack(tuple(cat))
         if args.verbose:
             print('Wrap across RA=0')
             print('RA range 1 =',rar1,len(cat1),'matches')
