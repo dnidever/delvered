@@ -28,6 +28,7 @@ For n=0,nnights-1 do begin
   ;; check all local header files and see if bunit='electrons'
 
   files = file_search(delvedir+'exposures/'+inight+'/F*/chip01/F*-*_01.fits.head',count=nfiles)
+  print,strtrim(n+1,2),' ',strtrim(inight,2),' ',strtrim(nfiles,2),' files'
 
   undefine,oldfiles1
   for i=0,nfiles-1 do begin
@@ -44,11 +45,32 @@ For n=0,nnights-1 do begin
       for j=1,62 do begin
         chip = j
         schip = string(j,format='(I02)')
+        ;; Loading resource file and checking large fluxfile name
+        rchipfile = dir+'/chip'+schip+'/.'+base+'_'+schip+'.fits'
+        if j eq 1 then print,'    ',rchipfile
+        if file_test(rchipfile) eq 0 then continue
+        readline,rchipfile,rlines
+        ind = where(stregex(rlines,'fluxfile = ',/boolean) eq 1,nind)
+        fluxfile = (strsplit(rlines[ind[0]],' ',/extract))[2]
+        lo = strpos(fluxfile,'[')
+        fluxfile = strmid(fluxfile,0,lo)
+        fluxbase = file_basename(fluxfile,'.fits.fz')
+        if j eq 1 then print,'    ',fluxfile
+        if strmid(fluxbase,0,3) eq 'c4d' then begin
+          fluxtag = first_el(strsplit(fluxbase,'_',/extract),/last)
+          if fluxtag eq 'd1' or fluxtag eq 'd2' then stop,'still pointing to old DES file'
+        endif else begin
+          stop,'check if this is the old des version'
+        endelse
+        ;; Loading local header file
         chipfile = dir+'/chip'+schip+'/'+base+'_'+schip+'.fits.head'
         if file_test(chipfile) eq 0 then continue
         readline,chipfile,hlines
         dum = sxpar(hlines,'bscale',count=nbscale)
-        if nbscale gt 0 then stop,'already have bscale in '+chipfile
+        if nbscale gt 0 then begin
+          if j eq 1 then print,'    already have bscale in '+chipfile
+          continue
+        endif
         gain = sxpar(hlines,'arawgain',count=ngain)
         if ngain eq 0 then stop,'no gain found in '+chipfile
         sxaddpar,hlines,'bscale',gain,' scale by gain'
@@ -63,7 +85,9 @@ For n=0,nnights-1 do begin
     endif  ; electrons
   endfor  ; exposure loop
 
-  print,n,' ',inight,n_elements(oldfiles1)
+  print,' '
+  print,strtrim(n,2),' ',inight,' ',strtrim(n_elements(oldfiles1),2)
+  print,' '
   push,oldfiles,oldfiles1
 
   nightbomb:
