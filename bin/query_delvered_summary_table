@@ -61,7 +61,7 @@ if __name__ == "__main__":
         cat1 = delvedb.getdatadb(dbfile,rar=rar1,decr=decr,table='chip')
         if len(cat1)>0: cat=[cat1]
         cat2 = delvedb.getdatadb(dbfile,rar=rar2,decr=decr,table='chip')
-        if len(cat2)>0: cat=cat.append(cat2)
+        if len(cat2)>0: cat.append(cat2)
         cat = np.hstack(tuple(cat))
         if args.verbose:
             print('Wrap across RA=0')
