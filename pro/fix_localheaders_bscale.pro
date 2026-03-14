@@ -53,6 +53,8 @@ For n=0,nnights-1 do begin
         ind = where(stregex(rlines,'fluxfile = ',/boolean) eq 1,nind)
         fluxfile = (strsplit(rlines[ind[0]],' ',/extract))[2]
         lo = strpos(fluxfile,'[')
+        hi = strpos(fluxfile,']')
+        fext = strmid(fluxfile,lo+1,hi-lo-1)
         fluxfile = strmid(fluxfile,0,lo)
         fluxbase = file_basename(fluxfile,'.fits.fz')
         if j eq 1 then print,'    ',fluxfile
@@ -66,20 +68,38 @@ For n=0,nnights-1 do begin
         chipfile = dir+'/chip'+schip+'/'+base+'_'+schip+'.fits.head'
         if file_test(chipfile) eq 0 then continue
         readline,chipfile,hlines
-        dum = sxpar(hlines,'bscale',count=nbscale)
-        if nbscale gt 0 then begin
-          if j eq 1 then print,'    already have bscale in '+chipfile
-          continue
-        endif
-        gain = sxpar(hlines,'arawgain',count=ngain)
-        if ngain eq 0 then stop,'no gain found in '+chipfile
-        sxaddpar,hlines,'bscale',gain,' scale by gain'
+
+        ;; Load the actual data
+        ;;   and measure the new median of the CP file
+        tmpdir = MKTEMP('rsrc',/directory,/nodot)
+        FILE_CHMOD,tmpdir,/a_execute
+        tfluxfile = tmpdir+'/flux.fits'
+        FILE_WAIT,fluxfile
+        SPAWN,['funpack','-E',fext,'-O',tfluxfile,fluxfile],/noshell
+        FITS_READ,tfluxfile,newim1,newhead1
+        newmed = median(newim1)
+        file_delete,[tfluxfile,tmpdir],/allow
+
+        ;; old des sky value
+        oldsky = sxpar(hlines,'skybrite',count=nskybrite)
+        if nskybrite eq 0 then stop,'no skybrite found in '+chipfile
+        bscale = oldsky/newmed
+
+        ;;dum = sxpar(hlines,'bscale',count=nbscale)
+        ;;if nbscale gt 0 then begin
+        ;;  if j eq 1 then print,'    already have bscale in '+chipfile
+        ;;  continue
+        ;;endif
+        ;;gain = sxpar(hlines,'arawgain',count=ngain)
+        ;;if ngain eq 0 then stop,'no gain found in '+chipfile
+
+        sxaddpar,hlines,'bscale',bscale,' scale to des-like electrons'
         ;; save a copy of the original one
         jd = systime(/julian)
         caldat,jd,month,day,year,hour,minute,second
-        timestamp = string(year,month,day,hour,minute,second,format='(I04,I02,I02,I02,I02,I02)')
-        bakchipfile = chipfile+'.bak'+timestamp
-        file_move,chipfile,bakchipfile,/allow,/over
+        ;;timestamp = string(year,month,day,hour,minute,second,format='(I04,I02,I02,I02,I02,I02)')
+        ;;bakchipfile = chipfile+'.bak'+timestamp
+        ;;file_move,chipfile,bakchipfile,/allow,/over
         writeline,chipfile,hlines
       endfor  ; chip loop
     endif  ; electrons
