@@ -543,7 +543,7 @@ def cmdcollate():
     print('Writing to /net/dl2/dnidever/delve/bricks/summary/allcmdsummary.fits')
     res.write('/net/dl2/dnidever/delve/bricks/summary/allcmdsummary.fits',overwrite=True)
 
-def combineimage(brickname):
+def combineimage(brickname,clobber=False):
     """ Make thumbnail of combined stacked images """
 
     import matplotlib
@@ -561,7 +561,13 @@ def combineimage(brickname):
         return
     if len(combfiles)>1:
         si = np.argsort([os.path.getmtime(f) for f in combfiles])[::-1]
-        combfiles = combfiles[si[0]]
+        combfiles = combfiles[si[0]]    
+
+    figfile = bdir+'/'+brickname+'_'+os.path.basename(combfiles)[:-8]+'.png'
+    if os.path.exists(figfile) and clobber==False:
+        print(figfile+' exists and clobber==False')
+        return
+
     im,head = fits.getdata(combfiles,header=True)
     mask = (im < 50000)
     med = np.nanmedian(mask)
@@ -572,7 +578,6 @@ def combineimage(brickname):
     fig = plt.figure(1,figsize=(12.4,10))
     pl.display(im,vmin=vmin,vmax=vmax,cmap='Greys',xtitle='X (pixels)',ytitle='Y (pixels)',
                title=brickname+' '+os.path.basename(combfiles))
-    figfile = bdir+'/'+brickname+'_'+os.path.basename(combfiles)[:-8]+'.png'
     plt.savefig(figfile,bbox_inches='tight')
     plt.close()
     print(figfile)
