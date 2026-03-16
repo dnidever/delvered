@@ -542,3 +542,59 @@ def cmdcollate():
     res = vstack(res)
     print('Writing to /net/dl2/dnidever/delve/bricks/summary/allcmdsummary.fits')
     res.write('/net/dl2/dnidever/delve/bricks/summary/allcmdsummary.fits',overwrite=True)
+
+def combineimage(brickname):
+    """ Make thumbnail of combined stacked images """
+
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+    from dlnpyutils import utils as dln,plotting as pl
+
+    bdir = '/net/dl2/dnidever/delve/bricks/'
+    bdir = os.path.join(bdir,brickname[:4],brickname)
+    if os.path.exists(bdir)==False:
+        return
+
+    combfiles = glob(bdir+'/F*_comb.fits.fz')
+    if len(combfiles)==0:
+        return
+    if len(combfiles)>1:
+        si = np.argsort([os.path.getmtime(f) for f in combfiles])[::-1]
+        combfiles = combfiles[si[0]]
+    im,head = fits.getdata(combfiles,header=True)
+    mask = (im < 50000)
+    med = np.nanmedian(mask)
+    sig = dln.mad(im[mask])
+    vmin = med-3*sig
+    vmax = med+3*sig
+
+    fig = plt.figure(1,figsize=(12.4,10))
+    pl.display(im,vmin=vmin,vmax=vmax,cmap='Greys',xtitle='X (pixels)',ytitle='Y (pixels)',
+               title=brickname+' '+os.path.basename(combfiles))
+    figfile = bdir+'/'+brickname+'_'+os.path.basename(combfiles)[:-8]+'.png'
+    plt.savefig(figfile,bbox_inches='tight')
+    plt.close()
+    print(figfile)
+
+def combinedimages():
+    import traceback
+
+    btab = Table.read('/home/dnidever/projects/delvered/data/delvemc_bricks_0.25deg.fits.gz')
+    for c in btab.colnames: btab[c].name = c.lower()
+    btab['brickname'] = [b.strip() for b in btab['brickname']]
+    res = []
+    for i in range(len(btab)):
+        brickname = btab['brickname'][i]
+        bdir = '/net/dl2/dnidever/delve/bricks/'
+        bdir = os.path.join(bdir,brickname[:4],brickname)
+        print(i+1,brickname)
+        if os.path.exists(bdir)==False:
+            continue
+        try:
+            combineimage(brickname)
+        except KeyboardInterrupt:
+            raise
+        except:
+            traceback.print_exc()
+    

@@ -17,6 +17,7 @@ import socket
 #from dustmaps.sfd import SFDQuery
 from astropy.coordinates import SkyCoord
 import sqlite3
+import traceback
 
 def writecat2db(cat,dbfile,table='meas'):
     """ Write a catalog to the database """
@@ -32,7 +33,7 @@ def writecat2db(cat,dbfile,table='meas'):
     c = db.cursor()
 
     # Convert numpy data types to sqlite3 data types
-    d2d = {"S":"TEXT", "i":"INTEGER", "f":"REAL"}
+    d2d = {"S":"TEXT", "i":"INTEGER", "f":"REAL", "U":"TEXT"}
 
     # Get the column names
     cnames = cat.dtype.names
@@ -205,3 +206,70 @@ def createsumtable(dbfile=None,delvedir='/net/dl2/dnidever/delve/'):
     createindexdb(dbfile,'ra','chip',unique=False)
     createindexdb(dbfile,'dec','chip',unique=False)
     db.analyzetable(dbfile,'chip')
+
+
+def createbricksumtable(dbfile=None,delvedir='/net/dl2/dnidever/delve/'):
+    """ Create the DELVE-MC brick metadata summary database """
+
+    basedir = delvedir+'bricks/'
+    if dbfile is None:
+        dbfile = delvedir+'bricks/db/delvered_brick_summary.db'
+
+
+    bricks = Table.read('/home/dnidever/projects/delvered/data/delvemc_bricks_0.25deg.fits.gz')
+    for c in bricks.colnames: bricks[c].name = c.lower()
+    # Load in the data
+    data = []
+    for i in range(len(bricks)):
+        name = bricks['brickname'][i]
+        print(i,name)
+        metafile = basedir+name[:4]+'/'+name+'/'+name+'_meta.fits'
+        if os.path.exists(metafile)==False:
+            continue
+        try:
+            meta = Table.read(metafile)
+            for c in meta.colnames:meta[c].name=c.lower()
+            meta['brickname'] = name
+            if 'vx' not in meta.colnames:
+                # should make the vx/vy arrays
+                meta['vx1'] = 0.0
+                meta['vx2'] = 0.0
+                meta['vx3'] = 0.0
+                meta['vx4'] = 0.0
+                meta['vy1'] = 0.0
+                meta['vy2'] = 0.0
+                meta['vy3'] = 0.0
+                meta['vy4'] = 0.0
+            else:
+                meta['vx1'] = meta['vx'][:,0]
+                meta['vx2'] = meta['vx'][:,1]
+                meta['vx3'] = meta['vx'][:,2]
+                meta['vx4'] = meta['vx'][:,3]
+                meta['vy1'] = meta['vy'][:,0]
+                meta['vy2'] = meta['vy'][:,1]
+                meta['vy3'] = meta['vy'][:,2]
+                meta['vy4'] = meta['vy'][:,3]
+                del meta[['vx','vy']]
+            data.append(meta)
+        except KeyboardInterrupt:
+            raise
+        except:
+            traceback.print_exc()
+            print('Problem loading '+metafile)
+
+    # Concatenate them
+    data = vstack(data)
+
+    # Write the database
+    print('Writing the database')
+    writecat2db(data,dbfile,'chip')
+
+    # Create the indices
+    print('Indexing')
+    createindexdb(dbfile,'brickname','chip',unique=False)
+    createindexdb(dbfile,'ra','chip',unique=False)
+    createindexdb(dbfile,'dec','chip',unique=False)
+    db.analyzetable(dbfile,'chip')
+
+
+    import pdb; pdb.set_trace()

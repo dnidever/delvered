@@ -22,7 +22,8 @@ print,strtrim(n_elements(nights),2),' nights'
 undefine,oldfiles
 
 ;; Night loop
-For n=0,nnights-1 do begin
+;;For n=0,nnights-1 do begin
+For n=119,nnights-1 do begin
   inight = nights[n]
 
   ;; check all local header files and see if bunit='electrons'
