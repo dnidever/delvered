@@ -588,7 +588,7 @@ def combinedimages():
     btab = Table.read('/home/dnidever/projects/delvered/data/delvemc_bricks_0.25deg.fits.gz')
     for c in btab.colnames: btab[c].name = c.lower()
     btab['brickname'] = [b.strip() for b in btab['brickname']]
-    res = []
+    problem = []
     for i in range(len(btab)):
         brickname = btab['brickname'][i]
         bdir = '/net/dl2/dnidever/delve/bricks/'
@@ -602,4 +602,7 @@ def combinedimages():
             raise
         except:
             traceback.print_exc()
-    
+            problem.append(brickname)
+
+    print(len(problem),'problem bricks')
+    import pdb; pdb.set_trace()
