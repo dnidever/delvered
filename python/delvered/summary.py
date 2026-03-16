@@ -562,6 +562,8 @@ def combineimage(brickname,clobber=False):
     if len(combfiles)>1:
         si = np.argsort([os.path.getmtime(f) for f in combfiles])[::-1]
         combfiles = combfiles[si[0]]    
+    else:
+        combfiles = combfiles[0]
 
     figfile = bdir+'/'+brickname+'_'+os.path.basename(combfiles)[:-8]+'.png'
     if os.path.exists(figfile) and clobber==False:
