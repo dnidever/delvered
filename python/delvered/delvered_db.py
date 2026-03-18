@@ -48,7 +48,19 @@ def writecat2db(cat,dbfile,table='meas'):
     columns = []
     for n in cnames: columns.append(n.lower())
     qmarks = np.repeat('?',dln.size(cnames))
-    c.executemany('INSERT INTO '+table+'('+','.join(columns)+') VALUES('+','.join(qmarks)+')', list(cat))
+    data = list(cat)
+    # Replace nan with 'nan'  
+    data = [
+        tuple('NAN' if isinstance(i, np.floating) and np.isnan(i) else i for i in t)
+        for t in list(cat)
+    ]
+    # Replace inf with 'inf'  
+    data = [
+        tuple(str(i).upper() if isinstance(i, np.floating) and np.isinf(i) else i for i in t)
+        for t in list(data)
+    ]
+    c.executemany('INSERT INTO '+table+'('+','.join(columns)+') VALUES('+','.join(qmarks)+')', data)
+    #c.executemany('INSERT INTO '+table+'('+','.join(columns)+') VALUES('+','.join(qmarks)+')', list(cat))
     db.commit()
     db.close()
 
@@ -75,7 +87,7 @@ def createindexdb(dbfile,col='measid',table='meas',unique=True,verbose=False):
     db.close()
     if verbose: print('indexing done after '+str(time.time()-t0)+' sec')
 
-def getdatadb(dbfile,table='meas',cols='*',rar=None,decr=None,verbose=False):
+def getdatadb(dbfile,table='meas',cols='*',rar=None,decr=None,where=None,verbose=False):
     """ Get rows from the database """
     t0 = time.time()
     sqlite3.register_adapter(np.int8, int)
@@ -107,6 +119,12 @@ def getdatadb(dbfile,table='meas',cols='*',rar=None,decr=None,verbose=False):
         else:
             cmd += ' AND '
         cmd += 'dec>='+str(decr[0])+' AND dec<'+str(decr[1])
+    # WHERE
+    if where is not None:
+        if cmd.lower().find('where')>-1:
+            cmd += ' AND '+where
+        else:
+            cmd += ' WHERE '+where
 
     # Execute the select command
     #print('CMD = '+cmd)
@@ -218,7 +236,29 @@ def createbricksumtable(dbfile=None,delvedir='/net/dl2/dnidever/delve/'):
 
     bricks = Table.read('/home/dnidever/projects/delvered/data/delvemc_bricks_0.25deg.fits.gz')
     for c in bricks.colnames: bricks[c].name = c.lower()
+    si = np.argsort(np.random.rand(len(bricks)))
+    bricks = bricks[si]
     # Load in the data
+
+    
+    dt = [('field', 'U10'), ('file', 'U200'), ('expnum', 'U8'), ('chip', '>i8'),
+          ('base', 'U50'), ('filter', 'U3'), ('exptime', '>f8'), ('utdate', 'U15'),
+          ('uttime', 'U20'), ('airmass', '>f8'), ('gain', '>f8'), ('rdnoise', '>f8'),
+          ('nx', '>i8'), ('ny', '>i8'), ('wcstype', 'U10'), ('pixscale', '>f8'),
+          ('ra', '>f8'), ('dec', '>f8'), ('wcsrms', '>f8'), ('fwhm', '>f8'),
+          ('skymode', '>f8'), ('skysig', '>f8'), ('dao_nsources', '>i8'),
+          ('dao_depth', '>f8'), ('dao_npsfstars', '>i8'), ('dao_psftype', 'U10'),
+          ('dao_psfboxsize', '>i8'), ('dao_psfvarorder', '>i8'), ('dao_psfchi', '>f8'),
+          ('alf_nsources', '>i8'), ('alf_depth', '>f8'), ('calib_depth', '>f8'),
+          ('calib_color', 'U10'), ('calib_zpterm', '>f8'), ('calib_zptermsig', '>f8'),
+          ('calib_amterm', '>f8'), ('calib_amtermsig', '>f8'),
+          ('calib_colorterm', '>f8'), ('calib_colortermsig', '>f8'),
+          ('calib_magname', 'U10'), ('apcor', '>f8'), ('ebv', '>f8'),
+          ('fieldname', 'U50'), ('depth', '>f4'), ('eta', '>f4'),
+          ('background', '>f4'), ('tau', '>f4'), ('teff', '>f4'),
+          ('fracoverlap', '>f4'), ('mnx', '>f4'), ('mny', '>f4'),
+          ('brickname', 'U10'), ('vx1', '>f4'), ('vx2', '>f4'), ('vx3', '>f4'),
+          ('vx4', '>f4'), ('vy1', '>f4'), ('vy2', '>f4'), ('vy3', '>f4'), ('vy4', '>f4')]
     data = []
     for i in range(len(bricks)):
         name = bricks['brickname'][i]
@@ -250,7 +290,13 @@ def createbricksumtable(dbfile=None,delvedir='/net/dl2/dnidever/delve/'):
                 meta['vy3'] = meta['vy'][:,2]
                 meta['vy4'] = meta['vy'][:,3]
                 del meta[['vx','vy']]
-            data.append(meta)
+
+            newmeta = np.zeros(len(meta),dtype=np.dtype(dt))
+            for c in newmeta.dtype.names:
+                if newmeta[c].dtype.kind=='f':
+                    newmeta[c] = np.nan            
+            for c in meta.colnames: newmeta[c] = meta[c]
+            data.append(newmeta)
         except KeyboardInterrupt:
             raise
         except:
@@ -258,7 +304,8 @@ def createbricksumtable(dbfile=None,delvedir='/net/dl2/dnidever/delve/'):
             print('Problem loading '+metafile)
 
     # Concatenate them
-    data = vstack(data)
+    #data = vstack(data)
+    data = np.concatenate(data)
 
     # Write the database
     print('Writing the database')
@@ -269,6 +316,7 @@ def createbricksumtable(dbfile=None,delvedir='/net/dl2/dnidever/delve/'):
     createindexdb(dbfile,'brickname','chip',unique=False)
     createindexdb(dbfile,'ra','chip',unique=False)
     createindexdb(dbfile,'dec','chip',unique=False)
+    createindexdb(dbfile,'file','chip',unique=False)
     db.analyzetable(dbfile,'chip')
 
 
