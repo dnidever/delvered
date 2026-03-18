@@ -190,8 +190,10 @@ For j=0,nfitsfiles-1 do begin
   ccdnum = PHOTRED_GETCHIPNUM(base1,thisimager)
   ifield = first_el(strsplit(base1,'-',/extract))
   als0 = PHOTRED_READFILE(alsfile1,count=nals)
+  if nals lt 1 then continue
   ;; Change ID to a string
-  schema = {id:'',x:0.0,y:0.0,ra:0.0d0,dec:0.0d0,mag:0.0,err:0.0,sky:0.0,iter:0.0,chi:0.0,sharp:0.0,cmag:0.0}
+  schema = {id:'',x:0.0,y:0.0,ra:0.0d0,dec:0.0d0,mag:0.0,err:0.0,sky:0.0,$
+            iter:0.0,chi:0.0,sharp:0.0,cmag:0.0}
   als = REPLICATE(schema,nals)
   STRUCT_ASSIGN,als0,als,/nozero
   ;; Get the coordinates
