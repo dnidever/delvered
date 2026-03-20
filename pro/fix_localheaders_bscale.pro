@@ -23,7 +23,9 @@ undefine,oldfiles
 
 ;; Night loop
 ;;For n=0,nnights-1 do begin
-For n=171,nnights-1 do begin
+;;For n=171,nnights-1 do begin
+;;For n=24,nnights-1 do begin
+For n=151,nnights-1 do begin
   inight = nights[n]
 
   ;; check all local header files and see if bunit='electrons'
@@ -70,6 +72,39 @@ For n=171,nnights-1 do begin
         if file_test(chipfile) eq 0 then continue
         readline,chipfile,hlines
 
+        ;;skybrite = sxpar(hlines,'skybrite')
+        ;;avsky = sxpar(hlines,'avsky')
+        ;;skypc00 = sxpar(hlines,'skypc00')
+        ;;skypc01 = sxpar(hlines,'skypc01')
+        ;;skypc02 = sxpar(hlines,'skypc02')
+        ;;skypc03 = sxpar(hlines,'skypc03')
+        ;;bscl = sxpar(hlines,'bscale')
+        ;;newmed = skybrite/bscl
+
+        ;; look at sky values in the als file
+        ;;alsfile = dir+'/chip'+schip+'/'+base+'_'+schip+'.als'
+        ;;loadals,alsfile,als
+        ;;alssky = median(als.sky)
+        ;; these are VERY CLOSE to the skybrite values
+
+        ;;print,i,j,skybrite,avsky,skypc00,alssky
+        ;;print,i,j,skybrite,avsky,skypc00,alssky,bscl,newmed
+        ;; looks like avsky and skypc00 are the same for all chips of
+        ;; the same exposure, skybrite changes chip to chip
+
+        skybrite = sxpar(hlines,'skybrite') 
+        bscl = sxpar(hlines,'bscale',count=nbscl)
+        newmed = skybrite/bscl
+        fmt='(A3,I-5,I-5,I-5,A-35,F10.3,F10.2)'
+        print,'',n+1,i+1,j,strmid(chipfile,34,strlen(chipfile)-44),bscl,newmed,format=fmt
+        if nbscl eq 1 then begin
+          if bscl lt 3.5 or bscl gt 5.0 then begin
+            print,'   bscale='+strtrim(bscl,2),' need to redo this one'
+          endif else begin
+            continue
+          endelse
+        endif
+
         ;; Load the actual data
         ;;   and measure the new median of the CP file
         tmpdir = MKTEMP('rsrc',/directory,/nodot)
@@ -77,14 +112,46 @@ For n=171,nnights-1 do begin
         tfluxfile = tmpdir+'/flux.fits'
         FILE_WAIT,fluxfile
         SPAWN,['funpack','-E',fext,'-O',tfluxfile,fluxfile],/noshell
+        if file_test(tfluxfile) eq 0 then begin
+          print,'Problem reading chip extension for '+fluxfile
+          continue
+        endif
         FITS_READ,tfluxfile,newim1,newhead1
         newmed = median(newim1)
         file_delete,[tfluxfile,tmpdir],/allow
 
         ;; old des sky value
         oldsky = sxpar(hlines,'skybrite',count=nskybrite)
-        if nskybrite eq 0 then stop,'no skybrite found in '+chipfile
-        bscale = oldsky/newmed
+        if nskybrite eq 1 and oldsky gt 0 then begin
+          bscale = oldsky/newmed
+        endif else begin
+          ;; look at sky values in the als file
+          alsfile = dir+'/chip'+schip+'/'+base+'_'+schip+'.als'
+          if file_test(alsfile) eq 1 then begin
+            loadals,alsfile,als
+            alssky = median(als.sky)
+            ;; these are VERY CLOSE to the skybrite values
+            bscale = alssky/newmed
+          endif else begin
+            print,alsfile,' not found. trying AVSKY'
+            avsky = sxpar(hlines,'avsky',count=navsky) 
+            bscale = avsky/newmed
+          endelse
+        endelse
+        ;;if bscale lt 3.0 or bscale gt 5.0 then begin
+        ;;  print,'bscale='+strtrim(bscale,2)+' outside reasonable range. forcing bscale=4.0'
+        ;;  bscale = 4.0
+        ;;endif
+        ;;print,'',i+1,j,strmid(chipfile,34,strlen(chipfile)-44),bscale,format=fmt
+if bscale lt 0 then stop,'bscale is negative'
+        print,'',n+1,i+1,j,strmid(chipfile,34,strlen(chipfile)-44),bscale,newmed,format=fmt
+
+        ;;if nskybrite eq 0 then stop,'no skybrite found in '+chipfile
+        ;;if nskybrite eq 0 or oldsky lt 0.1 then begin
+        ;;  print,'skybrite bad.  trying avsky'
+        ;;  oldsky = sxpar(hlines,'avsky',count=navsky)
+        ;;endif
+        ;;bscale = oldsky/newmed
 
         ;;dum = sxpar(hlines,'bscale',count=nbscale)
         ;;if nbscale gt 0 then begin
@@ -96,18 +163,24 @@ For n=171,nnights-1 do begin
 
         sxaddpar,hlines,'bscale',bscale,' scale to des-like electrons'
         ;; save a copy of the original one
-        jd = systime(/julian)
-        caldat,jd,month,day,year,hour,minute,second
-        ;;timestamp = string(year,month,day,hour,minute,second,format='(I04,I02,I02,I02,I02,I02)')
-        ;;bakchipfile = chipfile+'.bak'+timestamp
-        ;;file_move,chipfile,bakchipfile,/allow,/over
+        ;; check for backup file
+        dum = file_search(chipfile+'.bak*',count=nbackup)
+        if nbackup eq 0 then begin
+          jd = systime(/julian)
+          caldat,jd,month,day,year,hour,minute,second
+          timestamp = string(year,month,day,hour,minute,second,format='(I04,I02,I02,I02,I02,I02)')
+          bakchipfile = chipfile+'.bak'+timestamp
+          file_move,chipfile,bakchipfile,/allow,/over
+        endif
         writeline,chipfile,hlines
+        wait,1
+;;stop
       endfor  ; chip loop
     endif  ; electrons
   endfor  ; exposure loop
 
   print,' '
-  print,strtrim(n,2),' ',inight,' ',strtrim(n_elements(oldfiles1),2)
+  print,strtrim(n+1,2),' ',inight,' ',strtrim(n_elements(oldfiles1),2)
   print,' '
   push,oldfiles,oldfiles1
 
