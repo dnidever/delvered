@@ -3,6 +3,7 @@ import numpy as np
 from astropy.table import Table,vstack
 from dlnpyutils import utils as dln
 from glob import glob
+import traceback
 
 def getvars(brick,ndetthresh=20,save=False,overwrite=False):
     """ Get variable star data for a brick. """
@@ -69,6 +70,12 @@ def allbricks():
 
     bricks = Table.read('/home/dnidever/projects/delvered/data/delvemc_bricks_0.25deg.fits.gz')
     for c in bricks.colnames: bricks[c].name = c.lower()
-    for i in range(len(bricks)):
+    #for i in range(len(bricks)):
+    for i in range(1528,len(bricks)):
         print(i+1,bricks['brickname'][i])
-        out = getvars(bricks['brickname'][i],save=True,overwrite=True)
+        try:
+            out = getvars(bricks['brickname'][i],save=True,overwrite=True)
+        except KeyboardInterupt:
+            raise
+        except:
+            traceback.print_exc()

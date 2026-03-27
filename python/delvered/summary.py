@@ -572,7 +572,7 @@ def combineimage(brickname,clobber=False):
 
     im,head = fits.getdata(combfiles,header=True)
     mask = (im < 50000)
-    med = np.nanmedian(mask)
+    med = np.nanmedian(im[mask])
     sig = dln.mad(im[mask])
     vmin = med-3*sig
     vmax = med+3*sig
@@ -584,7 +584,7 @@ def combineimage(brickname,clobber=False):
     plt.close()
     print(figfile)
 
-def combinedimages():
+def combinedimages(clobber=False):
     import traceback
 
     btab = Table.read('/home/dnidever/projects/delvered/data/delvemc_bricks_0.25deg.fits.gz')
@@ -599,7 +599,7 @@ def combinedimages():
         if os.path.exists(bdir)==False:
             continue
         try:
-            combineimage(brickname)
+            combineimage(brickname,clobber=clobber)
         except KeyboardInterrupt:
             raise
         except:
