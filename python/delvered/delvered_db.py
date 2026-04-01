@@ -33,7 +33,7 @@ def writecat2db(cat,dbfile,table='meas'):
     c = db.cursor()
 
     # Convert numpy data types to sqlite3 data types
-    d2d = {"S":"TEXT", "i":"INTEGER", "f":"REAL", "U":"TEXT"}
+    d2d = {"S":"TEXT", "s":"TEXT", "U":"TEXT", "u":"TEXT", "i":"INTEGER", "f":"REAL"}
 
     # Get the column names
     cnames = cat.dtype.names
