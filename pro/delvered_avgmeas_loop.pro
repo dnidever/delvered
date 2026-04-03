@@ -82,8 +82,8 @@ bands = ['u','g','r','i','z','Y']
 print,strtrim(n_elements(measfiles),2),' exposures'
 for i=0,n_elements(measfiles)-1 do begin
 
-  print,i+1,measfiles[i]
-  meas = MRDFITS(measfiles[i],1)
+  print,i+1,measfiles[i].filename
+  meas = MRDFITS(measfiles[i].filename,1)
   meas.objid = strtrim(meas.objid,2)
 
   MATCH,meas.objid,totstr.objid,ind1,ind2,/sort

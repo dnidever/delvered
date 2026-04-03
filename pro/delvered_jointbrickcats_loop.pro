@@ -506,7 +506,7 @@ endif
 
 
 ;; Initialize the final measurement table
-measfiles = []
+undefine,measfiles
 meas_schema = {id:'',objid:'',brick:'',exposure:'',ccdnum:0,filter:'',mjd:0.0d0,forced:0B,x:0.0,y:0.0,ra:0.0d0,dec:0.0d0,$
                imag:0.0,ierr:0.0,mag:0.0,err:0.0,sky:0.0,chi:0.0,sharp:0.0,count:0LL}
 measforce = replicate(meas_schema,n_elements(fmeas))
@@ -523,7 +523,7 @@ for i=0,n_elements(mfeindex.value)-1 do begin
   measforcefile = bdir+'/'+brick+'_joint_meas_force_'+strtrim(mfeindex.value[i],2)+'.fits'
   printlog,logfile,'  Saving forced measurements to ',measforcefile
   MWRFITS,measforce[ind],measforcefile,/create
-  push,measfiles,measforcefile
+  push,measfiles,{filename:measforcefile,nmeas:n_elements(ind)}
 endfor
 
 measid_schema = {id:'',objid:''}
@@ -718,7 +718,8 @@ For e=0,nuexpnum-1 do begin
   printlog,logfile,''
   printlog,logfile,'  Saving exposure measurements to ',measexpnewfile
   MWRFITS,measexpnew,measexpnewfile,/create
-  push,measfiles,measexpnewfile
+  ;;push,measfiles,measexpnewfile
+  push,measfiles,{filename:measexpnewfile,nmeas:n_elements(measexpnew)}
 
   ;; Add to MEAS
   ;;  add elements
@@ -747,6 +748,10 @@ printlog,logfile,' '
 printlog,logfile,'Step 2: Adding ALLSTAR measurements for NEW exposures'
 printlog,logfile,' '
 printlog,logfile,systime(0)
+
+;; Unique forced photometry exposures
+fui = uniq(meta.expnum,sort(meta.expnum))
+fuexpnum = meta[fui].expnum
 
 ;; Get leftover chips
 MATCH,chstr.base,fmeta.base,ind1,ind2,/sort,count=nmatch
@@ -868,10 +873,16 @@ For e=0,nuexpnum-1 do begin
   ;; Save new exposure measurements to a temporary file
   measexpnew.count = lindgen(n_elements(measexpnew))+mcount
   measexpnewfile = bdir+'/'+brick+'_joint_meas_'+strtrim(uexpnum[e],2)+'.fits'
+  dum = where(fuexpnum eq uexpnum[e],ndup)
+  if ndup gt 0 then begin
+    print,'These are extra chips of an exposure that was used in the forced photometry. Adding "extra" to filename'
+    measexpnewfile = bdir+'/'+brick+'_joint_meas_extra_'+strtrim(uexpnum[e],2)+'.fits'
+  endif
   printlog,logfile,''
   printlog,logfile,'  Saving new exposures measurements to ',measexpnewfile
   MWRFITS,measexpnew,measexpnewfile,/create
-  push,measfiles,measexpnewfile
+  ;;push,measfiles,measexpnewfile
+  push,measfiles,{filename:measexpnewfile,nmeas:n_elements(measexpnew)}
 
   ;; Add to MEAS
   ;;  add elements
@@ -1004,7 +1015,6 @@ if nmatch gt 0 then begin
   obj[ind1].gaia_rpmag_error = rpmag_error
 endif else print,'NO Gaia DR3 matches'
 
-;stop
 
 ;; Save JOINT files
 ;;-------------------
@@ -1026,6 +1036,7 @@ spawn,['gzip','-f',objfile],/noshell
 metafile = bdir+brick+'_joint_meta.fits'
 printlog,logfile,'Writing meta-data to '+metafile
 MWRFITS,meta,metafile,/create
+MWRFITS,measfiles,metafile,/silent  ;; add meas filenames
 
 printlog,logfile,'dt = '+stringize(systime(1)-t0,ndec=1)+' sec.'
 

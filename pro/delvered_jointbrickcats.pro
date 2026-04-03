@@ -875,6 +875,7 @@ if n_tags(meta) ne n_tags(newmeta) then begin
 endif
 meta = [meta,newmeta]
 
+stop
 
 ;; Step 3: Redo average object photometry, keep best measurements only
 ;;--------------------------------------------------------------------
