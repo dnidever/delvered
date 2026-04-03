@@ -626,6 +626,15 @@ For e=0,nuexpnum-1 do begin
         temp = measexpnew[mexpcount:mexpcount+nchcat-1]
         struct_assign,chcat,temp,/nozero
         temp.brick = brick
+        ;; Need to offset IDs because otherwise the forced and ALLSTAR
+        ;;   IDs will overlap
+        fmaxid = max(long((strsplitter(fmeas1.id,'.',/extract))[1,*]))
+        if fmaxid gt 100000 then stop,'Maximum forced ID larger than 100,000  '+strtrim(fmaxid,2)
+        ;; offset ALLSTAR IDs by 100000
+        chbase = (strsplit(temp[0].id,'.',/extract))[0]
+        newnums = long(reform((strsplitter(temp.id,'.',/extract))[1,*])) + 100000L
+        newids = chbase+'.'+strtrim(newnums,2)
+        temp.id = newids
         measexpnew[mexpcount:mexpcount+nchcat-1] = temp
         mexpcount += nchcat
         ;; Update meta
