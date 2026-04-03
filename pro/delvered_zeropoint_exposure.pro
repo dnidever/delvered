@@ -71,7 +71,7 @@ if (imagerstest eq 0) then begin
 endif
 ; The columns need to be: Telescope, Instrument, Naps, separator
 imagers_fieldnames = ['telescope','instrument','observatory','namps','separator']
-imagers_fieldtpes = [7,7,7,3,7]
+imagers_fieldtypes = [7,7,7,3,7]
 imagers = IMPORTASCII(scriptsdir+'/imagers',fieldnames=imagers_fieldnames,$
                       fieldtypes=imagers_fieldtypes,comment='#')
 imagers.telescope = strupcase(strtrim(imagers.telescope,2))
@@ -280,10 +280,10 @@ if n_elements(mmags) eq 1 and mmags[0] lt -1000 then begin
   goto,BOMB
 endif
 ;; Get good stars
-gdcat = where(cat1.mag lt 50 and cat1.err lt 0.05 and abs(cat1.sharp) lt 1 and cat.chi lt 3 and $
+gdcat = where(cat1.mag lt 50 and cat1.err lt 0.05 and abs(cat1.sharp) lt 1 and cat1.chi lt 3 and $
               mmags[*,0] lt 50 and mmags[*,1] lt 5,ngdcat)
 if ngdcat lt 10 then $
-  gdcat = where(cat1.mag lt 50 and cat1.err lt 0.08 and abs(cat1.sharp) lt 1 and cat.chi lt 3 and $
+  gdcat = where(cat1.mag lt 50 and cat1.err lt 0.08 and abs(cat1.sharp) lt 1 and cat1.chi lt 3 and $
                 mmags[*,0] lt 50 and mmags[*,1] lt 5,ngdcat)
 if ngdcat eq 0 then begin
   printlog,logfile,'No stars that pass all of the quality/error cuts'

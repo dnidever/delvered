@@ -93,7 +93,7 @@ if (imagerstest eq 0) then begin
 endif
 ; The columns need to be: Telescope, Instrument, Naps, separator
 imagers_fieldnames = ['telescope','instrument','observatory','namps','separator']
-imagers_fieldtpes = [7,7,7,3,7]
+imagers_fieldtypes = [7,7,7,3,7]
 imagers = IMPORTASCII(scriptsdir+'/imagers',fieldnames=imagers_fieldnames,$
                       fieldtypes=imagers_fieldtypes,comment='#')
 imagers.telescope = strupcase(strtrim(imagers.telescope,2))

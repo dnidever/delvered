@@ -200,7 +200,7 @@ endif else begin
        ;; Set mags with 0.0 to 99.99
        for j=0,n_elements(magcols)-1 do begin
           colind = where(strupcase(tags) eq strupcase(magcols[j]),ncolind)
-          if colind gt 0 then begin
+          if ncolind gt 0 then begin
              bdmag = where(ref.(colind[0]) le 0.0,nbdmag)
              if nbdmag gt 0 then ref[bdmag].(colind[0])=99.99
           endif
@@ -208,7 +208,7 @@ endif else begin
        ;; Set errors with 0.0 to 9.99
        for j=0,n_elements(errcols)-1 do begin
           colind = where(strupcase(tags) eq strupcase(errcols[j]),ncolind)
-          if colind gt 0 then begin
+          if ncolind gt 0 then begin
              bderr = where(ref.(colind[0]) le 0.0,nbderr)
              if nbderr gt 0 then ref[bderr].(colind[0])=9.99
           endif

@@ -28,7 +28,7 @@ function delvered_pickexposures,chstr,maxexposures=maxexposures
 
 nchips = n_elements(chstr)
 
-if n_elements(maxexposure) eq 0 then maxexposures = 50  ;; default
+if n_elements(maxexposures) eq 0 then maxexposures = 50  ;; default
 
 ;; dao_depth is instrumental depth
 add_tag,chstr,'depth',0.0,chstr
@@ -147,7 +147,7 @@ nfilters = n_elements(ufilters)
 for f=0,nfilters-1 do begin
   ind = where(expstr.filter eq ufilters[f],nexp)
   print,strtrim(f+1,2),' ',ufilters[f],' ',strtrim(nexp,2)
-  if nind gt 0 then begin
+  if nexp gt 0 then begin
     fexpstr = expstr[ind]
     ;; Sort by delta S/N
     ;;   this adds deltasnr and fraccovered columns

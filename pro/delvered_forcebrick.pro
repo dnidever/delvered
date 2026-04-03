@@ -269,7 +269,7 @@ for i=0,nchstr-1 do begin
   if n_elements(rderror) eq 0 then begin
     nx = sxpar(hd1,'naxis1')
     ny = sxpar(hd1,'naxis2')
-    head_xyad,hd1,[0,nx-1,nx-1,0],[0,0,ny-1,ny-1],vra,vdec,/degre
+    head_xyad,hd1,[0,nx-1,nx-1,0],[0,0,ny-1,ny-1],vra,vdec,/degree
     ROTSPHCEN,vra,vdec,brickstr1.ra,brickstr1.dec,lon,lat,/gnomic
     olap[i] = dopolygonsoverlap(blon,blat,lon,lat)
     ;;olap[i] = dopolygonsoverlap(bvra,bvdec,vra,vdec)
@@ -405,7 +405,7 @@ for i=0,nchstr-1 do begin
          FILE_COPY,odir+obase+exten[j]+'.gz',procdir,/allow_same,/overwrite
          SPAWN,['gunzip',procdir+obase+exten[j]],out,errout,/noshell
        endif else begin
-         stop,odir+obase+exten[j]+'/gz not found'
+         stop,odir+obase+exten[j]+'.gz not found'
        endelse 
     endelse
   endfor

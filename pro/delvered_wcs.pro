@@ -292,7 +292,7 @@ FOR i=0,ninputlines-1 do begin
 
     ; We only do SPLIT files, NOT MEF files
     if (mef eq 1) then begin
-      printlog,'This is a MEF file.  Need SPLIT files'
+      printlog,logfile,'This is a MEF file.  Need SPLIT files'
       PUSH,failurelist,longfile
       goto,BOMB
     endif

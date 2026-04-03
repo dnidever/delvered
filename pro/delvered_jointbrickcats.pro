@@ -57,7 +57,7 @@ brickstr = MRDFITS(delvereddir+'data/delvemc_bricks_0.25deg.fits.gz',1,/silent)
 ;; Get the brick information
 bind = where(brickstr.brickname eq brick,nbind)
 if nbind eq 0 then begin
-  printlog,logfile,ibrick+' not in DELVE-MC brick list'
+  printlog,logfile,brick+' not in DELVE-MC brick list'
   return
 endif
 brickstr1 = brickstr[bind[0]]
@@ -218,7 +218,7 @@ if nmchfile eq 0 then begin
   printlog,logfile,'No comb.mch file found for '+brick
   return
 endif
-if nmchfile gt 0 then begin
+if nmchfile gt 1 then begin
   mchinfo = file_info(mchfile)
   si = reverse(sort(mchinfo.mtime))
   mchinfo = mchinfo[si]
@@ -257,6 +257,7 @@ fmeta.expnum = strtrim(fmeta.expnum,2)
 ;; add vx/vy to fmeta
 add_tag,fmeta,'vx',fltarr(4),fmeta
 add_tag,fmeta,'vy',fltarr(4),fmeta
+folap = intarr(n_elements(fmeta))
 for i=0,n_elements(fmeta)-1 do begin
   if (i mod 100 eq 0) and (i gt 0) then print,i
   hd1 = PHOTRED_READFILE(fmeta[i].file,/header,error=rderror)
@@ -265,8 +266,7 @@ for i=0,n_elements(fmeta)-1 do begin
     ny = sxpar(hd1,'naxis2')
     head_xyad,hd1,[0,nx-1,nx-1,0],[0,0,ny-1,ny-1],vra,vdec,/degree
     ROTSPHCEN,vra,vdec,brickstr1.ra,brickstr1.dec,lon,lat,/gnomic
-    olap[i] = dopolygonsoverlap(blon,blat,lon,lat)
-    ;;olap[i] = dopolygonsoverlap(bvra,bvdec,vra,vdec)
+    folap[i] = dopolygonsoverlap(blon,blat,lon,lat)
     head_adxy,tilestr.head,vra,vdec,vx,vy,/deg
     fmeta[i].vx = vx
     fmeta[i].vy = vy
@@ -875,7 +875,6 @@ if n_tags(meta) ne n_tags(newmeta) then begin
 endif
 meta = [meta,newmeta]
 
-stop
 
 ;; Step 3: Redo average object photometry, keep best measurements only
 ;;--------------------------------------------------------------------
