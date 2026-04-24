@@ -23,7 +23,7 @@ hostname = socket.gethostname()
 host = hostname.split('.')[0]
 if host=='thing' or host=='hulk' or host=='gp09':
     DBFILE = '/net/dl2/dnidever/delve/bricks/variables/delvemc_variables.db'
-elif host=='tempest' or hostnamem.lower().find('tempest')>-1:
+elif host=='tempest' or hostname.lower().find('tempest')>-1:
     DBFILE = '/home/group/davidnidever/nsc_variables/delvemc/delvemc_variables.db'
 else:
     print('no dbfile')
