@@ -5,6 +5,7 @@ from dlnpyutils import utils as dln,db as dlndb
 from glob import glob
 from delvered import delvered_db as db
 import traceback
+from datetime import datetime
 
 def getvars(brick,ndetthresh=20,save=False,overwrite=False,loop=True):
     """ Get variable star data for a brick. """
@@ -113,6 +114,13 @@ def load_database(dbfile=None):
         measfile = bdir+'/'+name+'_variables_meas.fits'
         objfile = bdir+'/'+name+'_variables_object.fits'
         if os.path.exists(measfile) and os.path.exists(objfile):
+
+            ## Only use it if it was remade after XXX
+            #mtime = os.path.getmtime(measfile)
+            #if mtime < datetime(2026,4,2).timestamp():
+            #    print('old file. not using')
+            #    continue
+
             meas = Table.read(measfile)
             obj = Table.read(objfile)
             obj['brick'] = name
